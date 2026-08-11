@@ -1,0 +1,28 @@
+# Datasets, checkpoints, and raw video live on Hugging Face Hub / lab NAS — see README.md.
+# Never commit them here even accidentally.
+data/
+datasets/
+checkpoints/
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+*.mp4
+*.mov
+*.avi
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local-only scratch (never intended to be shared)
+*.local.*
