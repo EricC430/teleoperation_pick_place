@@ -46,6 +46,7 @@ ls /dev/tty*                      # leader + follower serial bus servo boards sh
 |---|---|
 | **`docs/experiment_spec.md`** | ★★ **Read this before collecting any data.** Frozen task/success definitions, failure codes, object list, scene constants, dataset schema, evaluation protocol, decision rules, environment gotchas. |
 | **`docs/decisions.md`** | ★ Decision log. Each entry records the alternatives, the reasoning, the accepted costs, and — crucially — **what evidence would reverse it**. |
+| `docs/conventions.md` | Commit message and branch conventions. |
 | `docs/environment.md` | Version pinning across the GPU box (conda) and laptop (uv), plus the cross-machine consistency check. |
 | `configs/` | Training and evaluation config files. |
 | `calibration/` | ★ One file per calibration run, filename dated (`YYYY-MM-DD_<leader\|follower>.json`). Never overwrite — always add a new dated file. This is how we detect "did the calibration drift?" when results suddenly get worse. |
