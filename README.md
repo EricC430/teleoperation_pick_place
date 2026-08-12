@@ -44,15 +44,15 @@ ls /dev/tty*                      # leader + follower serial bus servo boards sh
 #      than a short command. run_container.sh only starts the container; every
 #      training argument stays visible here.
 ./scripts/run_container.sh lerobot-train \
-  --dataset.repo_id=edgarcancinoe/soarm101_pickplace_orange_080e_ts_closed \
+  --dataset.repo_id=lerobot/svla_so100_pickplace \
   --policy.type=act \
   --policy.push_to_hub=false \
   --wandb.enable=false \
-  --steps=100 \
-  --batch_size=8 \
-  --log_freq=20 \
-  --save_freq=100 \
-  --output_dir=/workspace/data/train/smoke-001
+  --steps=1000 \
+  --batch_size=32 \
+  --log_freq=200 \
+  --save_freq=1000 \
+  --output_dir=/workspace/data/train/perf-nw4
 
 # 6. Evaluate / deploy
 # TODO: eval script invocation, see eval/
@@ -90,21 +90,49 @@ will not work there — the repo is at `/workspace`.
 refuses to reuse an existing directory, so give each run its own — that is deliberate, it stops a
 rerun from quietly overwriting an earlier result.
 
-**That exact command was run end-to-end on 2026-08-12** on the lab GPU box. What it produced, so
-you know what "working" looks like before trusting a longer run:
+**Never pipe a training run into `tail`/`grep` and trust the exit code.** The pipeline's status is
+the last command's, so a crashed `lerobot-train` still reports success. We lost a run to this: the
+job reported exit 0 while the training had actually died. Redirect to a file and read that instead.
+
+The dataset above is a public one used **only to validate the pipeline** — it is not project data.
+It was picked because it carries a wrist camera, matching D004.
+
+## Measured performance (2026-08-12, lab GPU box)
+
+That exact command, run end-to-end. Use it to tell "working" from "something is wrong":
 
 | | |
 |---|---|
-| Dataset | 80 episodes / 61,480 frames, fetched to `data/` (**1.2 GB**) |
-| Policy | ACT, 51.6M parameters |
-| Throughput | ~12 step/s at batch 8; first step 24 s (cuDNN warm-up), then 0.084 s/step |
-| GPU memory | 3.73 GB of 24 GB — batch size has a lot of headroom |
-| Loss | 28.6 → 5.0 over 100 steps (`l1` 0.82 → 0.50, `kld` 2.78 → 0.45) |
-| Output | `data/train/smoke-001/checkpoints/last/` → `000100/`, with `pretrained_model/` (207 MB) and `training_state/` |
+| Wall time | **4 min 57 s** for 1000 steps |
+| Steady state | 3.8 step/s, **122 samples/s**, `step_s` 0.263 |
+| Where the time goes | `updt_s` 0.256 of `step_s` 0.263 — **97 % GPU compute**, `data_s` only 0.006 |
+| GPU | 97–99 % SM, 330–350 W, 60–63 °C |
+| GPU memory | 13.1 GB (torch) / 15.8 GB (nvidia-smi) of 24 GB |
+| Data coverage | `epch:1.63` — the full dataset went past **1.6 times** |
+| Loss | 5.7 → 1.35 (`l1` 0.60 → 0.29) |
+| Disk per run | **591 MB** (`pretrained_model/` 207 MB + `training_state/`) |
 
-100 steps proves the pipeline, not the policy. It also confirms the CUDA workaround in
-`docs/environment.md` survives real backprop, video decoding, and a ResNet18 backbone — not just a
-matmul.
+**The GPU is the bottleneck, and that is the healthy outcome** — it means the dataloader is keeping
+up and the card is never idle waiting for data.
+
+### Two knobs, measured rather than guessed
+
+| Setting | Wall time | samples/s | GPU mem |
+|---|---|---|---|
+| batch 8 | — | 94 | 3.7 GB |
+| **batch 32** | **4:57** | **122** | 13.1 GB |
+| batch 32, `num_workers=16` | 5:03 | 121 | 13.1 GB |
+
+- **Batch 32 beats batch 8 by ~30 % throughput** and still uses only 13 of 24 GB. Larger is likely
+  still better; we have not swept past 32.
+- **`num_workers` does nothing here.** Default 4 already keeps the GPU fed (`data_s` = 0.006 s);
+  raising it to 16 was 6 s *slower*, i.e. noise. Don't tune it.
+
+### ⚠️ Ignore the first ~400 steps
+
+`data_s` reads 0.090–0.120 s early and settles to 0.006 s by step 400. Any throughput or bottleneck
+conclusion drawn before that is wrong — we drew two wrong ones this way before re-measuring. Set
+`--log_freq` so you get readings well past step 400.
 
 > ⚠️ Downloads ran unauthenticated (`Warning: You are sending unauthenticated requests to the HF
 > Hub`). Fine for public datasets; our own private dataset repo will need `HF_TOKEN`, which goes in
