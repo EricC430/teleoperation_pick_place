@@ -133,8 +133,9 @@ before trusting a long training run to this setup.
 
 **Still TODO:**
 
-- [ ] Write the `Dockerfile`, on a **CUDA 12.4** base with a matching cu124 torch — this removes the
-      workaround above rather than papering over it.
+- [ ] Write the `Dockerfile` — derive from the upstream image and purge `cuda-compat`, which removes
+      both run-time flags. Verified to work; the five lines are in `docs/environment.md`. Note a
+      cu124 build is *not* an option (LeRobot needs torch ≥ 2.7, cu124 stops at 2.6).
 - [ ] Pin LeRobot **by digest** in the Dockerfile (`latest` is not a pin — see `docs/environment.md`).
 - [ ] Add the remaining `docker run` flags once hardware is back:
   - serial bus servo boards → `--device /dev/ttyACM*` (see `scripts/setup_device_bindings.sh`)

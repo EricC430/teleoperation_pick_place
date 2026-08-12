@@ -67,12 +67,55 @@ build runs on any 12.x driver **as long as it never calls an API that genuinely 
 it does, it fails at the call site, mid-run — not at startup. Budget for that possibility before
 trusting a long training job to it.
 
+### Where the compat libraries actually come from
+
+Worth being precise, because it changes what a fix has to do. **The compat libraries are not
+torch's.** A pip-installed torch wheel bundles the CUDA *runtime* (cudart, cuBLAS, …) but never
+`libcuda` — that always comes from the host driver. The `libcuda.so.570` in this image arrives with
+the `cuda-compat` package in its `nvidia/cuda:*` base layer.
+
+So the CUDA version torch was built against is not what breaks; **the base image is.**
+
 Two clean fixes, in order of preference:
 
 | Fix | Blocker |
 |---|---|
 | Update the host driver to ≥570 | **No `sudo` on the GPU box** — needs the lab admin |
-| Build our own image on a CUDA 12.4 base with a cu124 torch | `Dockerfile` isn't written yet (see README) |
+| Derive our own image from theirs, purging `cuda-compat` | `Dockerfile` isn't written yet (see README) |
+
+### The derived-image fix (verified 2026-08-12)
+
+Five lines, builds in seconds, and keeps the **exact** package set we validated over 1000 steps —
+no rebuild from a clean base, no re-validation:
+
+```dockerfile
+FROM huggingface/lerobot-gpu:latest
+USER root
+RUN apt-get purge -y cuda-compat-12-8 && rm -rf /usr/local/cuda/compat
+ENV NVIDIA_DISABLE_REQUIRE=1
+USER user_lerobot
+```
+
+Verified: `torch.cuda.is_available()` is `True`, device is the 4090, a GPU matmul returns — with
+**neither run-time flag present**. `lerobot 0.6.2 / torch 2.11.0+cu128` unchanged.
+
+Two things this does *not* do, both measured rather than assumed:
+
+- **`NVIDIA_DISABLE_REQUIRE` cannot be dropped, only relocated.** Clearing `NVIDIA_REQUIRE_CUDA` in
+  the image is *not* enough — the toolkit falls back to `Auto-detected mode as 'legacy'` and reads
+  the CUDA version out of the image's own files, so `cuda>=12.8` still fires. Baking the variable
+  into the image is strictly better than passing it per-run (one documented place, nobody deletes it
+  by accident), but it is still a bypass.
+- **It does not raise the driver ceiling.** torch stays cu128 on a 12.4 driver, working by CUDA
+  **minor-version compatibility**; a call that genuinely needs ≥570 still fails, still mid-run. Only
+  the driver upgrade removes that. Validated so far: ACT + ResNet18 + transformer + video decode +
+  AdamW, 1000 steps. **Not** validated: `pi0` / `smolvla` / `groot` (different kernels — D001 has
+  GR00T as a P2 baseline), long runs, `torch.compile`.
+
+⚠️ **A cu124 build is not an option**, so don't reach for one. LeRobot 0.6.2 requires
+`torch>=2.7,<2.12` and PyTorch's cu124 index stops at **torch 2.6.0**. Matching the driver's 12.4
+exactly would mean downgrading LeRobot — the one thing this document says must match exactly across
+machines.
 
 There is **no older tag to fall back to** — Docker Hub carries only `latest` and `pr-3945` for
 `huggingface/lerobot-gpu`.
