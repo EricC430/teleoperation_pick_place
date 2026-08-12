@@ -92,49 +92,17 @@ will not work there — the repo is at `/workspace`.
 refuses to reuse an existing directory, so give each run its own — that is deliberate, it stops a
 rerun from quietly overwriting an earlier result.
 
-**Never pipe a training run into `tail`/`grep` and trust the exit code.** The pipeline's status is
-the last command's, so a crashed `lerobot-train` still reports success. We lost a run to this: the
-job reported exit 0 while the training had actually died. Redirect to a file and read that instead.
+**Never pipe a training run into `tail`/`grep` and trust the exit code** — the status you get back
+is `tail`'s, so a crashed run looks like success. Redirect to a file and read the file.
 
 The dataset above is a public one used **only to validate the pipeline** — it is not project data.
 It was picked because it carries a wrist camera, matching D004.
 
-## Measured performance (2026-08-12, lab GPU box)
-
-That exact command, run end-to-end. Use it to tell "working" from "something is wrong":
-
-| | |
-|---|---|
-| Wall time | **4 min 57 s** for 1000 steps |
-| Steady state | 3.8 step/s, **122 samples/s**, `step_s` 0.263 |
-| Where the time goes | `updt_s` 0.256 of `step_s` 0.263 — **97 % GPU compute**, `data_s` only 0.006 |
-| GPU | 97–99 % SM, 330–350 W, 60–63 °C |
-| GPU memory | 13.1 GB (torch) / 15.8 GB (nvidia-smi) of 24 GB |
-| Data coverage | `epch:1.63` — the full dataset went past **1.6 times** |
-| Loss | 5.7 → 1.35 (`l1` 0.60 → 0.29) |
-| Disk per run | **591 MB** (`pretrained_model/` 207 MB + `training_state/`) |
-
-**The GPU is the bottleneck, and that is the healthy outcome** — it means the dataloader is keeping
-up and the card is never idle waiting for data.
-
-### Two knobs, measured rather than guessed
-
-| Setting | Wall time | samples/s | GPU mem |
-|---|---|---|---|
-| batch 8 | — | 94 | 3.7 GB |
-| **batch 32** | **4:57** | **122** | 13.1 GB |
-| batch 32, `num_workers=16` | 5:03 | 121 | 13.1 GB |
-
-- **Batch 32 beats batch 8 by ~30 % throughput** and still uses only 13 of 24 GB. Larger is likely
-  still better; we have not swept past 32.
-- **`num_workers` does nothing here.** Default 4 already keeps the GPU fed (`data_s` = 0.006 s);
-  raising it to 16 was 6 s *slower*, i.e. noise. Don't tune it.
-
-### ⚠️ Ignore the first ~400 steps
-
-`data_s` reads 0.090–0.120 s early and settles to 0.006 s by step 400. Any throughput or bottleneck
-conclusion drawn before that is wrong — we drew two wrong ones this way before re-measuring. Set
-`--log_freq` so you get readings well past step 400.
+**That command was run end-to-end on 2026-08-12: 1000 steps in 4 min 57 s, GPU-bound at 97 %,
+13.1 of 24 GB.** Timings, resource use, the batch-size and `num_workers` comparison, and the
+pitfalls each run exposed are recorded in
+**[`docs/pipeline_validation.md`](docs/pipeline_validation.md)** — read it before concluding a slow
+or crashed run is normal.
 
 > ⚠️ Downloads ran unauthenticated (`Warning: You are sending unauthenticated requests to the HF
 > Hub`). Fine for public datasets; our own private dataset repo will need `HF_TOKEN`, which goes in
@@ -187,6 +155,7 @@ before. See [Where the data lives](#where-the-data-lives).
 | `docs/conventions.md` | Commit message and branch conventions. |
 | `Dockerfile` | ★ Defines the training/inference environment. **Not yet written** — see [Container image](#container-image). |
 | **`docs/environment.md`** | ★ Version pinning across machines, the cross-machine consistency check, and the **driver-ceiling / forward-compat gotcha on the GPU box** — read it before debugging any `--gpus all` failure. |
+| `docs/pipeline_validation.md` | Training runs done to validate the pipeline (public data only): timings, resource use, bottlenecks, and the pitfalls each run exposed. Not experiment results — those go in `eval/`. |
 | `configs/` | Training and evaluation config files. |
 | `calibration/` | ★ One file per calibration run, filename dated (`YYYY-MM-DD_<leader\|follower>.json`). Never overwrite — always add a new dated file. This is how we detect "did the calibration drift?" when results suddenly get worse. |
 | `scripts/` | Thin wrappers around data collection / training / evaluation / deployment commands. `setup_device_bindings.sh` is **optional** — see the escalation conditions at the top of that file. |
