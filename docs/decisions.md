@@ -222,9 +222,11 @@ evidence would make us reverse it.** A decision without a reversal condition is 
 
 ---
 
-## D012 — 🟡 PROPOSED, NOT DECIDED: Docker on the GPU box, replacing conda
+## D012 — Docker on the GPU box, replacing conda
 
 - **Date:** 2026-08-12
+- **Ratified:** 2026-08-12. Proposed and accepted the same day, after the stack was validated
+  end-to-end (image runs, 100-step ACT training completes — see `README.md` § Quickstart).
 - **Decision:** The GPU box's training environment is a **container**, not a conda env. For now that
   is LeRobot's official `huggingface/lerobot-gpu` image pinned by digest; our own `Dockerfile` is the
   intended end state. **Supersedes D010 for the GPU box only** — the laptop half of D010 is *not*
