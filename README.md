@@ -32,13 +32,9 @@ docker pull huggingface/lerobot-gpu:latest
 ls /dev/tty*                      # leader + follower serial bus servo boards should show up
 # TODO: calibration command
 
-# 3. Open a shell in the container (GPU passed through).
-#    The two extra flags are NOT optional on the lab GPU box -- see docs/environment.md.
-docker run -it --rm --gpus all --shm-size 16gb \
-  -e NVIDIA_DISABLE_REQUIRE=1 \
-  --tmpfs /usr/local/cuda/compat \
-  -v "$PWD":/workspace \
-  huggingface/lerobot-gpu:latest
+# 3. Open a shell in the container. Every flag lives in the script -- none of them
+#    are optional on the lab GPU box. docs/environment.md explains why.
+./scripts/run_container.sh
 # TODO: add --device flags for the arms and cameras once hardware is back
 
 # 4. Pull training data (public dataset for pipeline validation, or our own HF Hub repo)

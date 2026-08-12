@@ -49,20 +49,18 @@ the 4090 they fail with:
 Error 804: forward compatibility was attempted on non supported HW
 ```
 
-**Working command** (verified — `torch.cuda.is_available()` is `True`, device reports
-`NVIDIA GeForce RTX 4090`, a 2000×2000 GPU matmul returns):
+**The fix is two flags**, both required — verified on 2026-08-12 (`torch.cuda.is_available()` is
+`True`, device reports `NVIDIA GeForce RTX 4090`, a 2000×2000 GPU matmul returns):
 
-```bash
-docker run -it --rm --gpus all --shm-size 16gb \
-  -e NVIDIA_DISABLE_REQUIRE=1 \
-  --tmpfs /usr/local/cuda/compat \
-  huggingface/lerobot-gpu:latest
-```
-
-- `NVIDIA_DISABLE_REQUIRE=1` skips the toolkit's `cuda>=12.8` gate. **Not sufficient on its own** —
-  without the second flag it still dies with 804.
+- `-e NVIDIA_DISABLE_REQUIRE=1` skips the toolkit's `cuda>=12.8` gate. **Not sufficient on its own** —
+  with only this, the container still dies with 804.
 - `--tmpfs /usr/local/cuda/compat` masks the compat libs with an empty dir, so the container falls
   back to the host driver's own `libcuda`.
+
+**Don't type these by hand — use [`scripts/run_container.sh`](../scripts/run_container.sh).** That
+script is the single source of truth for how to start the container; this document only explains
+*why* the flags are there. If you find yourself editing a `docker run` line in a doc, edit the
+script instead.
 
 **This is a workaround, not a fix.** It works because of CUDA *minor version compatibility*: a cu12.8
 build runs on any 12.x driver **as long as it never calls an API that genuinely requires ≥570**. If
@@ -78,6 +76,49 @@ Two clean fixes, in order of preference:
 
 There is **no older tag to fall back to** — Docker Hub carries only `latest` and `pr-3945` for
 `huggingface/lerobot-gpu`.
+
+## ⚠️ File ownership and where downloads actually land
+
+Two more traps, both handled by `scripts/run_container.sh`. Documented here because the symptoms
+are confusing and the causes are not guessable.
+
+**1. The container's user is not you.** The image runs as `user_lerobot` (uid 1001); on the lab box
+you are uid 1020. Without `--user "$(id -u):$(id -g)"`, everything the container writes into the
+mounted repo — training logs, `calibration/*.json`, `eval/*.csv` — lands owned by uid 1001 and you
+cannot edit it from the host.
+
+Passing `--user` fixes ownership but leaves the container with no matching entry in its own
+`/etc/passwd`, which shows up as:
+
+```
+groups: cannot find name for group ID 1020
+bash: /home/user_lerobot/.bashrc: Permission denied
+I have no name!@06b0b64be1ff:/workspace$
+```
+
+Mounting the host's account files read-only (`-v /etc/passwd:/etc/passwd:ro`, same for `/etc/group`)
+clears all three.
+
+**2. `HOME` is not enough to redirect the caches.** The image hard-codes absolute paths:
+
+```
+HF_HOME=/home/user_lerobot/.cache/huggingface
+HF_LEROBOT_HOME=/home/user_lerobot/.cache/huggingface/lerobot
+TORCH_HOME=/home/user_lerobot/.cache/torch
+TRITON_CACHE_DIR=/home/user_lerobot/.cache/triton
+```
+
+Setting `HOME` alone does **not** move them — `huggingface_hub` reads `HF_HOME`, and the download
+fails with `PermissionError: '/home/user_lerobot/.cache/huggingface/token'`. All four variables must
+be overridden explicitly.
+
+They point at `/workspace/data`, i.e. **`data/` inside this repo**, which `.gitignore` already
+excludes. So datasets are visible on the host, survive container exit, and still never reach git —
+consistent with `experiment_spec.md` §12. Note this is a *local cache*, not storage: our own demo
+data still belongs on HF Hub (see the README's [Where the data lives](../README.md#where-the-data-lives)).
+
+> Without a volume mount, downloads land inside the container and `--rm` deletes them on exit — the
+> dataset is re-fetched every single run.
 
 ## Setup order
 
