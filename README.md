@@ -22,23 +22,72 @@ validation on public datasets, and filling in `docs/experiment_spec.md` — proc
 ## Quickstart: reproduce from zero
 
 ```bash
-# 1. Install LeRobot (see LeRobot's own install docs — version churns fast, don't hardcode steps here)
-# TODO: pin the exact LeRobot commit/version we're using once the pipeline is validated
+# 1. Pull the image. We currently use LeRobot's official GPU image as-is.
+#    Pin by DIGEST, not by :latest -- see docs/environment.md for the recorded digest.
+docker pull huggingface/lerobot-gpu:latest
+# TODO: replace with our own Dockerfile -- see "Container image" below.
 
 # 2. Confirm hardware is connected and calibrated
 #    See docs/field_manual.md for the full on-site checklist.
 ls /dev/tty*                      # leader + follower serial bus servo boards should show up
 # TODO: calibration command
 
-# 3. Pull training data (public dataset for pipeline validation, or our own HF Hub repo)
+# 3. Open a shell in the container (GPU passed through).
+#    The two extra flags are NOT optional on the lab GPU box -- see docs/environment.md.
+docker run -it --rm --gpus all --shm-size 16gb \
+  -e NVIDIA_DISABLE_REQUIRE=1 \
+  --tmpfs /usr/local/cuda/compat \
+  -v "$PWD":/workspace \
+  huggingface/lerobot-gpu:latest
+# TODO: add --device flags for the arms and cameras once hardware is back
+
+# 4. Pull training data (public dataset for pipeline validation, or our own HF Hub repo)
 # TODO: lerobot-train --dataset.repo_id=<...>
 
-# 4. Train
+# 5. Train
 # TODO: lerobot-train --policy.type=act --dataset.repo_id=<...> --output_dir=...
 
-# 5. Evaluate / deploy
+# 6. Evaluate / deploy
 # TODO: eval script invocation, see eval/
 ```
+
+## Container image
+
+The goal is an environment defined by a **Dockerfile in this repo**, not by instructions a human
+follows by hand — same principle as everything else here. We're not there yet: right now we run
+LeRobot's official image as-is and carry the run flags in this README.
+
+**Verified on the lab GPU box (2026-08-12):**
+
+| Component | State |
+|---|---|
+| GPU / driver | RTX 4090, driver `550.54.14` → **CUDA 12.4 ceiling** |
+| `nvidia-container-toolkit` | `1.17.8-1`, installed |
+| Docker `nvidia` runtime | registered in `/etc/docker/daemon.json` |
+| Docker permissions | user is in the `docker` group — **no `sudo` needed, and none available** |
+| Docker `data-root` | `/ssd/docker` (images/containers live on the SSD, not `$HOME`) |
+| Image contents | LeRobot `0.6.2`, torch `2.11.0+cu128`, Python 3.12.3 |
+
+⚠️ **A plain `--gpus all` does not work with this image.** The image wants CUDA 12.8, the driver caps
+at 12.4, and the forward-compat libraries it bundles to bridge that gap are unsupported on GeForce
+cards. The two extra flags in the Quickstart are the workaround, and it is a workaround —
+**[`docs/environment.md`](docs/environment.md) explains why, and what the real fixes are.** Read it
+before trusting a long training run to this setup.
+
+**Still TODO:**
+
+- [ ] Write the `Dockerfile`, on a **CUDA 12.4** base with a matching cu124 torch — this removes the
+      workaround above rather than papering over it.
+- [ ] Pin LeRobot **by digest** in the Dockerfile (`latest` is not a pin — see `docs/environment.md`).
+- [ ] Add the remaining `docker run` flags once hardware is back:
+  - serial bus servo boards → `--device /dev/ttyACM*` (see `scripts/setup_device_bindings.sh`)
+  - cameras → `--device /dev/video*`
+  - HF Hub cache → mount a host volume, or every run re-downloads the dataset
+- [ ] Decide whether the laptop (data collection + inference) also runs the container, or stays on uv.
+      This blocks the cross-machine verification in `docs/environment.md`.
+
+Datasets and checkpoints are **not** baked into the image; they come from HF Hub at runtime, same as
+before. See [Where the data lives](#where-the-data-lives).
 
 ## Repo layout
 
@@ -47,7 +96,8 @@ ls /dev/tty*                      # leader + follower serial bus servo boards sh
 | **`docs/experiment_spec.md`** | ★★ **Read this before collecting any data.** Frozen task/success definitions, failure codes, object list, scene constants, dataset schema, evaluation protocol, decision rules, environment gotchas. |
 | **`docs/decisions.md`** | ★ Decision log. Each entry records the alternatives, the reasoning, the accepted costs, and — crucially — **what evidence would reverse it**. |
 | `docs/conventions.md` | Commit message and branch conventions. |
-| `docs/environment.md` | Version pinning across the GPU box (conda) and laptop (uv), plus the cross-machine consistency check. |
+| `Dockerfile` | ★ Defines the training/inference environment. **Not yet written** — see [Container image](#container-image). |
+| **`docs/environment.md`** | ★ Version pinning across machines, the cross-machine consistency check, and the **driver-ceiling / forward-compat gotcha on the GPU box** — read it before debugging any `--gpus all` failure. |
 | `configs/` | Training and evaluation config files. |
 | `calibration/` | ★ One file per calibration run, filename dated (`YYYY-MM-DD_<leader\|follower>.json`). Never overwrite — always add a new dated file. This is how we detect "did the calibration drift?" when results suddenly get worse. |
 | `scripts/` | Thin wrappers around data collection / training / evaluation / deployment commands. `setup_device_bindings.sh` is **optional** — see the escalation conditions at the top of that file. |

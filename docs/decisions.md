@@ -201,6 +201,8 @@ evidence would make us reverse it.** A decision without a reversal condition is 
 - **Reverse if:** the cross-machine verification (same dataset, one step, compare loss) shows
   substantial disagreement that pinning cannot resolve.
 - **See:** `docs/environment.md`
+- **⚠️ Superseded (GPU box) by D012, 2026-08-12** — conda is no longer used for training. The
+  laptop half and the cross-machine verification requirement still stand.
 
 ---
 
@@ -217,6 +219,44 @@ evidence would make us reverse it.** A decision without a reversal condition is 
 - **Reverse if:** a camera index swap silently corrupts a recording session, or find_port is being
   re-run more than ~3x/day. Escalation conditions are listed at the top of
   `scripts/setup_device_bindings.sh`.
+
+---
+
+## D012 — 🟡 PROPOSED, NOT DECIDED: Docker on the GPU box, replacing conda
+
+- **Date:** 2026-08-12
+- **Decision:** The GPU box's training environment is a **container**, not a conda env. For now that
+  is LeRobot's official `huggingface/lerobot-gpu` image pinned by digest; our own `Dockerfile` is the
+  intended end state. **Supersedes D010 for the GPU box only** — the laptop half of D010 is *not*
+  resolved here, see **Open** below.
+- **Alternatives:** keep conda (D010); build our own image from a CUDA base immediately instead of
+  adopting the upstream one first
+- **Why:**
+  - The environment becomes a **repo artifact** (Dockerfile + digest) instead of a sequence of
+    install steps a human re-performs — the same reproducibility argument the README already makes
+    for everything else.
+  - **No `sudo` on the GPU box.** A container needs none: the host already has
+    `nvidia-container-toolkit 1.17.8` and the `nvidia` runtime registered.
+  - D010's stated core risk — *"both machines installing `latest` at different times and diverging"* —
+    is pinnable more sharply by image digest than by a conda export.
+- **Accepted costs:**
+  - **The image wants CUDA 12.8; the host driver caps at 12.4.** It runs today only via a documented
+    workaround (`NVIDIA_DISABLE_REQUIRE=1` plus masking the bundled forward-compat libraries, which
+    are unsupported on GeForce cards). This leans on CUDA minor-version compatibility and **can fail
+    mid-run**, not at startup, if a call genuinely needs driver ≥570. Full detail in
+    `docs/environment.md`.
+  - ~12.3 GB image versus a conda env.
+  - The cross-machine verification D010 mandates is now **blocked** until the laptop side is decided.
+- **Note on process:** D010's own reversal condition — cross-machine loss disagreement — was **never
+  met**; that check has never been run. This switch is motivated by reproducibility and the sudo
+  constraint, *not* by evidence against D010. Recorded plainly so that nobody later concludes D010
+  failed on its merits.
+- **Open:** does the laptop (data collection + inference) also run the container, or stay on uv?
+  Until this is answered the D010 verification protocol cannot execute at all.
+- **Reverse if:** the forward-compat workaround proves unstable in real training runs **and** neither
+  the driver upgrade (needs the lab admin) nor a cu124 image of our own materialises — conda per D010
+  remains the fallback.
+- **See:** `docs/environment.md`, `README.md` § Container image
 
 ---
 
