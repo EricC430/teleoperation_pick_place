@@ -37,15 +37,55 @@ ls /dev/tty*                      # leader + follower serial bus servo boards sh
 ./scripts/run_container.sh
 # TODO: add --device flags for the arms and cameras once hardware is back
 
-# 4. Pull training data (public dataset for pipeline validation, or our own HF Hub repo)
-# TODO: lerobot-train --dataset.repo_id=<...>
-
-# 5. Train
-# TODO: lerobot-train --policy.type=act --dataset.repo_id=<...> --output_dir=...
+# 4+5. Train. The dataset is fetched automatically from the Hub on first run and
+#      cached in data/, so there is no separate download step.
+#      Written out in full on purpose -- knowing exactly what was run matters more
+#      than a short command. run_container.sh only starts the container; every
+#      training argument stays visible here.
+./scripts/run_container.sh lerobot-train \
+  --dataset.repo_id=edgarcancinoe/soarm101_pickplace_orange_080e_ts_closed \
+  --policy.type=act \
+  --policy.push_to_hub=false \
+  --wandb.enable=false \
+  --steps=100 \
+  --batch_size=8 \
+  --log_freq=20 \
+  --save_freq=100 \
+  --output_dir=/workspace/data/train/smoke-001
 
 # 6. Evaluate / deploy
 # TODO: eval script invocation, see eval/
 ```
+
+**Two arguments are not optional and not obvious:**
+
+- `--policy.push_to_hub=false` — defaults to **true**. Without it `lerobot-train` refuses to start
+  at all: `ValueError: 'repo_id' argument missing. Please specify it to push the model to the hub.`
+- `--wandb.enable=false` — otherwise it tries to reach Weights & Biases.
+
+`--output_dir` must be a path **inside the container** (`/workspace/...`, which is this repo). It
+refuses to reuse an existing directory, so give each run its own — that is deliberate, it stops a
+rerun from quietly overwriting an earlier result.
+
+**That exact command was run end-to-end on 2026-08-12** on the lab GPU box. What it produced, so
+you know what "working" looks like before trusting a longer run:
+
+| | |
+|---|---|
+| Dataset | 80 episodes / 61,480 frames, fetched to `data/` (**1.2 GB**) |
+| Policy | ACT, 51.6M parameters |
+| Throughput | ~12 step/s at batch 8; first step 24 s (cuDNN warm-up), then 0.084 s/step |
+| GPU memory | 3.73 GB of 24 GB — batch size has a lot of headroom |
+| Loss | 28.6 → 5.0 over 100 steps (`l1` 0.82 → 0.50, `kld` 2.78 → 0.45) |
+| Output | `data/train/smoke-001/checkpoints/last/` → `000100/`, with `pretrained_model/` (207 MB) and `training_state/` |
+
+100 steps proves the pipeline, not the policy. It also confirms the CUDA workaround in
+`docs/environment.md` survives real backprop, video decoding, and a ResNet18 backbone — not just a
+matmul.
+
+> ⚠️ Downloads ran unauthenticated (`Warning: You are sending unauthenticated requests to the HF
+> Hub`). Fine for public datasets; our own private dataset repo will need `HF_TOKEN`, which goes in
+> the environment and **never** into git (`docs/conventions.md`).
 
 ## Container image
 
