@@ -22,9 +22,9 @@ validation on public datasets, and filling in `docs/experiment_spec.md` — proc
 ## Quickstart: reproduce from zero
 
 ```bash
-# 1. Pull the image. We currently use LeRobot's official GPU image as-is.
-#    Pin by DIGEST, not by :latest -- see docs/environment.md for the recorded digest.
-docker pull huggingface/lerobot-gpu:latest
+# 1. Nothing to install. Step 3 pulls the image (~12.3 GB) on first run.
+#    We use LeRobot's official GPU image as-is for now; the version actually in
+#    use is pinned by DIGEST in docs/environment.md, because :latest moves.
 # TODO: replace with our own Dockerfile -- see "Container image" below.
 
 # 2. Confirm hardware is connected and calibrated
@@ -34,6 +34,7 @@ ls /dev/tty*                      # leader + follower serial bus servo boards sh
 
 # 3. Open a shell in the container. Every flag lives in the script -- none of them
 #    are optional on the lab GPU box. docs/environment.md explains why.
+#    Run this ON THE HOST, not from inside a container.
 ./scripts/run_container.sh
 # TODO: add --device flags for the arms and cameras once hardware is back
 
@@ -56,6 +57,28 @@ ls /dev/tty*                      # leader + follower serial bus servo boards sh
 # 6. Evaluate / deploy
 # TODO: eval script invocation, see eval/
 ```
+
+### Using `run_container.sh`
+
+It has two modes, which is why it appears twice above:
+
+| Invocation | What happens |
+|---|---|
+| `./scripts/run_container.sh` | You get an interactive shell **inside** the container, in `/workspace` (this repo). |
+| `./scripts/run_container.sh <command...>` | `<command...>` runs inside the container, then the container exits. Step 4 is this form. |
+
+Anything works in the second form — `lerobot-info`, `python --version`, `ls /workspace/data`.
+
+**Always run it from the host.** There is no `docker` inside the container, so running it from a
+container shell fails with `exec: docker: not found`. Check the prompt if unsure:
+
+```
+boyuchen@widm:~/teleoperation_pick_place$    <- host, run it here
+boyuchen@06b0b64be1ff:/workspace$            <- already inside the container
+```
+
+Note also that `~` inside the container is **not** your host home directory, so `cd ~/teleoperation_pick_place`
+will not work there — the repo is at `/workspace`.
 
 **Two arguments are not optional and not obvious:**
 
