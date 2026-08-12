@@ -385,6 +385,27 @@ lerobot-find-cameras     # 列出相機並可預覽確認
 
 **理由：** 否則可能收滿 200 條，才發現評估腳本或 schema 有問題。以 8–16 輪的預算，這種錯誤付不起。
 
+### 🔴 訓練驗證必須跑滿至少一個 epoch
+
+「訓練一次」不等於「資料驗證過」。**短步數的 smoke test 只會碰到極小一部分資料。**
+
+2026-08-12 實測。用的是公開資料集 `edgarcancinoe/soarm101_pickplace_orange_080e_ts_closed`
+（**僅用於驗流程，非本計畫用資料**）—— 特意寫出名稱，下面的數字才查得證：
+
+| 跑法 | 涵蓋範圍 | 結果 |
+|---|---|---|
+| 100 步 @ batch 8 | `epch:0.01`，不到 1% 的資料 | ✅ 全綠：loss 下降、checkpoint 存出 |
+| 1000 步 @ batch 32 | 跑到第 4 個 epoch 邊界 | ❌ 第 167 步崩潰 |
+
+崩潰原因是該資料集**內部不一致**：`meta/info.json` 宣稱 61,480 幀，實際影片共 61,534 幀，差額全在 `file-000`（實際 7,767 幀 vs metadata 推得 7,713 幀）。全域索引因此錯位，越界時才拋 `IndexError: Invalid frame index=8530 ... must be less than 8524`。
+
+**關鍵風險：這種損壞在錄製當下不會報錯，只在訓練讀到那一段時才炸。** 而且 `--dataset.exclude_episodes` 排除受影響的 episode **也救不了**（改成 sampler 的 `KeyError`，索引空間仍由錯誤的總幀數建立）。
+
+因此 Pilot 的「訓練一次」一項，驗收標準改為：
+
+- [ ] 訓練步數 × batch size **≥ 資料集總幀數**（即至少完整走過一遍）
+- [ ] 錄製後立即比對 `meta/info.json` 的 `total_frames` 與影片實際幀數是否相符
+
 ---
 
 ## 11. 硬體現實（SO-101 的先天限制）

@@ -22,23 +22,129 @@ validation on public datasets, and filling in `docs/experiment_spec.md` — proc
 ## Quickstart: reproduce from zero
 
 ```bash
-# 1. Install LeRobot (see LeRobot's own install docs — version churns fast, don't hardcode steps here)
-# TODO: pin the exact LeRobot commit/version we're using once the pipeline is validated
+# 1. Nothing to install. Step 3 pulls the image (~12.3 GB) on first run.
+#    We use LeRobot's official GPU image as-is for now; the version actually in
+#    use is pinned by DIGEST in docs/environment.md, because :latest moves.
+# TODO: replace with our own Dockerfile -- see "Container image" below.
 
 # 2. Confirm hardware is connected and calibrated
 #    See docs/field_manual.md for the full on-site checklist.
 ls /dev/tty*                      # leader + follower serial bus servo boards should show up
 # TODO: calibration command
 
-# 3. Pull training data (public dataset for pipeline validation, or our own HF Hub repo)
-# TODO: lerobot-train --dataset.repo_id=<...>
+# 3. Open a shell in the container. Every flag lives in the script -- none of them
+#    are optional on the lab GPU box. docs/environment.md explains why.
+#    Run this ON THE HOST, not from inside a container.
+./scripts/run_container.sh
+# TODO: add --device flags for the arms and cameras once hardware is back
 
-# 4. Train
-# TODO: lerobot-train --policy.type=act --dataset.repo_id=<...> --output_dir=...
+# 4+5. Train. The dataset is fetched automatically from the Hub on first run and
+#      cached in data/, so there is no separate download step.
+#      Written out in full on purpose -- knowing exactly what was run matters more
+#      than a short command. run_container.sh only starts the container; every
+#      training argument stays visible here.
+#      !! The dataset below is PIPELINE-VALIDATION DATA ONLY: a public dataset,
+#         NOT project data. Ours will live in our own private HF Hub repo.
+./scripts/run_container.sh lerobot-train \
+  --dataset.repo_id=lerobot/svla_so100_pickplace \
+  --policy.type=act \
+  --policy.push_to_hub=false \
+  --wandb.enable=false \
+  --steps=1000 \
+  --batch_size=32 \
+  --log_freq=200 \
+  --save_freq=1000 \
+  --output_dir=/workspace/data/train/perf-nw4
 
-# 5. Evaluate / deploy
+# 6. Evaluate / deploy
 # TODO: eval script invocation, see eval/
 ```
+
+### Using `run_container.sh`
+
+It has two modes, which is why it appears twice above:
+
+| Invocation | What happens |
+|---|---|
+| `./scripts/run_container.sh` | You get an interactive shell **inside** the container, in `/workspace` (this repo). |
+| `./scripts/run_container.sh <command...>` | `<command...>` runs inside the container, then the container exits. Step 4 is this form. |
+
+Anything works in the second form — `lerobot-info`, `python --version`, `ls /workspace/data`.
+
+**Always run it from the host.** There is no `docker` inside the container, so running it from a
+container shell fails with `exec: docker: not found`. Check the prompt if unsure:
+
+```
+boyuchen@widm:~/teleoperation_pick_place$    <- host, run it here
+boyuchen@06b0b64be1ff:/workspace$            <- already inside the container
+```
+
+Note also that `~` inside the container is **not** your host home directory, so `cd ~/teleoperation_pick_place`
+will not work there — the repo is at `/workspace`.
+
+**Two arguments are not optional and not obvious:**
+
+- `--policy.push_to_hub=false` — defaults to **true**. Without it `lerobot-train` refuses to start
+  at all: `ValueError: 'repo_id' argument missing. Please specify it to push the model to the hub.`
+- `--wandb.enable=false` — otherwise it tries to reach Weights & Biases.
+
+`--output_dir` must be a path **inside the container** (`/workspace/...`, which is this repo). It
+refuses to reuse an existing directory, so give each run its own — that is deliberate, it stops a
+rerun from quietly overwriting an earlier result.
+
+**Never pipe a training run into `tail`/`grep` and trust the exit code** — the status you get back
+is `tail`'s, so a crashed run looks like success. Redirect to a file and read the file.
+
+The dataset above is a public one used **only to validate the pipeline** — it is not project data.
+It was picked because it carries a wrist camera, matching D004.
+
+**That command was run end-to-end on 2026-08-12: 1000 steps in 4 min 57 s, GPU-bound at 97 %,
+13.1 of 24 GB.** Timings, resource use, the batch-size and `num_workers` comparison, and the
+pitfalls each run exposed are recorded in
+**[`docs/pipeline_validation.md`](docs/pipeline_validation.md)** — read it before concluding a slow
+or crashed run is normal.
+
+> ⚠️ Downloads ran unauthenticated (`Warning: You are sending unauthenticated requests to the HF
+> Hub`). Fine for public datasets; our own private dataset repo will need `HF_TOKEN`, which goes in
+> the environment and **never** into git (`docs/conventions.md`).
+
+## Container image
+
+The goal is an environment defined by a **Dockerfile in this repo**, not by instructions a human
+follows by hand — same principle as everything else here. We're not there yet: right now we run
+LeRobot's official image as-is and carry the run flags in this README.
+
+**Verified on the lab GPU box (2026-08-12):**
+
+| Component | State |
+|---|---|
+| GPU / driver | RTX 4090, driver `550.54.14` → **CUDA 12.4 ceiling** |
+| `nvidia-container-toolkit` | `1.17.8-1`, installed |
+| Docker `nvidia` runtime | registered in `/etc/docker/daemon.json` |
+| Docker permissions | user is in the `docker` group — **no `sudo` needed, and none available** |
+| Docker `data-root` | `/ssd/docker` (images/containers live on the SSD, not `$HOME`) |
+| Image contents | LeRobot `0.6.2`, torch `2.11.0+cu128`, Python 3.12.3 |
+
+⚠️ **A plain `--gpus all` does not work with this image.** The image wants CUDA 12.8, the driver caps
+at 12.4, and the forward-compat libraries it bundles to bridge that gap are unsupported on GeForce
+cards. The two extra flags in the Quickstart are the workaround, and it is a workaround —
+**[`docs/environment.md`](docs/environment.md) explains why, and what the real fixes are.** Read it
+before trusting a long training run to this setup.
+
+**Still TODO:**
+
+- [ ] Write the `Dockerfile`, on a **CUDA 12.4** base with a matching cu124 torch — this removes the
+      workaround above rather than papering over it.
+- [ ] Pin LeRobot **by digest** in the Dockerfile (`latest` is not a pin — see `docs/environment.md`).
+- [ ] Add the remaining `docker run` flags once hardware is back:
+  - serial bus servo boards → `--device /dev/ttyACM*` (see `scripts/setup_device_bindings.sh`)
+  - cameras → `--device /dev/video*`
+  - HF Hub cache → mount a host volume, or every run re-downloads the dataset
+- [ ] Decide whether the laptop (data collection + inference) also runs the container, or stays on uv.
+      This blocks the cross-machine verification in `docs/environment.md`.
+
+Datasets and checkpoints are **not** baked into the image; they come from HF Hub at runtime, same as
+before. See [Where the data lives](#where-the-data-lives).
 
 ## Repo layout
 
@@ -47,7 +153,9 @@ ls /dev/tty*                      # leader + follower serial bus servo boards sh
 | **`docs/experiment_spec.md`** | ★★ **Read this before collecting any data.** Frozen task/success definitions, failure codes, object list, scene constants, dataset schema, evaluation protocol, decision rules, environment gotchas. |
 | **`docs/decisions.md`** | ★ Decision log. Each entry records the alternatives, the reasoning, the accepted costs, and — crucially — **what evidence would reverse it**. |
 | `docs/conventions.md` | Commit message and branch conventions. |
-| `docs/environment.md` | Version pinning across the GPU box (conda) and laptop (uv), plus the cross-machine consistency check. |
+| `Dockerfile` | ★ Defines the training/inference environment. **Not yet written** — see [Container image](#container-image). |
+| **`docs/environment.md`** | ★ Version pinning across machines, the cross-machine consistency check, and the **driver-ceiling / forward-compat gotcha on the GPU box** — read it before debugging any `--gpus all` failure. |
+| `docs/pipeline_validation.md` | Training runs done to validate the pipeline (public data only): timings, resource use, bottlenecks, and the pitfalls each run exposed. Not experiment results — those go in `eval/`. |
 | `configs/` | Training and evaluation config files. |
 | `calibration/` | ★ One file per calibration run, filename dated (`YYYY-MM-DD_<leader\|follower>.json`). Never overwrite — always add a new dated file. This is how we detect "did the calibration drift?" when results suddenly get worse. |
 | `scripts/` | Thin wrappers around data collection / training / evaluation / deployment commands. `setup_device_bindings.sh` is **optional** — see the escalation conditions at the top of that file. |
