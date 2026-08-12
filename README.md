@@ -43,6 +43,8 @@ ls /dev/tty*                      # leader + follower serial bus servo boards sh
 #      Written out in full on purpose -- knowing exactly what was run matters more
 #      than a short command. run_container.sh only starts the container; every
 #      training argument stays visible here.
+#      !! The dataset below is PIPELINE-VALIDATION DATA ONLY: a public dataset,
+#         NOT project data. Ours will live in our own private HF Hub repo.
 ./scripts/run_container.sh lerobot-train \
   --dataset.repo_id=lerobot/svla_so100_pickplace \
   --policy.type=act \
