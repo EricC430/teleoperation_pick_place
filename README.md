@@ -88,9 +88,16 @@ will not work there — the repo is at `/workspace`.
   at all: `ValueError: 'repo_id' argument missing. Please specify it to push the model to the hub.`
 - `--wandb.enable=false` — otherwise it tries to reach Weights & Biases.
 
-`--output_dir` must be a path **inside the container** (`/workspace/...`, which is this repo). It
-refuses to reuse an existing directory, so give each run its own — that is deliberate, it stops a
-rerun from quietly overwriting an earlier result.
+`--output_dir` **must start with `/workspace/`**. That is the container's name for this repo — the
+only host directory mounted into it — so anything written there lands on the real disk.
+
+> 🔴 **A path outside `/workspace/` loses the run, silently.** `/tmp/...`, `/root/...` and friends
+> are the container's own throwaway filesystem; `--rm` deletes them on exit. Training completes,
+> reports success, writes checkpoints — and they are gone the moment the container stops. There is
+> no warning, so a multi-hour run can vanish with nothing to show for it.
+
+It also refuses to reuse an existing directory, so give each run its own — that is deliberate, it
+stops a rerun from quietly overwriting an earlier result.
 
 **Never pipe a training run into `tail`/`grep` and trust the exit code** — the status you get back
 is `tail`'s, so a crashed run looks like success. Redirect to a file and read the file.
