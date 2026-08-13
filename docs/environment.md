@@ -62,6 +62,29 @@ script is the single source of truth for how to start the container; this docume
 *why* the flags are there. If you find yourself editing a `docker run` line in a doc, edit the
 script instead.
 
+### 🔴 Dropping `--tmpfs` does not fail loudly — it falls back to CPU
+
+The two flags fail in completely different ways, and only one of them is obvious.
+
+| Missing | What happens |
+|---|---|
+| `NVIDIA_DISABLE_REQUIRE=1` | The container **refuses to start**. Impossible to miss. |
+| `--tmpfs /usr/local/cuda/compat` | Error 804 makes `torch.cuda.is_available()` return `False`, and LeRobot then logs `Switching to 'cpu'` and **trains anyway** — on CPU. |
+
+Verified 2026-08-12: with the compat libraries left in place, `lerobot-train` emits one
+`UserWarning`, prints `'device': 'cpu'`, and proceeds normally. Loss falls, checkpoints are written,
+nothing errors. The only symptom is being **roughly 50–100× slower** — easy to mistake for "the
+machine is busy today".
+
+**Check every run.** The config dump near the start of the log carries the answer:
+
+```
+'device': 'cuda',    <- correct
+'device': 'cpu',     <- the GPU has silently dropped out
+```
+
+`nvidia-smi` showing 0 % utilisation during training says the same thing.
+
 **This is a workaround, not a fix.** It works because of CUDA *minor version compatibility*: a cu12.8
 build runs on any 12.x driver **as long as it never calls an API that genuinely requires ≥570**. If
 it does, it fails at the call site, mid-run — not at startup. Budget for that possibility before
