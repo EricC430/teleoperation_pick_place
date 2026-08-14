@@ -7,7 +7,7 @@ Two machines, one hard requirement.
 | Machine | Role | Environment | Constraint |
 |---|---|---|---|
 | Lab GPU (4090 / A6000) | **Training** | Docker (`huggingface/lerobot-gpu`) | Host driver caps the usable CUDA version — see the gotcha below |
-| Laptop (RTX 3050 4GB) | **Data collection + inference deployment** | **Undecided** — container or uv | none |
+| Laptop (RTX 3050 4GB, **Windows**) | **Data collection + inference deployment** | **uv** (decided 2026-08-13, D014) | ⚠️ Issue #4093 — see below |
 
 **Different environments on the two machines are fine.** What is not fine is letting the two
 drift onto different library versions.
@@ -120,6 +120,77 @@ data still belongs on HF Hub (see the README's [Where the data lives](../README.
 > Without a volume mount, downloads land inside the container and `--rm` deletes them on exit — the
 > dataset is re-fetched every single run.
 
+## 🔴 Laptop (Windows): you WILL get CPU-only torch. This is by design, not a bug.
+
+**Verified 2026-08-13 on our laptop:** after `uv pip install -e ".[core_scripts,feetech]"`,
+`torch.__version__` reported `2.11.0+cpu` and `torch.cuda.is_available()` was `False`.
+
+### Root cause — it is written into LeRobot's own `pyproject.toml`
+
+```toml
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+torchvision = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+```
+
+**The CUDA index is applied only when `sys_platform == 'linux'`.** On Windows the marker is false, uv
+falls back to the PyPI default, and the PyPI default for Windows is the CPU build. This is LeRobot
+issue #4093 — not a transient bug, a hard-coded platform condition. **We cannot fix it upstream and
+should not edit the cloned repo.**
+
+### Why installing torch first does not work
+
+LeRobot's own constraints will overwrite whatever you pre-installed:
+
+```toml
+"torch>=2.7,<2.12.0"
+"torchvision>=0.22.0,<0.27.0"
+```
+
+Installing `torch 2.13.0+cu126` first is wasted work — both it and `torchvision 0.28.0` sit outside
+those bounds and get replaced during the LeRobot install.
+
+> **Order matters: install LeRobot first, then repair torch. Never the other way round.**
+
+### The repair — versions must stay inside LeRobot's bounds
+
+```powershell
+uv pip install --force-reinstall "torch==2.11.0" "torchvision>=0.22.0,<0.27.0" `
+    --index-url https://download.pytorch.org/whl/cu126
+```
+
+Then verify all four:
+
+```powershell
+python -c "import torch, torchvision, lerobot; print(torch.__version__, torch.cuda.is_available(), torchvision.__version__, lerobot.__version__)"
+```
+
+Expect `2.11.0+cu126` / `True` / `0.26.x` / `0.6.2`.
+
+### ⚠️ This recurs on every reinstall
+
+The marker stays in LeRobot's `pyproject.toml`, so **any future `uv pip install -e ".[...]"` puts the
+CPU build back.** Don't rely on remembering — use `scripts/setup_laptop.ps1`, which runs the install
+and the repair in the required order and ends with a hard assert.
+
+### Why this failure is nastier than it looks
+
+**A CPU-only torch does not error.** Recording works perfectly — no model is involved. The failure
+only surfaces much later, as inference too slow to close the control loop, and at that point the
+obvious suspect is the policy, not the install. **The assert exists so it fails at install time.**
+
+### Not fallbacks
+
+WSL2 and VirtualBox. USB camera passthrough is unreliable in both; VirtualBox additionally has no GPU
+passthrough. See D014.
+
+### Silver lining: torch versions now match across machines
+
+LeRobot's `<2.12.0` cap pins both machines to torch **2.11.0**. Only the CUDA build variant differs
+(GPU box `+cu128`, laptop `+cu126`), and that is a per-machine driver concern, not a compatibility
+one. The version-drift risk this document was written to fight is, for torch specifically, handled
+by the framework.
+
 ## Setup order
 
 Install on the **GPU machine first** — it has the tighter constraints (driver ceiling, no sudo).
@@ -166,7 +237,7 @@ An entry without a date is not a record.
 | Date | Machine | Image digest | LeRobot | PyTorch | Driver / CUDA | Installed by | Notes |
 |---|---|---|---|---|---|---|---|
 | 2026-08-12 | GPU | `huggingface/lerobot-gpu@sha256:62df079f02b7fa26963d35466c12fa230be9f51a3b0ea2327297a84f70041c6c` (image built 2026-08-12) | 0.6.2 | 2.11.0+cu128 | 550.54.14 / 12.4 | | Requires the compat workaround above. Python 3.12.3, numpy 2.2.6. |
-| | Laptop | | | | | | Environment not chosen yet |
+| 2026-08-13 | Laptop (Windows 11) | n/a — uv venv, not a container | 0.6.2 | 2.11.0+cu126 | RTX 3050 4GB / driver TBD | | `scripts/setup_laptop.ps1` run successfully. torchvision 0.26.0+cu126, Python 3.12.13. Verified via `docs/field_manual.md` §2. **LeRobot version matches the GPU box exactly** — the hard requirement in the table above is met. |
 
 ## Verification log
 

@@ -18,6 +18,11 @@ __pycache__/
 venv/
 *.egg-info/
 
+# Third-party source clones installed in editable mode (uv pip install -e ".\lerobot[...]").
+# This is upstream huggingface/lerobot, ~389MB and its own nested .git — never ours to track.
+# See scripts/setup_laptop.ps1, docs/environment.md.
+lerobot/
+
 # OS / editor
 .DS_Store
 Thumbs.db
@@ -26,3 +31,5 @@ Thumbs.db
 
 # Local-only scratch (never intended to be shared)
 *.local.*
+.cache/
+outputs/
