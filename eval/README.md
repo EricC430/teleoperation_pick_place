@@ -22,7 +22,11 @@ The difference between these two sentences is the entire point of this folder:
 Copy `_template.csv` for each new run.
 
 > **v2 (2026-08-12):** switched from a single `failure_code` to **two orthogonal axes**.
-> ⚠️ Pending ratification at the 2026-08-13 team meeting.
+> **✅ Ratified 2026-08-13** (owner: Eric Chen). See `docs/decisions.md` D015.
+>
+> **Also ratified 2026-08-13:** each object gets **30 evaluation trials**, not the previously-suggested
+> ≥20 (owner: Boyu Chen; `docs/decisions.md` D016). This does not divide evenly across the 3×3
+> start-position grid in `docs/experiment_spec.md` §5 — per-cell distribution is still open.
 
 | Column | Meaning |
 |---|---|
