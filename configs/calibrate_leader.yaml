@@ -1,0 +1,5 @@
+teleop:
+  type: so101_leader
+  port: COM3
+  id: 2026-08-14_leader
+  calibration_dir: ./calibration

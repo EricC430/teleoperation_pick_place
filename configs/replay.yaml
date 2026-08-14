@@ -1,0 +1,9 @@
+robot:
+  type: so101_follower
+  port: COM4
+  id: 2026-08-14_follower
+  calibration_dir: ./calibration
+
+dataset:
+  repo_id: <HF_USER>/so101_pick_place
+  episode: 0

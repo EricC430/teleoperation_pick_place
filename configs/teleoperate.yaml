@@ -1,0 +1,14 @@
+teleop:
+  type: so101_leader
+  port: COM3
+  id: 2026-08-14_leader
+  calibration_dir: ./calibration
+
+robot:
+  type: so101_follower
+  port: COM4
+  id: 2026-08-14_follower
+  calibration_dir: ./calibration
+
+fps: 60
+display_data: true

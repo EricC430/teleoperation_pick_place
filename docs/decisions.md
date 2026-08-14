@@ -102,19 +102,53 @@ evidence would make us reverse it.** A decision without a reversal condition is 
 
 ---
 
-## D005 — Recovery demos are part of the data spec (7:3)
+## D005 — Recovery demos are part of the data spec (7:3), two-tier method
 
-- **Date:** 2026-08-11
+- **Date:** 2026-08-11, **updated 2026-08-13** (method split into two tiers, ratified by team)
 - **Decision:** Demo collection must include deliberate recovery demonstrations at roughly
-  **normal : recovery = 7 : 3**.
+  **normal : recovery = 7 : 3**. Two tiers, not one method:
+
+  | Tier | Method | When | Status |
+  |---|---|---|---|
+  | **1 — default** | Teleoperator deliberately drives off-nominal, then demonstrates the way back, **as part of the initial demo batch**. No trained policy required. | P0, from day one | ✅ ratified 2026-08-11 |
+  | **2 — conditional escalation** | RaC-style on-policy intervention: run the **already-trained** P0 policy, human takes over when failure looks imminent, rewinds to an in-distribution state, then corrects **to the end of the current sub-task**. Requires modifying the LeRobot inference script and keeping the leader arm powered and following the follower during autonomous execution, so a human can take over without a jarring handoff. | Only **if Tier 1 grasp performance is poor** — this is more complex to implement and is a fallback, not the default | ✅ ratified 2026-08-13, conditional |
+
 - **Why (derived from the workshop failure analysis):** the GR00T policy drifted monotonically until it
   left the workspace, with the target already out of the wrist camera's view. Start-position
   randomization does *not* fix this, because everything it covers is still a state *on a successful
   trajectory*. Once the policy leaves that manifold, it is in states never seen in training — classic
   behavior-cloning covariate shift (the DAgger argument). The fix is on-policy corrective data.
+
+- **🔴 2026-08-13 — RaC (arXiv 2509.07953) verified against the primary source, not against either
+  teammate's recollection of it.** The 8/13 meeting note describing Tier 2 as "rewind and correct to
+  the end of the sub-task" is **correct but incomplete** — it states Rule 1 and omits Rule 2. Exact
+  wording from the paper:
+
+  > *Rule 1 (recover then correct)* structures every human takeover into a reset back to
+  > in-distribution states followed by a corrective segment that completes the current sub-task.
+  > *Rule 2 (termination after intervention)* ends the episode immediately once the intervention
+  > segment finishes, which avoids collecting data on later sub-tasks under state distributions from
+  > a mixture of learned policy and human expert.
+
+  **Consequence for the inference-script modification Tier 2 requires:** the script must stop the
+  episode the moment the corrective segment ends — it must **not** hand control back to the model, and
+  the human must **not** keep driving through the rest of the task. Either of those would (per the
+  paper's own stated reason) collect data under a mixed policy/human state distribution, which is the
+  exact thing Rule 2 exists to prevent. This needs to be built into the script from the start, not
+  patched in after noticing bad data.
+
+  **A second finding from the same source, relevant to Tier 1 as well:** RaC reports that recovery
+  segments are more useful when they are **deliberately suboptimal** — the correction is allowed to be
+  inefficient, even to undo prior progress on the sub-task, because the point is demonstrating *how to
+  get back to a familiar state*, not solving the task elegantly. Quoting the paper's own framing, this
+  "challenges the conventional wisdom that only 'expert' interventions are useful." **This applies to
+  Tier 1 demos too:** when filming a recovery demo, do not clean it up. The reflex to make the
+  correction look competent works against the thing recovery data is supposed to teach.
+
 - **Reverse if:** an ablation on public data (planned as experiment A3) shows recovery data has
   negligible effect on drift rate. **This is exactly why A3 is worth running before we spend real
-  demo-collection time on it.**
+  demo-collection time on it.** Tier 2 specifically reverses if Tier 1 alone yields acceptable grasp
+  performance — it is not owed a trial just because it is now specified.
 
 ---
 
@@ -330,6 +364,121 @@ what is being descoped is not a decision — it is a future dispute.
   the driver upgrade (needs the lab admin) nor a cu124 image of our own materialises — conda per D010
   remains the fallback.
 - **See:** `docs/environment.md`, `README.md` § Container image
+
+---
+
+## D013 — LeRobot CLI for both arms; skip the ROBOTIS ROS 2 toolchain
+
+- **Date:** 2026-08-13
+- **Decision:** Whichever arm we end up with, drive it through the **LeRobot CLI**. Do not adopt
+  ROBOTIS's ROS 2 imitation-learning stack.
+- **Alternatives:**
+  - **Cyclo Intelligence** — ROBOTIS's *currently supported* ROS 2 workflow (containers, web UI via
+    noVNC). Verified 2026-08-13 as the actively maintained option.
+  - **Physical AI Tools** — a ROS 2 wrapper over LeRobot with a web GUI. ⛔ **Legacy.** ROBOTIS's own
+    docs: *"Physical AI Tools is kept for users who still need the previous workflow, but it is no
+    longer updated."* Moved under `resources/legacy/`. Do not build on it.
+- **Why:**
+  - **One toolchain.** We already run LeRobot for SO-ARM; using it for OMX too means the environment,
+    scripts, dataset format, and eval harness transfer unchanged.
+  - **De-risks the platform decision.** If the lab's arm turns out to be OMX rather than SO-ARM,
+    almost none of our preparation is wasted.
+  - Removes any ROS 2 / Ubuntu 24.04 requirement from the critical path.
+  - The GUI's value is low for us — we want explicit control over the pipeline anyway, and a GUI
+    makes runs harder to script and reproduce.
+- **Accepted costs:**
+  - Forgo ROBOTIS's official support channel and their GUI-driven workflow
+  - If LeRobot's OMX support lags Cyclo's, we absorb that gap ourselves
+- **Reverse if:** LeRobot's OMX support proves materially behind Cyclo Intelligence (missing features
+  we actually need), **or** we hit an OMX-specific bug that Cyclo handles and LeRobot does not.
+
+---
+
+## D014 — Windows laptop is acceptable for recording and evaluation; do not request a Linux machine
+
+- **Date:** 2026-08-13
+- **Decision:** Use the existing Windows laptop. **Do not ask the lab to provide a Linux machine**,
+  and do not dual-boot.
+- **Alternatives:** request a Linux box as the shared real-robot host; dual-boot Ubuntu on the laptop;
+  WSL2 + usbipd; VirtualBox
+- **Why — the Linux case collapsed under verification:**
+
+  | Concern raised | Status after checking (2026-08-13) |
+  |---|---|
+  | Serial port paths break SO-101 calibration on Windows (#1094) | ❌ Issue **closed**, 2025-05, old version. Ports are now parameterized via `--robot.port` |
+  | OpenCV camera backend fails on Windows (#1368) | ❌ Current `camera_opencv.py` already sets `OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS=0` on Windows |
+  | Teleoperate failure, 2026-03 (#3234) | ❌ **Reported on Ubuntu too** — a LeRobot bug, not a platform one |
+  | OMX needs ROS 2 / Ubuntu 24.04 | ❌ Sidestepped by **D013** (LeRobot CLI, no ROS 2) |
+  | **#4093: `uv sync` installs CPU-only PyTorch on Windows + NVIDIA (2026-07)** | ✅ **Real and current** — but has a workaround, and only affects inference deployment |
+
+  What remained was one workaround-able issue plus an unfalsifiable "fewer variables" preference.
+  **Not enough to spend the lab's goodwill, or a weekend on dual-boot.**
+
+- **Accepted costs:**
+  - Windows sees less community testing for LeRobot hardware workflows → residual unknown-unknowns
+  - WSL2 and VirtualBox are explicitly **not** fallbacks: USB camera passthrough is unreliable in both,
+    and VirtualBox additionally has no GPU passthrough
+- **🔴 Required precaution:** after installing on the laptop, **immediately verify**
+  `torch.cuda.is_available()`. If it returns `False`, that is #4093 — force-reinstall torch from the
+  CUDA index rather than debugging anything else first.
+- **Reverse if:** a Windows-specific problem actually blocks calibration, recording, or evaluation for
+  more than ~half a day. **The trigger is a real blockage, not a new GitHub issue.**
+
+---
+
+## D015 — Failure taxonomy: two orthogonal axes (`outcome` + `mechanism`)
+
+- **Date:** proposed 2026-08-12, **ratified 2026-08-13**
+- **Owner:** 陳霆翰 (Eric Chen)
+- **Decision:** Replace the single F1–F7 failure-code list with two independent columns:
+  `outcome` (mutually exclusive, exhaustive: `success` / `no_grasp` / `dropped` / `misplaced`) and
+  `mechanism` (multi-label, may be empty: `pushed_away` / `collision` / `drift` / `stalled` /
+  `timeout` / `self_recovered` / `other`), plus `valid` / `void_reason` to exclude invalid trials.
+- **Why:** F1–F7 mixed two questions in one list. `pushed_away` always implies `no_grasp`; `stalled`
+  always ends in `timeout` — annotators hesitated, two people labelled the same trial differently, and
+  a failure-distribution that isn't reproducible between labellers is the only metric this project has
+  for deciding what to fix next. See `docs/meeting/2026-08-13.md` §二-1 for the full worked example.
+- **Note:** `self_recovered` is a positive `mechanism` label, valid alongside `outcome=success`. It is
+  the single most direct real-hardware evidence for D005's hypothesis — if recovery data works, this
+  label's frequency should rise.
+- **Implemented in:** `docs/experiment_spec.md` §1-3, `eval/README.md`, `eval/_template.csv`.
+- **Reverse if:** the two-axis scheme itself produces annotator disagreement in practice — check this
+  the first time two people independently label the same real eval run.
+
+---
+
+## D016 — Evaluation protocol: 30 trials per object
+
+- **Date:** ratified 2026-08-13
+- **Owner:** 陳柏宇 (Boyu Chen)
+- **Decision:** Each object gets **30 evaluation trials** (supersedes the earlier "≥ 20, suggested"
+  figure in `experiment_spec.md` §5).
+- **Why:** not recorded in the meeting note beyond the number itself — if a rationale (e.g. matching
+  the 3×3 start-position grid, or a power calculation) surfaces later, add it here rather than letting
+  the number float unexplained.
+- **⚠️ Open reconciliation:** `experiment_spec.md` §5 also specifies a 3×3 start-position grid with
+  "≥ 2 per cell" (≥ 18 total). 30 does not divide evenly across 9 cells (30/9 ≈ 3.33). Needs a decision
+  on the actual per-cell distribution (e.g. 3 cells get 4, six get 3) before the first real eval run —
+  flagged, not yet resolved.
+- **Reverse if:** GPU/session time makes 30×(number of objects) impractical per eval round.
+
+---
+
+## D017 — Configuration: YAML declarative configs with dated calibration IDs
+
+- **Date:** 2026-08-14
+- **Decision:** Use YAML configuration files under `configs/` passed via `--config_path` for all LeRobot workflows (`calibrate`, `teleoperate`, `record`, `replay`). Explicitly set `calibration_dir: ./calibration` and use dated device IDs (e.g. `id: 2026-08-14_leader`, `id: 2026-08-14_follower`).
+- **Alternatives:**
+  1. Long CLI arguments with shell environment variables (fragile across Windows PowerShell sessions).
+  2. Fixed generic device IDs (`leader_black`) with manual post-calibration file copying/renaming.
+  3. Default cache paths (`~/.cache/huggingface/lerobot/calibration/`), which fail when `HF_HOME` points to unmounted drives (e.g. D:\).
+- **Why:**
+  - **Zero-overwrite & Auditability:** LeRobot derives calibration filenames from `<id>.json`. Naming the ID with `<date>_<role>` automatically generates `2026-08-14_follower.json` with zero manual intervention, adhering strictly to `conventions.md` ("dated filename, never overwrite").
+  - **Data Provenance:** Datasets recorded via `lerobot-record` embed the exact `teleop.id` and `robot.id` in metadata, creating an unbreakable link between dataset runs and physical calibration files.
+  - **Self-contained Workspace:** Isolates calibration files to `./calibration/` within the repository, eliminating dependencies on external drives or global user caches.
+- **Accepted costs:** When performing data collection across multiple dates, the `id` field in `configs/*.yaml` must be updated with that day's date string.
+- **Implemented in:** `configs/*.yaml`, `docs/field_manual.md`.
+- **Reverse if:** LeRobot deprecates `--config_path` or changes its calibration naming schema.
 
 ---
 

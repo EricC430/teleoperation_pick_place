@@ -1,0 +1,5 @@
+robot:
+  type: so101_follower
+  port: COM4
+  id: 2026-08-14_follower
+  calibration_dir: ./calibration
