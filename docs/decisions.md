@@ -38,7 +38,22 @@ evidence would make us reverse it.** A decision without a reversal condition is 
     calibration protocol in `experiment_spec.md`.
   - **P4 (mobile base, outdoors) will require wrapping the SO-101 control interface in a ROS 2 node.**
     Budget for this if P4 turns out to be a hard commitment.
-  - No vendor-grade simulation for SO-ARM.
+  - ~~No vendor-grade simulation for SO-ARM.~~ **🔴 RETRACTED 2026-08-12 — this was simply false.**
+
+    Isaac Sim ships official SO-ARM USD assets under the **RobotStudio** manufacturer:
+    - `Robots/RobotStudio/so100/so100.usd`
+    - `Robots/RobotStudio/so101_new_calib/so101_new_calib.usd`
+
+    Present in both Isaac Sim 5.0 and 6.0 asset libraries. NVIDIA additionally maintains
+    `isaac-sim/Sim-to-Real-SO-101-Workshop`, a first-party SO-101 sim-to-real course.
+
+    **Correction history — recorded because the failure mode matters more than the fact:**
+    the original claim was asserted without checking; a first "correction" then searched only
+    lines 711–900 of the 983-line asset page and concluded absence from a truncated read.
+    RobotStudio is at line 969. *Having the source open is not the same as having read it.*
+
+    **Net effect:** this argument is removed from D007 entirely (not weakened — removed).
+    D007's remaining reasons stand on their own. See D007.
 - **Reverse if:** SO-ARM stays unavailable beyond ~3 weeks while OMX becomes free, *and* no data has
   been collected yet. **Once demo collection starts, this is effectively irreversible** — imitation
   data does not transfer across arms.
@@ -67,26 +82,73 @@ evidence would make us reverse it.** A decision without a reversal condition is 
   object once grasped, so the external camera provides continuity. The ablation additionally
   *quantifies* the cost of the wrist-only constraint that an outdoor mobile setup might impose — turning
   a project constraint into a measurable result.
-- **Open:** third-person camera mounting on a mobile base is unresolved — mast-vs-front-oblique.
-  Full write-up of both positions, the rigid-common-baseplate design that may dissolve the
-  disagreement, and the measurement protocol: **`docs/camera_mount.md`**.
-  **To be settled by pixel-displacement measurement, not by argument.**
+- **🔴 Corrected 2026-08-12 — separate two things that were being conflated:**
+
+  | | When it must be fixed | Why |
+  |---|---|---|
+  | **Camera *position*** (geometry relative to the workspace: height, angle, distance) | **P0, before the first demo is recorded** | It is a scene constant. Extrinsics are baked into every recording. Change it and prior data is invalid. |
+  | **Camera *mount hardware*** (how that position is physically realized on a vehicle) | P3 | A tripod realizes the same geometry at P0 |
+
+  The earlier phrasing said "camera decisions wait until P3", which was wrong — **recording requires
+  the position frozen on day one.** Only the bracket does not.
+
+  **Consequence, and this matters:** the P0 tripod position should be chosen to be *reproducible by a
+  future vehicle mount*, not merely convenient to set up. Otherwise switching to the bracket at P3
+  changes the extrinsics and **invalidates every demo collected before it.**
+
+- **Open:** mast-vs-front-oblique for the eventual vehicle mount. Both positions, the
+  rigid-common-baseplate design that may dissolve the disagreement, and the measurement protocol:
+  **`docs/camera_mount.md`**. **To be settled by pixel-displacement measurement, not by argument.**
 
 ---
 
-## D005 — Recovery demos are part of the data spec (7:3)
+## D005 — Recovery demos are part of the data spec (7:3), two-tier method
 
-- **Date:** 2026-08-11
+- **Date:** 2026-08-11, **updated 2026-08-13** (method split into two tiers, ratified by team)
 - **Decision:** Demo collection must include deliberate recovery demonstrations at roughly
-  **normal : recovery = 7 : 3**.
+  **normal : recovery = 7 : 3**. Two tiers, not one method:
+
+  | Tier | Method | When | Status |
+  |---|---|---|---|
+  | **1 — default** | Teleoperator deliberately drives off-nominal, then demonstrates the way back, **as part of the initial demo batch**. No trained policy required. | P0, from day one | ✅ ratified 2026-08-11 |
+  | **2 — conditional escalation** | RaC-style on-policy intervention: run the **already-trained** P0 policy, human takes over when failure looks imminent, rewinds to an in-distribution state, then corrects **to the end of the current sub-task**. Requires modifying the LeRobot inference script and keeping the leader arm powered and following the follower during autonomous execution, so a human can take over without a jarring handoff. | Only **if Tier 1 grasp performance is poor** — this is more complex to implement and is a fallback, not the default | ✅ ratified 2026-08-13, conditional |
+
 - **Why (derived from the workshop failure analysis):** the GR00T policy drifted monotonically until it
   left the workspace, with the target already out of the wrist camera's view. Start-position
   randomization does *not* fix this, because everything it covers is still a state *on a successful
   trajectory*. Once the policy leaves that manifold, it is in states never seen in training — classic
   behavior-cloning covariate shift (the DAgger argument). The fix is on-policy corrective data.
+
+- **🔴 2026-08-13 — RaC (arXiv 2509.07953) verified against the primary source, not against either
+  teammate's recollection of it.** The 8/13 meeting note describing Tier 2 as "rewind and correct to
+  the end of the sub-task" is **correct but incomplete** — it states Rule 1 and omits Rule 2. Exact
+  wording from the paper:
+
+  > *Rule 1 (recover then correct)* structures every human takeover into a reset back to
+  > in-distribution states followed by a corrective segment that completes the current sub-task.
+  > *Rule 2 (termination after intervention)* ends the episode immediately once the intervention
+  > segment finishes, which avoids collecting data on later sub-tasks under state distributions from
+  > a mixture of learned policy and human expert.
+
+  **Consequence for the inference-script modification Tier 2 requires:** the script must stop the
+  episode the moment the corrective segment ends — it must **not** hand control back to the model, and
+  the human must **not** keep driving through the rest of the task. Either of those would (per the
+  paper's own stated reason) collect data under a mixed policy/human state distribution, which is the
+  exact thing Rule 2 exists to prevent. This needs to be built into the script from the start, not
+  patched in after noticing bad data.
+
+  **A second finding from the same source, relevant to Tier 1 as well:** RaC reports that recovery
+  segments are more useful when they are **deliberately suboptimal** — the correction is allowed to be
+  inefficient, even to undo prior progress on the sub-task, because the point is demonstrating *how to
+  get back to a familiar state*, not solving the task elegantly. Quoting the paper's own framing, this
+  "challenges the conventional wisdom that only 'expert' interventions are useful." **This applies to
+  Tier 1 demos too:** when filming a recovery demo, do not clean it up. The reflex to make the
+  correction look competent works against the thing recovery data is supposed to teach.
+
 - **Reverse if:** an ablation on public data (planned as experiment A3) shows recovery data has
   negligible effect on drift rate. **This is exactly why A3 is worth running before we spend real
-  demo-collection time on it.**
+  demo-collection time on it.** Tier 2 specifically reverses if Tier 1 alone yields acceptable grasp
+  performance — it is not owed a trial just because it is now specified.
 
 ---
 
@@ -107,7 +169,8 @@ evidence would make us reverse it.** A decision without a reversal condition is 
 
 ## D007 — No simulation. Real-hardware imitation learning instead.
 
-- **Date:** 2026-08-11
+- **Date:** **2026-07-17** (advisor meeting where the pivot was approved)
+  — concretized 2026-08-11 as SO-ARM + LeRobot + ACT
 - **Decision:** Drop the Isaac Lab / PPO / curriculum-learning / domain-randomization pipeline.
   Train ACT on real teleoperated demonstrations collected directly on the arm.
 - **Alternatives:** Isaac Lab + RL (the original funded proposal); Gazebo/MuJoCo as a
@@ -118,7 +181,9 @@ evidence would make us reverse it.** A decision without a reversal condition is 
     Repeating the same approach with the same team and less time is not a plan, it's a habit.
   - Imitation learning on real data **eliminates the sim-to-real gap architecturally** rather than
     trying to close it with domain randomization.
-  - SO-ARM has no vendor-grade simulation support anyway (unlike OMX, which ships Isaac USD models).
+  - ~~SO-ARM has no vendor-grade simulation support anyway.~~ **🔴 Removed 2026-08-12 — false.**
+    Isaac Sim ships SO-100 and SO-101 USD assets under RobotStudio (see D002). This argument is
+    withdrawn; the reasons above and below stand without it.
   - Feedback cycle: collect → train → evaluate is hours, not the multi-day RL training runs that
     made last year's 100+ experiments unattributable.
 - **⚠️ Divergence from the funded proposal:** The v4 proposal commits to Isaac Lab, PPO, curriculum
@@ -130,43 +195,71 @@ evidence would make us reverse it.** A decision without a reversal condition is 
   - Loses the "large-scale parallel training" talking point from the proposal.
   - Domain randomization for outdoor robustness is no longer free — it has to come from
     physically varying the real setup.
-- **Reverse if:** real-demo collection proves impossible to scale (e.g. hardware stays unavailable
-  past ~4 weeks) **and** a usable SO-ARM simulation is confirmed to exist. Note that reversing
-  after demo collection begins means discarding that data.
+- **Reverse if:** real-demo collection proves impossible to scale — e.g. hardware stays unavailable
+  past ~4 weeks. **This reversal is now more actionable than originally written**: official Isaac Sim
+  SO-100/SO-101 assets exist (D002), so falling back to simulation would not start from zero.
+  Note that reversing *after* demo collection begins means discarding that data.
 
 ---
 
-## D008 — 🟡 PROPOSED, NOT DECIDED: tactile sensing via servo current instead of Vision-to-Touch
+## D008 — 🟡 OPEN: what replaces Vision-to-Touch as the tactile modality?
 
-> **Status: awaiting advisor approval. Raise at the 2026-08-14 meeting.**
-> This is recorded here so the change is visible and deliberate, **not so it becomes true by default.**
+> **Status: undecided. Three or four candidate paths on the table, none ratified.**
+> Recorded here so the divergence is visible and deliberate, **not so it becomes true by default.**
+> **Raise at the 2026-08-14 advisor meeting.**
 
-- **Date proposed:** 2026-08-11 (proposed during AI-assisted planning, not yet team-ratified)
-- **Proposal:** Replace the Vision-to-Touch module (Pix2Pix GAN generating GelSight-style tactile
-  images, trained on TacEx-generated pairs) with a low-cost proxy: **gripper servo current and
-  position error as an indirect contact-force signal.**
-- **Why it was proposed:**
-  - Requires no additional hardware purchase and no GAN training pipeline
-  - Removes an entire model from the critical path, in a project that has ~8–16 total iteration
-    cycles remaining
-  - The Vision-to-Touch pipeline depended on Isaac Sim for training-pair generation, which D007
-    removes
-- **🔴 Why this is NOT equivalent to the previous three decisions:**
-  **Vision-to-Touch is the proposal's stated core contribution.** It appears in the abstract, both
-  research questions, the expected results, and the justification for both advisors' supervision.
-  D007 changes *methods*, which the advisor has explicitly sanctioned. **D008 changes the claim.**
-  - Proposal's claim: "under no tactile sensor, cross-modal generation can substitute for contact
-    perception" — this has research novelty
-  - Proposed substitute: "motor current indicates contact" — engineering-sound, but established
-    technique, not a contribution
-- **Questions the advisor must answer before this is adopted:**
-  1. Is Vision-to-Touch still required as the deliverable contribution, or may it be descoped?
-  2. If descoped, what replaces it as the project's claimed contribution?
-     (Candidate: the recovery-data ablation in D005 — it is a real, testable, publishable claim
-     that emerged from our own failure analysis.)
-  3. If retained, where does the training-pair generation come from now that Isaac Sim is out?
-- **Reverse if:** advisor requires Vision-to-Touch retained → D007 partially reverses too, since
-  the tactile pairs need a simulator.
+### The situation
+
+The funded proposal's stated core contribution is **Vision-to-Touch**: a Pix2Pix GAN generating
+GelSight-style tactile images, with training pairs synthesized via TacEx inside Isaac Sim. It appears
+in the abstract, both research questions, the expected results, and the justification for both
+advisors' supervision.
+
+**D007 removed Isaac Sim from the plan — which removes the source of the tactile training pairs.**
+So the tactile modality now needs a different answer, and there is more than one candidate.
+
+### Candidates
+
+| # | Path | Hardware cost | Preserves the proposal's claim? | Status |
+|---|---|---|---|---|
+| **V1** | Vision-to-Touch GAN, per the proposal | none | ✅ Yes — cross-modal generation is the novelty | ⚠️ **blocked**: training pairs required Isaac Sim (D007) |
+| **V2** | **Vision first; if it succeeds, purchase a simple tactile sensor as a real multimodal input** | 🟡 consumables budget (advisor said this is available) | ⚠️ Partially — *multimodal grasping of non-rigid objects* survives; *cross-modal generation* does not | **Advisor's verbal suggestion, 2026-07-17** |
+| **V3** | Gripper servo current / position error as a contact-force proxy | none | ❌ No — sound engineering, but established technique | Proposed during AI-assisted planning 2026-08-11; **not team-ratified** |
+| **V4** | Descope tactile entirely; make the recovery-data ablation (D005) the contribution | none | ❌ No, but substitutes a different real claim | Not yet discussed |
+
+### 🔴 Why this needs the advisor, not just us
+
+D007 changes **methods** — the advisor explicitly sanctioned that on 2026-07-17
+("手段不須跟原計畫符合"). **D008 changes the claim**, which is a different category:
+
+- Proposal's claim: *"absent a tactile sensor, cross-modal generation can substitute for contact perception"* — has research novelty
+- V2's claim: *"a cheap tactile sensor improves non-rigid grasping"* — true, useful, but not novel
+- V3's claim: *"motor current indicates contact"* — established technique
+
+### ⚠️ A real risk to manage carefully
+
+**We are not certain the advisor recalls the proposal's specifics.** V2 was offered verbally in a
+planning conversation, not while reviewing the written proposal. Advisors routinely do not hold the
+details of a student proposal in working memory — this is normal and not a criticism.
+
+**Therefore: bring the printed proposal §1.2, §2.2, §3.3 and §5 to the 08-14 meeting** and make the
+divergence explicit before asking for a decision. A descope agreed to without both parties seeing
+what is being descoped is not a decision — it is a future dispute.
+
+### Questions for the advisor
+
+1. Is Vision-to-Touch still required as the deliverable contribution, or may it be descoped?
+2. If V2 (buy a sensor): which sensor, what lead time, and does it fit the consumables budget?
+   Does "vision succeeds first" mean P0, P1, or P2 complete?
+3. If descoped: what becomes the claimed contribution?
+   (Candidate: **D005's recovery-data ablation** — a real, testable claim that emerged from our own
+   failure analysis, and one we can run without hardware.)
+4. Does 陳弘軒老師 need to be part of this decision? The proposal §6.2 lists his supervision
+   partly in terms of the cross-modal model.
+
+- **Reverse-if / decision trigger:** whichever path the advisor selects on 08-14 becomes a decision
+  entry; this one is then closed and cross-referenced.
+- ⚠️ If **V1 is retained**, D007 partially reverses — tactile training pairs need a simulator.
 
 ---
 
@@ -187,17 +280,29 @@ evidence would make us reverse it.** A decision without a reversal condition is 
 
 ---
 
-## D010 — conda on the GPU box, uv on the laptop; pin LeRobot exactly
+## D010 — Docker on the GPU box, uv on the laptop; pin LeRobot exactly
 
-- **Date:** 2026-08-11
-- **Decision:** Different package managers on the two machines is acceptable. **The LeRobot version
-  must match exactly.** Verify with a cross-machine loss comparison.
-- **Alternatives:** force both onto conda; force both onto uv
-- **Why:** The lab GPU box only supports conda; the laptop has no such constraint. The two machines
-  have different roles (training vs. collection+deployment), so the genuine overlap is narrower than
-  "identical environments" — it is LeRobot's dataset format and config schema. **The real risk is not
-  the package manager, it is both machines installing `latest` at different times and diverging.**
-- **Accepted costs:** two environments to maintain; version drift must be actively checked, not assumed.
+- **Date:** 2026-08-11, **updated 2026-08-12** (GPU box uses Docker, not conda)
+- **Decision:** GPU training box runs LeRobot in **Docker**; the laptop uses **uv**.
+  Different toolchains are acceptable. **The LeRobot version must match exactly.**
+  Verify with a cross-machine loss comparison.
+- **Alternatives:** force both onto conda; force both onto uv; run Docker on the laptop too
+- **Why:**
+  - **Docker on the GPU box is an upgrade over conda, not a compromise.** It pins the OS libraries
+    and CUDA runtime as well as the Python packages — the strongest reproducibility of the three
+    options. LeRobot also ships official Docker files, which removes most CUDA-configuration pain.
+  - The laptop's role is data collection + inference deployment, where it must talk to USB serial
+    devices and cameras. **Docker adds device-passthrough complexity for no benefit at that end.**
+  - The genuine overlap between the two machines is narrower than "identical environments" — it is
+    **LeRobot's dataset format and config schema**. **The real risk is not the toolchain, it is both
+    machines installing `latest` at different times and diverging.**
+- **Accepted costs:**
+  - Two toolchains to maintain
+  - ⚠️ **Docker containers are ephemeral.** Datasets, checkpoints, and calibration files must be on
+    **mounted volumes**, or they vanish when the container stops. This is the single most common way
+    to lose a training run.
+  - The LeRobot version inside the image must be recorded explicitly (image tag alone is not enough
+    if the image is rebuilt)
 - **Reverse if:** the cross-machine verification (same dataset, one step, compare loss) shows
   substantial disagreement that pinning cannot resolve.
 - **See:** `docs/environment.md`
@@ -259,6 +364,121 @@ evidence would make us reverse it.** A decision without a reversal condition is 
   the driver upgrade (needs the lab admin) nor a cu124 image of our own materialises — conda per D010
   remains the fallback.
 - **See:** `docs/environment.md`, `README.md` § Container image
+
+---
+
+## D013 — LeRobot CLI for both arms; skip the ROBOTIS ROS 2 toolchain
+
+- **Date:** 2026-08-13
+- **Decision:** Whichever arm we end up with, drive it through the **LeRobot CLI**. Do not adopt
+  ROBOTIS's ROS 2 imitation-learning stack.
+- **Alternatives:**
+  - **Cyclo Intelligence** — ROBOTIS's *currently supported* ROS 2 workflow (containers, web UI via
+    noVNC). Verified 2026-08-13 as the actively maintained option.
+  - **Physical AI Tools** — a ROS 2 wrapper over LeRobot with a web GUI. ⛔ **Legacy.** ROBOTIS's own
+    docs: *"Physical AI Tools is kept for users who still need the previous workflow, but it is no
+    longer updated."* Moved under `resources/legacy/`. Do not build on it.
+- **Why:**
+  - **One toolchain.** We already run LeRobot for SO-ARM; using it for OMX too means the environment,
+    scripts, dataset format, and eval harness transfer unchanged.
+  - **De-risks the platform decision.** If the lab's arm turns out to be OMX rather than SO-ARM,
+    almost none of our preparation is wasted.
+  - Removes any ROS 2 / Ubuntu 24.04 requirement from the critical path.
+  - The GUI's value is low for us — we want explicit control over the pipeline anyway, and a GUI
+    makes runs harder to script and reproduce.
+- **Accepted costs:**
+  - Forgo ROBOTIS's official support channel and their GUI-driven workflow
+  - If LeRobot's OMX support lags Cyclo's, we absorb that gap ourselves
+- **Reverse if:** LeRobot's OMX support proves materially behind Cyclo Intelligence (missing features
+  we actually need), **or** we hit an OMX-specific bug that Cyclo handles and LeRobot does not.
+
+---
+
+## D014 — Windows laptop is acceptable for recording and evaluation; do not request a Linux machine
+
+- **Date:** 2026-08-13
+- **Decision:** Use the existing Windows laptop. **Do not ask the lab to provide a Linux machine**,
+  and do not dual-boot.
+- **Alternatives:** request a Linux box as the shared real-robot host; dual-boot Ubuntu on the laptop;
+  WSL2 + usbipd; VirtualBox
+- **Why — the Linux case collapsed under verification:**
+
+  | Concern raised | Status after checking (2026-08-13) |
+  |---|---|
+  | Serial port paths break SO-101 calibration on Windows (#1094) | ❌ Issue **closed**, 2025-05, old version. Ports are now parameterized via `--robot.port` |
+  | OpenCV camera backend fails on Windows (#1368) | ❌ Current `camera_opencv.py` already sets `OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS=0` on Windows |
+  | Teleoperate failure, 2026-03 (#3234) | ❌ **Reported on Ubuntu too** — a LeRobot bug, not a platform one |
+  | OMX needs ROS 2 / Ubuntu 24.04 | ❌ Sidestepped by **D013** (LeRobot CLI, no ROS 2) |
+  | **#4093: `uv sync` installs CPU-only PyTorch on Windows + NVIDIA (2026-07)** | ✅ **Real and current** — but has a workaround, and only affects inference deployment |
+
+  What remained was one workaround-able issue plus an unfalsifiable "fewer variables" preference.
+  **Not enough to spend the lab's goodwill, or a weekend on dual-boot.**
+
+- **Accepted costs:**
+  - Windows sees less community testing for LeRobot hardware workflows → residual unknown-unknowns
+  - WSL2 and VirtualBox are explicitly **not** fallbacks: USB camera passthrough is unreliable in both,
+    and VirtualBox additionally has no GPU passthrough
+- **🔴 Required precaution:** after installing on the laptop, **immediately verify**
+  `torch.cuda.is_available()`. If it returns `False`, that is #4093 — force-reinstall torch from the
+  CUDA index rather than debugging anything else first.
+- **Reverse if:** a Windows-specific problem actually blocks calibration, recording, or evaluation for
+  more than ~half a day. **The trigger is a real blockage, not a new GitHub issue.**
+
+---
+
+## D015 — Failure taxonomy: two orthogonal axes (`outcome` + `mechanism`)
+
+- **Date:** proposed 2026-08-12, **ratified 2026-08-13**
+- **Owner:** 陳霆翰 (Eric Chen)
+- **Decision:** Replace the single F1–F7 failure-code list with two independent columns:
+  `outcome` (mutually exclusive, exhaustive: `success` / `no_grasp` / `dropped` / `misplaced`) and
+  `mechanism` (multi-label, may be empty: `pushed_away` / `collision` / `drift` / `stalled` /
+  `timeout` / `self_recovered` / `other`), plus `valid` / `void_reason` to exclude invalid trials.
+- **Why:** F1–F7 mixed two questions in one list. `pushed_away` always implies `no_grasp`; `stalled`
+  always ends in `timeout` — annotators hesitated, two people labelled the same trial differently, and
+  a failure-distribution that isn't reproducible between labellers is the only metric this project has
+  for deciding what to fix next. See `docs/meeting/2026-08-13.md` §二-1 for the full worked example.
+- **Note:** `self_recovered` is a positive `mechanism` label, valid alongside `outcome=success`. It is
+  the single most direct real-hardware evidence for D005's hypothesis — if recovery data works, this
+  label's frequency should rise.
+- **Implemented in:** `docs/experiment_spec.md` §1-3, `eval/README.md`, `eval/_template.csv`.
+- **Reverse if:** the two-axis scheme itself produces annotator disagreement in practice — check this
+  the first time two people independently label the same real eval run.
+
+---
+
+## D016 — Evaluation protocol: 30 trials per object
+
+- **Date:** ratified 2026-08-13
+- **Owner:** 陳柏宇 (Boyu Chen)
+- **Decision:** Each object gets **30 evaluation trials** (supersedes the earlier "≥ 20, suggested"
+  figure in `experiment_spec.md` §5).
+- **Why:** not recorded in the meeting note beyond the number itself — if a rationale (e.g. matching
+  the 3×3 start-position grid, or a power calculation) surfaces later, add it here rather than letting
+  the number float unexplained.
+- **⚠️ Open reconciliation:** `experiment_spec.md` §5 also specifies a 3×3 start-position grid with
+  "≥ 2 per cell" (≥ 18 total). 30 does not divide evenly across 9 cells (30/9 ≈ 3.33). Needs a decision
+  on the actual per-cell distribution (e.g. 3 cells get 4, six get 3) before the first real eval run —
+  flagged, not yet resolved.
+- **Reverse if:** GPU/session time makes 30×(number of objects) impractical per eval round.
+
+---
+
+## D017 — Configuration: YAML declarative configs with dated calibration IDs
+
+- **Date:** 2026-08-14
+- **Decision:** Use YAML configuration files under `configs/` passed via `--config_path` for all LeRobot workflows (`calibrate`, `teleoperate`, `record`, `replay`). Explicitly set `calibration_dir: ./calibration` and use dated device IDs (e.g. `id: 2026-08-14_leader`, `id: 2026-08-14_follower`).
+- **Alternatives:**
+  1. Long CLI arguments with shell environment variables (fragile across Windows PowerShell sessions).
+  2. Fixed generic device IDs (`leader_black`) with manual post-calibration file copying/renaming.
+  3. Default cache paths (`~/.cache/huggingface/lerobot/calibration/`), which fail when `HF_HOME` points to unmounted drives (e.g. D:\).
+- **Why:**
+  - **Zero-overwrite & Auditability:** LeRobot derives calibration filenames from `<id>.json`. Naming the ID with `<date>_<role>` automatically generates `2026-08-14_follower.json` with zero manual intervention, adhering strictly to `conventions.md` ("dated filename, never overwrite").
+  - **Data Provenance:** Datasets recorded via `lerobot-record` embed the exact `teleop.id` and `robot.id` in metadata, creating an unbreakable link between dataset runs and physical calibration files.
+  - **Self-contained Workspace:** Isolates calibration files to `./calibration/` within the repository, eliminating dependencies on external drives or global user caches.
+- **Accepted costs:** When performing data collection across multiple dates, the `id` field in `configs/*.yaml` must be updated with that day's date string.
+- **Implemented in:** `configs/*.yaml`, `docs/field_manual.md`.
+- **Reverse if:** LeRobot deprecates `--config_path` or changes its calibration naming schema.
 
 ---
 
