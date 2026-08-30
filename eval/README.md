@@ -63,6 +63,7 @@ metric that tells you what to change next.**
 | `collision` | Hit the object / desk / bin |
 | `drift` | Single-direction drift out of the workspace (observed in the workshop GR00T deployment) |
 | `stalled` | Never started, or stopped in place |
+| `repetition_loop` | Periodic oscillation or looping over the same trajectory interval without progress |
 | `timeout` | Hit the time limit |
 | **`self_recovered`** | ⭐ **Went off course and corrected itself.** Valid alongside `outcome=success` |
 | `other` | Detail it in `notes` |

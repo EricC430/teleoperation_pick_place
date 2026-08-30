@@ -83,6 +83,7 @@
 | `collision` | 撞到物體／桌面／垃圾桶 |
 | `drift` | 單向偏移出工作區（工作坊已觀察到此模式） |
 | `stalled` | 未啟動或原地停滯 |
+| `repetition_loop` | 死循環重複動作（局部震盪/原地重複軌跡） |
 | `timeout` | 到達時間上限 |
 | **`self_recovered`** | ⭐ **偏離後自行修正並完成**（`outcome` 為 `success` 時也可標） |
 | `other` | 需在 notes 詳述 |
@@ -157,15 +158,36 @@
 
 ## 4. 凍結清單 D｜Dataset Schema
 
-| 項目 | 值 |
-|---|---|
-| fps | |
-| **相機 key 名稱**（例：`observation.images.wrist` / `.front`） | |
-| 影像解析度 | |
-| task 字串（**逐字固定，大小寫空格都算**） | |
-| episode 長度上限（frames） | |
-| action 表示法 | joint position（絕對角） |
-| repo_id 命名規則 | |
+> **✅ v4（2026-08-16）：已凍結 Frame 特徵與 Episode Metadata 欄位規格。** 負責人陳霆翰。見 `docs/meeting/2026-08-16.md`。
+
+### 4-1 `<frame>` 層級特徵 (Features)
+
+| 欄位名稱 | 型態 / 維度 | 說明 |
+|---|---|---|
+| `action` | `float32 [6]` | 關節動作指令（預設 joint position 絕對角） |
+| `observation.state` | `float32 [6]` | 當前關節角度狀態 |
+| `observation.images.top` | `image (e.g. 480×640×3)` | 第三視角（俯視/全局斜前方）相機影像 |
+| `observation.images.wrist` | `image (e.g. 480×640×3)` | 手腕相機影像 |
+| `timestamp` | `float32` | 錄製時間戳記（秒） |
+| `frame_index` | `int64` | 回合內幀索引（0..N-1） |
+| `episode_index` | `int64` | 資料集內回合索引 |
+| `index` | `int64` | 全資料集全域幀索引 |
+| `task_index` | `int64` | 任務索引（預設 0: pick_and_place） |
+
+### 4-2 `<episode>` 層級元資料 (Metadata)
+
+| 欄位名稱 | 型態 | 說明 |
+|---|---|---|
+| `object_name` | `string` | 目標物體名稱（如 `paper_cup`, `can_label`, `can_bare`, `plastic_bottle`） |
+| `object_pos` | `int / string` | 初始放置位置格位（1–9 或指定座標） |
+| `env_light` | `string` | 環境光照條件（如 `indoor_normal`, `bright_lamp`, `dim`） |
+| `env_bg` | `string` | 桌面/背景環境（如 `white_desk`, `black_mat`, `asphalt_print`） |
+| `valid` | `int (1/0)` | 是否為有效試驗（若 0 需附 `void_reason`） |
+| `outcome` | `string` | 任務結果（`success` / `no_grasp` / `dropped` / `misplaced`） |
+| `mechanism` | `string` | 失效機制標籤（以分號分隔） |
+| `quality` | `string / int` | 人工示範品質評級 |
+| `operator` | `string` | 遙操作者（如 `Eric`, `Boyu`） |
+| `record_ts` | `string` | 錄製日期與時間戳記（ISO-8601） |
 
 > ⚠️ **schema 不一致的資料無法合併訓練。** 這是最容易在收了幾百條之後才發現的災難。
 
