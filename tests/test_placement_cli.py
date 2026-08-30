@@ -95,6 +95,21 @@ def test_run_prints_the_r_squared_ks_pvalue(tmp_path, capsys):
     assert "KS p" in capsys.readouterr().out
 
 
+def test_plot_flag_writes_a_scatter_png(tmp_path):
+    _run(MANUAL, tmp_path, extra=["--plot"])
+    assert (tmp_path / "camp_A_20260831_scatter.png").stat().st_size > 0
+
+
+def test_no_scatter_png_without_the_flag(tmp_path):
+    _run(MANUAL, tmp_path)
+    assert not (tmp_path / "camp_A_20260831_scatter.png").exists()
+
+
+def test_dry_run_with_plot_still_writes_nothing(tmp_path):
+    assert _run(MANUAL, tmp_path, extra=["--plot", "--dry-run"]) == 0
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_second_run_without_force_refuses_and_exits_1(tmp_path):
     assert _run(MANUAL, tmp_path) == 0
     assert _run(MANUAL, tmp_path) == 1

@@ -58,6 +58,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--label", required=True, help="campaign label, goes in the filename")
     p.add_argument("--dry-run", action="store_true", help="feasibility + stats only, write nothing")
     p.add_argument("--force", action="store_true", help="allow overwriting frozen output files")
+    p.add_argument(
+        "--plot",
+        action="store_true",
+        help="also write <label>_<date>_scatter.png (diagnostic; not the S3 mat)",
+    )
     return p
 
 
@@ -185,4 +190,12 @@ def main(argv: list[str] | None = None) -> int:
 
     for p in paths:
         print(f"wrote {p}")
+
+    if args.plot:
+        from placement_sampler.plot import save_scatter
+
+        png = args.out_dir / f"{args.label}_{args.date}_scatter.png"
+        save_scatter(lists, sector, png, seed=args.seed, d_min=args.d_min)
+        print(f"wrote {png}")
+
     return 0
