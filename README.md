@@ -94,9 +94,16 @@ will not work there — the repo is at `/workspace`.
   at all: `ValueError: 'repo_id' argument missing. Please specify it to push the model to the hub.`
 - `--wandb.enable=false` — otherwise it tries to reach Weights & Biases.
 
-`--output_dir` must be a path **inside the container** (`/workspace/...`, which is this repo). It
-refuses to reuse an existing directory, so give each run its own — that is deliberate, it stops a
-rerun from quietly overwriting an earlier result.
+`--output_dir` **must start with `/workspace/`**. That is the container's name for this repo — the
+only host directory mounted into it — so anything written there lands on the real disk.
+
+> 🔴 **A path outside `/workspace/` loses the run, silently.** `/tmp/...`, `/root/...` and friends
+> are the container's own throwaway filesystem; `--rm` deletes them on exit. Training completes,
+> reports success, writes checkpoints — and they are gone the moment the container stops. There is
+> no warning, so a multi-hour run can vanish with nothing to show for it.
+
+It also refuses to reuse an existing directory, so give each run its own — that is deliberate, it
+stops a rerun from quietly overwriting an earlier result.
 
 **Never pipe a training run into `tail`/`grep` and trust the exit code** — the status you get back
 is `tail`'s, so a crashed run looks like success. Redirect to a file and read the file.
@@ -139,8 +146,9 @@ before trusting a long training run to this setup.
 
 **Still TODO:**
 
-- [ ] Write the `Dockerfile`, on a **CUDA 12.4** base with a matching cu124 torch — this removes the
-      workaround above rather than papering over it.
+- [ ] Write the `Dockerfile` — derive from the upstream image and purge `cuda-compat`, which removes
+      both run-time flags. Verified to work; the five lines are in `docs/environment.md`. Note a
+      cu124 build is *not* an option (LeRobot needs torch ≥ 2.7, cu124 stops at 2.6).
 - [ ] Pin LeRobot **by digest** in the Dockerfile (`latest` is not a pin — see `docs/environment.md`).
 - [ ] Add the remaining `docker run` flags once hardware is back:
   - serial bus servo boards → `--device /dev/ttyACM*` (see `scripts/setup_device_bindings.sh`)
@@ -171,6 +179,7 @@ before. See [Where the data lives](#where-the-data-lives).
 | `calibration/` | ★ One file per calibration run, filename dated (`YYYY-MM-DD_<leader\|follower>.json`). Never overwrite — always add a new dated file. This is how we detect "did the calibration drift?" when results suddenly get worse. |
 | `scripts/` | Thin wrappers around data collection / training / evaluation / deployment commands. `setup_device_bindings.sh` is **optional** — see the escalation conditions at the top of that file. |
 | `analysis/` | Plotting and stats code over `eval/` records. |
+| **`episode_meta/`** | ★ Per-episode metadata LeRobot does not record — object, start cell, lighting, outcome, failure mechanism, quality, operator. One CSV per dataset, keyed by `episode_index`, filled by `scripts/annotate_episodes.py`; the fields live in `configs/episode_meta_schema.yaml`, not in code. See `episode_meta/README.md`. |
 | `eval/` | ★ Evaluation run logs (CSV) and failure-mode classification tables. See `eval/README.md` for the required columns and run metadata; copy `_template.csv` per run. |
 | `docs/hardware.md` | ★ Equipment inventory: models, firmware, USB ports, **plus current status, ETAs, and rejected options with reasons**. Check here first when debugging "did something change". |
 | `docs/setup_env.md` | Site baseline: desk layout, lighting, camera placement (with photos). |

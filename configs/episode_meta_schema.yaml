@@ -1,0 +1,121 @@
+# Extra per-episode metadata schema.
+#
+# LeRobot already records the per-FRAME schema (action, observation.state,
+# observation.images.*, timestamp, frame_index, episode_index, index,
+# task_index) plus per-episode length/tasks/video ranges in
+# meta/episodes/*.parquet. This file defines the fields IT DOES NOT record —
+# the ones only the person at the desk knows.
+#
+# ★ THIS FILE IS THE SCHEMA. Nothing below is hardcoded in
+#   scripts/annotate_episodes.py — add, remove, rename or reorder fields here
+#   and the CSV columns and the prompts follow. No code change needed.
+#
+# Editing rules:
+#   - Adding a field mid-project is fine: older rows get an empty cell, the
+#     script warns instead of failing. Backfill with --set when you can.
+#   - RENAMING a field orphans the old column (data is kept, not dropped, and
+#     --check reports it). Prefer adding the new one and backfilling.
+#   - `values:` is a SUGGESTION LIST shown at the prompt, not a lock. Anything
+#     outside it is accepted with a warning unless `strict: true`.
+#   - A schema change is a spec change: bump `version` and note it in
+#     docs/experiment_spec.md §4 + §12, same as the failure codes.
+#
+# Per-field keys (all optional except `name`):
+#   name      column name in the CSV
+#   prompt    what the operator is asked (defaults to the name)
+#   help      one line shown under the prompt
+#   values    the values offered at the prompt
+#   strict    true = reject anything outside `values` (use for ratified vocabularies)
+#   multi     true = several values, ';'-separated (e.g. mechanism)
+#   required  true = cannot be left blank
+#   sticky    true = the previous episode's answer becomes the default
+#             (for things that change once per session, not once per episode)
+#   default   fixed default when there is no previous answer
+#   auto      "now" = prefilled with the current timestamp (still editable)
+
+version: 1
+
+fields:
+  - name: object_name
+    prompt: 物體
+    help: Must match the frozen object list in docs/experiment_spec.md §2.
+    sticky: true
+    required: true
+    values: []          # TODO: fill in once the §2 table has actual rows
+
+  - name: object_orientation
+    prompt: 物體朝向
+    help: §2 requires this at collection time - the aluminium can is L1 with the
+          label up and L2 with the bare metal up, which makes reflectance a single
+          controlled variable. Leave blank for objects where orientation is moot.
+    sticky: true
+    values: ["", "label", "bare"]
+
+  - name: object_pos
+    prompt: 物體起始位置 (grid cell 1-9)
+    help: Same 3x3 grid as the evaluation protocol (§5), so demo coverage and
+          eval results can be compared cell by cell.
+    required: true
+    values: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+  - name: env_light
+    prompt: 燈光
+    sticky: true
+    values: []          # TODO: fill in from docs/setup_env.md and §3
+
+  - name: env_bg
+    prompt: 背景 / 桌面
+    sticky: true
+    values: []          # TODO: fill in from docs/setup_env.md and §3
+
+  - name: outcome
+    prompt: 結果
+    help: Axis 1 of the two-axis scheme ratified 2026-08-13 (D015,
+          docs/experiment_spec.md §1-3). Mutually exclusive and exhaustive -
+          exactly one value, always. Adding a value is a spec change (§12).
+    required: true
+    strict: true
+    values: ["success", "no_grasp", "dropped", "misplaced"]
+
+  - name: mechanism
+    prompt: 機制 (可複選, 用 ; 分隔, 可留空)
+    help: Axis 2 of D015. Zero or more values. Not only failure causes -
+          self_recovered is a positive label and is valid alongside
+          outcome=success. Use `other` plus a note when nothing fits.
+    multi: true
+    strict: true
+    values: ["pushed_away", "collision", "drift", "stalled", "timeout",
+             "self_recovered", "other"]
+
+  - name: quality
+    prompt: 示範品質 1-5
+    help: Subjective, but keep it consistent within an operator. Low-quality
+          demos are the first thing to drop when training goes wrong.
+    values: ["1", "2", "3", "4", "5"]
+
+  - name: valid
+    prompt: 納入訓練?
+    help: 0 excludes this episode from the training set without deleting it.
+          Deleting renumbers episode_index and breaks this file's keying.
+    default: "1"
+    required: true
+    strict: true
+    values: ["1", "0"]
+
+  - name: void_reason
+    prompt: 無效原因 (valid=0 才填)
+    help: Same vocabulary as the eval records (§1-3 axis 3), so a hardware
+          problem during collection is as traceable as one during evaluation.
+    values: ["", "motor_overheat", "camera_dropout", "human_bump", "other"]
+
+  - name: operator
+    prompt: 操作者
+    sticky: true
+    required: true
+
+  - name: record_ts
+    prompt: 錄製時間
+    auto: now
+
+  - name: notes
+    prompt: 備註
