@@ -33,7 +33,7 @@
 #   default   fixed default when there is no previous answer
 #   auto      "now" = prefilled with the current timestamp (still editable)
 
-version: 1
+version: 2   # 2026-08-30: object_pos -> placement_id (D024); mechanism gains repetition_loop (D015, 2026-08-16)
 
 fields:
   - name: object_name
@@ -51,12 +51,15 @@ fields:
     sticky: true
     values: ["", "label", "bare"]
 
-  - name: object_pos
-    prompt: 物體起始位置 (grid cell 1-9)
-    help: Same 3x3 grid as the evaluation protocol (§5), so demo coverage and
-          eval results can be compared cell by cell.
+  - name: placement_id
+    prompt: 物體起始位置 (frozen placement ID)
+    help: An ID from the frozen placement list in docs/experiment_spec.md §5.
+          The 3x3 grid this field used to encode was retired by D024 - placements
+          are now drawn once by uniform-AREA sampling over the annular workspace,
+          frozen, and given IDs. Renamed from object_pos on 2026-08-30; no data
+          had been collected under the old name, so nothing is orphaned.
     required: true
-    values: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    values: []          # TODO: fill in from the frozen list once §5 has one
 
   - name: env_light
     prompt: 燈光
@@ -84,8 +87,8 @@ fields:
           outcome=success. Use `other` plus a note when nothing fits.
     multi: true
     strict: true
-    values: ["pushed_away", "collision", "drift", "stalled", "timeout",
-             "self_recovered", "other"]
+    values: ["pushed_away", "collision", "drift", "stalled", "repetition_loop",
+             "timeout", "self_recovered", "other"]
 
   - name: quality
     prompt: 示範品質 1-5

@@ -25,13 +25,14 @@ Copy `_template.csv` for each new run.
 > **✅ Ratified 2026-08-13** (owner: Eric Chen). See `docs/decisions.md` D015.
 >
 > **Also ratified 2026-08-13:** each object gets **30 evaluation trials**, not the previously-suggested
-> ≥20 (owner: Boyu Chen; `docs/decisions.md` D016). This does not divide evenly across the 3×3
-> start-position grid in `docs/experiment_spec.md` §5 — per-cell distribution is still open.
+> ≥20 (owner: Boyu Chen; `docs/decisions.md` D016). **The 3×3 grid this note used to reference is
+> gone (D024, 2026-08-27): placements are drawn once by uniform-area sampling over the annular
+> workspace, frozen, and given IDs. 30 no longer has to divide by anything.**
 
 | Column | Meaning |
 |---|---|
 | `trial` | Trial number within this run (1..N) |
-| `grid_cell` | Object start position, 1–9 (3×3 grid; see `docs/setup_env.md`) |
+| `placement_id` | Object start position — an ID from the **frozen sampled placement list** (`docs/experiment_spec.md` §5). Sampled once and never re-randomised; that is the whole point of seeding, and re-randomising destroys cross-model comparability (D024) |
 | `object_id` | Which object, matching the frozen list in `docs/experiment_spec.md` §2 |
 | `object_orientation` | For the aluminium can: `label` (L1) or `bare` (L2). Reflectance is a controlled variable |
 | **`valid`** | `1` / `0`. **Invalid trials are excluded from the success-rate denominator** |

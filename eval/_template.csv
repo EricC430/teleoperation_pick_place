@@ -8,7 +8,7 @@
 # operator:
 # timeout_s:
 # notes:
-trial,grid_cell,object_id,object_orientation,valid,void_reason,outcome,mechanism,intervention,duration_s,notes
+trial,placement_id,object_id,object_orientation,valid,void_reason,outcome,mechanism,intervention,duration_s,notes
 1,,,,1,,,,0,,
 2,,,,1,,,,0,,
 3,,,,1,,,,0,,
