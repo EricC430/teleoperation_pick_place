@@ -5,3 +5,15 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
+
+# Optional groups. lerobot itself is installed editable from ./lerobot (see docs/environment.md);
+# these are the extras the repo's own scripts need on top of it.
+[project.optional-dependencies]
+# scripts/reach_logger.py (docs/specs/S1_reach_logger.md, D026).
+# NOTE: placo/cmeel do not build on Windows -> reach_logger uses a hand-coded FK chain, no placo.
+reach-logger = ["matplotlib>=3.10.3,<4.0.0"]
+dev = ["pytest>=8.1.0,<10.0.0", "pytest-timeout>=2.4.0,<3.0.0", "urchin>=0.0.29,<0.1.0"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
