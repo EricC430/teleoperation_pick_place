@@ -1,0 +1,21 @@
+# Line-ending policy (added 2026-08-30).
+#
+# Why this file exists: the repo is edited from a Windows laptop, a Linux
+# container, and a WSL/remote shell. Without a policy, whichever machine last
+# saved a file rewrites every line in it, and `git diff` fills with noise that
+# hides the one line that actually changed. That is the same failure mode
+# docs/environment.md exists to fight — a second place state can silently
+# diverge — so it gets the same treatment: pin it once, in the repo.
+#
+# Policy: LF in the repository and in the working tree, everywhere.
+* text=auto eol=lf
+
+# Exception: PowerShell scripts are run by Windows-native tooling; keep CRLF
+# in the working tree. They are still stored as LF in the repository.
+*.ps1 text eol=crlf
+
+# Never touch these.
+*.png binary
+*.jpg binary
+*.mp4 binary
+*.parquet binary
