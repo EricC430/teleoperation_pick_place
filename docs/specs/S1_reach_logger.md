@@ -6,6 +6,27 @@
 
 ---
 
+## 0. 實作現況（2026-08-31）
+
+**已實作，83 測試綠**（`uv run python -m pytest`）。純邏輯用 TDD，`reach_logger/` 套件：
+
+| 檔 | 內容 | 對應章節 |
+|---|---|---|
+| `reach_logger/fk.py` | 手刻 FK（5 變換鏈），`reach_cm` / `azimuth_base_deg`。比對 `urchin` 到 1e-9 | §3 |
+| `reach_logger/joints.py` | raw ticks → 弧度、`JointCalibration`（offset/sign） | §3 |
+| `reach_logger/samples.py` | CSV schema、flush、`resolve_out_path` 不覆寫 | §8、§10 |
+| `reach_logger/summary.py` | `build_summary` → 終端摘要 + `reach_summary.json` | §9 |
+| `reach_logger/validation.py` | 5-pose 比對表、pass/fail | §5 |
+| `reach_logger/plot.py` | matplotlib 極座標圖 | §9(2) |
+| `reach_logger/robot_io.py` | 硬體層：`OmxReachRobot` / `FakeReachRobot` / `DryRunRobot` | §4 |
+| `reach_logger/session.py` | keypress → `SampleRow`、`finalize`、`plan_text` | §7–§9 |
+| `scripts/reach_logger.py` | CLI（argparse / `--dry-run` / pynput 迴圈 / 串接） | §7、§8 |
+
+**現場前仍要做的**：① `uv run python scripts/reach_logger.py --dry-run` 確認路徑 ② 5-pose 驗證的每軸
+`offset`/`sign` 目前是 identity（`joints.identity_calibration()`）—— 現場跑一次 5-pose，把量到的 offset 寫進校正再套用。互動迴圈（pynput、終端提示）只有 lab day 能實測。
+
+---
+
 ## 1. 這支腳本要解決的問題
 
 D023 要在下一個 lab day 量出數字，填進 `docs/experiment_spec.md` §3：
