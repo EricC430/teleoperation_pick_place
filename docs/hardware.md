@@ -12,8 +12,11 @@ this is the first thing to check when debugging "did something change."
 |---|---|---|---|---|---|---|---|
 | **Leader（現用）** | **OMX-AI (OMX-L)** | | | | | ✅ **在用** | 實驗室設備，助教已修復；需登記借用 |
 | **Follower（現用）** | **OMX-AI (OMX-F)** | | | | | ✅ **在用** | 校正檔：`calibration/2026-08-24_omx_follower_arm.json`；teleop：`configs/teleoperate_omx.yaml` |
-| Leader（未到貨） | SO-101 | STS3215 (12V) | | | | ⏳ **ETA 2026-09-15** | 到貨後的用途尚未決定，見 D021 §STILL OPEN |
+| Leader（未到貨） | SO-101 | STS3215 (12V) | | | | ⏳ **ETA 2026-09-15** | 🔴 **8/27 已決（D021 甲）：純備援。** OMX 做到底，**不轉、不重錄、也不「錄幾筆比較看看」**——跨臂 demo 不能合併，那種資料集既不是訓練資料也不是有效對照 |
 | Follower（未到貨） | SO-101 | STS3215 (12V) | | | | ⏳ **ETA 2026-09-15** | 同上 |
+
+> ⚠️ **本表的相機小節下方仍寫著「🟡 未查證：ACT 能否用單相機訓練」——那一條已於 2026-08-27 查證完畢**
+> **（讀釘選版 LeRobot 原始碼，結論在 D022：可以，且相機數不改參數量）。保留原文是為了看得出它何時被推翻。**
 
 **🔴 已知硬體問題（D023）：一條手臂上的傳輸線過短，卡住動作空間。**
 **換線前不得量測工作範圍（A6）、不得錄製任何 demo。**（A7 配置「設計」已解禁）
@@ -59,7 +62,10 @@ this is the first thing to check when debugging "did something change."
   - On-site data collection & baseline inference: Windows Laptop (`torch 2.11.0+cu126`, `lerobot 0.6.2`)
   - Vehicle edge deployment (P3/P4 candidate): Raspberry Pi 5 or Jetson Orin Nano / Mini PC
 
-## Mobile Base & Mounting (Ref: Lab JetRover「小綠」/「小藍」vs. XLeRobot Cart)
+## Mobile Base & Mounting (Ref: Lab JetRover「小綠」vs. XLeRobot Cart)
+
+> 🔴 **2026-08-27 `[Eric決定]`：「小藍」已排除，不再是候選。** 現行三候選、主責與死線見
+> `docs/decisions.md` D020。下面保留「小藍」字樣的段落是 8/26 之前寫的，**讀到請以 D020 為準。**
 
 - **Indoor / Phase A-B**: Desktop stationary platform (table clamps for quick-mount, rigid baseplate).
 - **Outdoor / Ground Picking (Phase C-D)**:

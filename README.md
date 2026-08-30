@@ -6,7 +6,8 @@ Imitation-learning pick-and-place on a real robot arm using
 > 🔴 **Platform, as of 2026-08-24: OMX-AI, not SO-ARM.** SO-ARM's ETA slipped to 2026-09-15, which
 > falls on the first day of the team's zero-capacity window (書審/報名, see `docs/phase_plan.md`).
 > **D002's pre-registered reversal condition fired and D021 supersedes it.** SO-ARM's role after it
-> arrives is **still open** — see `docs/decisions.md` D021 §STILL OPEN. Older text in this repo that
+> arrives was **settled on 2026-08-27**: OMX to the end, SO-ARM is hardware redundancy only — no
+> comparison demos, because cross-arm demos cannot be pooled (D021, option 甲). Older text in this repo that
 > says "SO-ARM" as the platform predates 2026-08-24. Successor to the audio-only /
 sim2real direction (see `../legacy_audio_grasp_detection/`), which was shelved because it couldn't be
 validated on real hardware within the project timeline.

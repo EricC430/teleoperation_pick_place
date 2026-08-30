@@ -142,5 +142,6 @@ The open-source [XLeRobot (Vector-Wangel)](https://github.com/Vector-Wangel/XLeR
 - **What NOT to Adopt (Height Mismatch)**:
   - XLeRobot mounts arms on top of a 77cm-tall IKEA RÅSKOG utility cart intended for tabletop/household manipulation.
   - **Highway debris picking requires ground-level reach.** A 77cm cart makes ground targets unreachable given SO-101's arm length (~30cm reach).
-  - *Resolution*: For Phase C/D mobile deployment, adopt a low-chassis platform (e.g. JetRover「小綠」/「小藍」/ AMR lower plate) or forward underslung mount, retaining XLeRobot's electrical, sensor, and bracket design.
+  - *Resolution*: For Phase C/D mobile deployment, adopt a low-chassis platform or a forward underslung mount, retaining XLeRobot's electrical, sensor, and bracket design.
+  - 🔴 **2026-08-27: 「小藍」was ruled out `[Eric決定]`.** The live candidate list (柏宇's existing mbot / the lab's wildbot away for IMU fitting / buy one) and the seven criteria live in `docs/decisions.md` D020. Do not re-derive it from this paragraph.
 
