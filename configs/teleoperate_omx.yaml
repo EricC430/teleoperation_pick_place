@@ -1,0 +1,14 @@
+teleop:
+  type: omx_leader
+  port: COM6
+  id: 2026-08-14_leader
+  calibration_dir: ./calibration
+
+robot:
+  type: omx_follower
+  port: COM5
+  id: 2026-08-24_omx_follower_arm
+  calibration_dir: ./calibration
+
+fps: 60
+display_data: true
