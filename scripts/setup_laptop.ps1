@@ -35,7 +35,7 @@ $ErrorActionPreference = "Stop"
 # build backend shells out to tooling that does not exist on Windows and fails
 # with WinError 2. It also drags in hundreds of packages we never use, each one
 # a version-drift risk against the GPU box.
-uv pip install -e ".\lerobot[core_scripts,feetech]"
+uv pip install -e ".\lerobot[core_scripts,feetech,dynamixel]"
 
 # --- 2. Repair torch --------------------------------------------------------
 # Versions must stay inside LeRobot's bounds or the next install will fight us.
