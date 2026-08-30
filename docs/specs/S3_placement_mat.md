@@ -46,7 +46,9 @@ S1（`docs/specs/S1_reach_logger.md` §6，D026）量到一個 `azimuth_offset_d
 ## 3. 輸入
 
 ```
---placements configs/placements/<label>_train.csv    # S2 的輸出
+--placements configs/placements/<label>_<YYYYMMDD>_train.csv \
+             configs/placements/<label>_<YYYYMMDD>_eval-open.csv \
+             configs/placements/<label>_<YYYYMMDD>_eval-close.csv   # S2 的三份輸出，全印同一張（§6）
 --from-summary analysis/reach_summary_YYYY-MM-DD.json # S1 產出；讀 azimuth_offset_deg + 檢查 frame（見 §2-4）
 --r-inner 20 --r-outer 30
 --theta-min -35 --theta-max 88
@@ -84,7 +86,12 @@ S1（`docs/specs/S1_reach_logger.md` §6，D026）量到一個 `azimuth_offset_d
 
 ## 6. 不要做的事
 
-- ❌ 不要把 train 與 eval 印在同一張墊子上。**兩份清單分兩張**，避免現場拿錯。
+- ✅ **三份清單（`train` / `eval-open` / `eval-close`）印在同一張墊子上**
+  （`[Eric決定]` 2026-08-31，推翻先前「分兩張」的 `[AI推論]`）。理由：同一個實體墊子就是對位基準，
+  重印會累積縮放誤差（§2-2）；三份必須在同一個框架下彼此一致。
+  🔴 **代價要 S3 處理**：~90 點在 `d_min ≈ 2 cm` 下標籤會疊。緩解 = (a) 每點印完整 `placement_id`
+  （含 `train_` / `eval-open_` / `eval-close_` 前綴）防現場拿錯；(b) 三組用不同記號形狀（空心圓／
+  十字／三角，**不填色**）；(c) 操作卡附 `id → (r, θ)` 索引表，現場照 id 找點，墊子只給十字位置。
 - ❌ 不要用彩色填滿。**墊子若不小心入鏡，越接近純白越不容易變成強烈的背景特徵。**
 - ❌ 不要自動重新抽樣。這支腳本只畫 S2 給的點。
 

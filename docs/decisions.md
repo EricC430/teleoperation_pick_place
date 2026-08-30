@@ -1127,6 +1127,28 @@ version of that distribution — points are pushed into the gaps between trainin
 `d_min ≈ 2 cm` the bias is negligible; at `d_min ≈ 7 cm` the eval set would sit systematically in the
 holes, which is a different experiment. **This is a second reason the answer cannot be "make d_min as
 large as possible".**
+
+### ✅ 2026-08-31 `[Eric決定]` — three lists, `eval-close` shared, `d_min` is a global minimum
+
+Ratified while freezing the S2 spec. 正本 for the mechanics: `docs/specs/S2_placement_sampler.md`
+(algorithm), `docs/specs/S3_placement_mat.md` §6 (all three lists on one printed mat).
+
+- **Three frozen lists, not two:** `train`(50) + `eval-open`(10) + `eval-close`(30). `eval-open` is
+  the open-loop evaluation inside the 60-episode recording split; `eval-close` is the closed-loop 30.
+  They are separate lists → **50 + 10 + 30 = 90 distinct points**.
+- **The `eval-close` 30 are shared across all 3 objects**, not re-sampled per object. Reason: position
+  is then controlled when comparing object difficulty, and 90 distinct points almost certainly fail
+  the packing feasibility check in the cable-limited sector. A per-object spatial map is the
+  cheaper-to-buy-later option (re-sample a subset).
+- **`d_min` is the minimum separation between *every* pair of points across all three lists**, not
+  just train↔eval. Area-uniform sampling rarely places points close anyway; making it global costs
+  little and removes an ambiguity.
+- **`--margin` is NOT applied to `r_inner`** — only `r_outer −` and both azimuth edges. The failure
+  mechanisms cluster at the outer boundary and constrained azimuth; margining the inner edge spends a
+  large fraction of an already-tight annulus for little gain. Add `--margin-inner` later if needed.
+- **The `d_min` value is still un-arbitrated** (甲/乙/丙 above stand). S2 makes it a required
+  parameter with no default; the acceptance demo uses 2.0 cm provisionally (`[Eric決定]` 甲).
+
 - **Reverse if:** the in-distribution success rate saturates so early that the 90 closed-loop trials
   stop discriminating between models — then reconsider adding held-out positions.
 - **Cross-reference:** D015, D016, D023, `docs/phase_plan.md` Phase B, `eval/README.md`.
