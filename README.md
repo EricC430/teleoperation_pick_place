@@ -1,7 +1,13 @@
 # teleoperation_pick_place
 
-Imitation-learning pick-and-place on a real **SO-ARM (SO-100/SO-101)** using
-[LeRobot](https://github.com/huggingface/lerobot) + ACT. Successor to the audio-only /
+Imitation-learning pick-and-place on a real robot arm using
+[LeRobot](https://github.com/huggingface/lerobot) + ACT.
+
+> 🔴 **Platform, as of 2026-08-24: OMX-AI, not SO-ARM.** SO-ARM's ETA slipped to 2026-09-15, which
+> falls on the first day of the team's zero-capacity window (書審/報名, see `docs/phase_plan.md`).
+> **D002's pre-registered reversal condition fired and D021 supersedes it.** SO-ARM's role after it
+> arrives is **still open** — see `docs/decisions.md` D021 §STILL OPEN. Older text in this repo that
+> says "SO-ARM" as the platform predates 2026-08-24. Successor to the audio-only /
 sim2real direction (see `../legacy_audio_grasp_detection/`), which was shelved because it couldn't be
 validated on real hardware within the project timeline.
 
@@ -152,6 +158,11 @@ before. See [Where the data lives](#where-the-data-lives).
 |---|---|
 | **`docs/experiment_spec.md`** | ★★ **Read this before collecting any data.** Frozen task/success definitions, failure codes, object list, scene constants, dataset schema, evaluation protocol, decision rules, environment gotchas. |
 | **`docs/decisions.md`** | ★ Decision log. Each entry records the alternatives, the reasoning, the accepted costs, and — crucially — **what evidence would reverse it**. |
+| **`docs/phase_plan.md`** | ★ Phase A→D plan (v3), the cut-list for when time runs short, and **§T0 與實驗室可及性** — lab visits are the scarce resource, plan around them. |
+| `docs/execution_plan.md` | Execution plan, reasoning, and contingencies behind `phase_plan.md`. |
+| `docs/act_evidence.md` | Literature and measured evidence backing the ACT choice and the recovery-data hypothesis. |
+| `docs/camera_mount.md` | Camera position vs. mount hardware, the mast-vs-oblique question, and the pixel-displacement measurement protocol. |
+| `docs/exp_a3_recovery_ablation.md` | Design of the A3 recovery-data ablation. |
 | `docs/conventions.md` | Commit message and branch conventions. |
 | `Dockerfile` | ★ Defines the training/inference environment. **Not yet written** — see [Container image](#container-image). |
 | **`docs/environment.md`** | ★ Version pinning across machines, the cross-machine consistency check, and the **driver-ceiling / forward-compat gotcha on the GPU box** — read it before debugging any `--gpus all` failure. |
@@ -161,10 +172,10 @@ before. See [Where the data lives](#where-the-data-lives).
 | `scripts/` | Thin wrappers around data collection / training / evaluation / deployment commands. `setup_device_bindings.sh` is **optional** — see the escalation conditions at the top of that file. |
 | `analysis/` | Plotting and stats code over `eval/` records. |
 | `eval/` | ★ Evaluation run logs (CSV) and failure-mode classification tables. See `eval/README.md` for the required columns and run metadata; copy `_template.csv` per run. |
-| `docs/hardware.md` | Equipment inventory: models, firmware versions, which USB port is which. |
+| `docs/hardware.md` | ★ Equipment inventory: models, firmware, USB ports, **plus current status, ETAs, and rejected options with reasons**. Check here first when debugging "did something change". |
 | `docs/setup_env.md` | Site baseline: desk layout, lighting, camera placement (with photos). |
 | `docs/field_manual.md` | On-site operating manual — the checklist to run through at the lab. Fill in once hardware is actually available. |
-| `docs/meeting/` | Meeting notes (see `_template.md` in that folder). |
+| `docs/meeting/` | Meeting notes **and on-site lab-session records** (see `_template.md`). Lab sessions are labelled as such in their title — e.g. `2026-08-24.md` is a field record, not a meeting. |
 | `notebooks/` | Exploratory analysis. |
 
 `calibration/` and `eval/` are the two folders that matter most here — last year's failure mode was
