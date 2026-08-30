@@ -49,6 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--grid-mm", type=float, default=5.0, help="fine Cartesian grid pitch")
     p.add_argument("--ring-step", type=float, default=5.0, help="cm between radius rings")
     p.add_argument("--ray-step", type=float, default=15.0, help="deg between azimuth rays")
+    p.add_argument("--line-scale", type=float, default=1.0, help="multiply every grid/overlay line width")
     p.add_argument("--out", type=Path, default=Path("docs/assets/placement_mat_blank.pdf"))
     p.add_argument("--placements", type=Path, nargs="*", default=[], help="S2 CSV(s) to plot")
     p.add_argument("--from-summary", type=Path, help="S1 reach_summary_<date>.json (azimuth_offset)")
@@ -106,6 +107,7 @@ def main(argv: list[str] | None = None) -> int:
         azimuth_offset_deg=offset,
         theta_min_deg=args.theta_min,
         theta_max_deg=args.theta_max,
+        line_scale=args.line_scale,
     )
 
     print(

@@ -37,6 +37,14 @@ def test_small_mat_is_a_single_page_pdf(tmp_path):
     assert report.pages == 1
 
 
+def test_line_scale_is_honoured_and_does_not_crash(tmp_path):
+    plan = plan_tiles(-8.0, 8.0, -8.0, 8.0)
+    heavy = TileOpts(r_max=40.0, line_scale=2.5)
+    report = render_pdf(tmp_path / "heavy.pdf", plan, heavy)
+    assert report.pages == 1
+    assert (tmp_path / "heavy.pdf").stat().st_size > 0
+
+
 def test_points_on_tile_selects_only_those_inside():
     plan = plan_tiles(-8.0, 40.0, -40.0, 40.0)
     t = plan.tiles[0]
