@@ -87,9 +87,9 @@
 | **Repetition loop**（重複迴圈，反覆做同段動作卻無進展） | **92.45%** |
 | Precision misalignment | 15.09% |
 
-> 🔴 **我們的 `mechanism` 欄缺少 `repetition_loop`。**
-> 現有的 `stalled`（原地停滯）不等於 repetition loop，而後者在 ACT 失敗裡佔 92.45%。
-> **→ 必加標籤，見 D015 的修訂建議。**
+> ✅ **2026-08-16 已加入 `repetition_loop`**（`[團隊決議]`，正本 D015 Amendment 2026-08-16）。
+> 原文為「我們的 `mechanism` 欄缺少 `repetition_loop`」——**保留這句被推翻的紀錄，是為了看得出它何時被補上。**
+> 判準仍成立：`stalled`（原地停滯，無動作）≠ repetition loop（有動作、有界、無進展），而後者在 ACT 失敗裡佔 92.45%。
 
 ### A-5. ACT 在需要語意選擇的任務上是 0%
 

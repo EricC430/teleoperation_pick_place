@@ -30,7 +30,7 @@ evaluation records use:
 | Field | Values |
 |---|---|
 | `outcome` | exactly one of `success` / `no_grasp` / `dropped` / `misplaced` |
-| `mechanism` | zero or more, `;`-separated: `pushed_away` / `collision` / `drift` / `stalled` / `timeout` / `self_recovered` / `other` |
+| `mechanism` | zero or more, `;`-separated: `pushed_away` / `collision` / `drift` / `stalled` / `repetition_loop` / `timeout` / `self_recovered` / `other` |
 | `void_reason` | `motor_overheat` / `camera_dropout` / `human_bump` / `other`, only when `valid=0` |
 
 Both are `strict: true`, so a typo is rejected rather than warned about — adding a value is a spec

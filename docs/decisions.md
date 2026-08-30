@@ -448,7 +448,8 @@ failures — which is exactly what D005 does. **The absence of the data is an ar
 - **Decision:** Replace the single F1–F7 failure-code list with two independent columns:
   `outcome` (mutually exclusive, exhaustive: `success` / `no_grasp` / `dropped` / `misplaced`) and
   `mechanism` (multi-label, may be empty: `pushed_away` / `collision` / `drift` / `stalled` /
-  `timeout` / `self_recovered` / `other`), plus `valid` / `void_reason` to exclude invalid trials.
+  **`repetition_loop`** / `timeout` / `self_recovered` / `other`), plus `valid` / `void_reason` to
+  exclude invalid trials.
 - **Why:** F1–F7 mixed two questions in one list. `pushed_away` always implies `no_grasp`; `stalled`
   always ends in `timeout` — annotators hesitated, two people labelled the same trial differently, and
   a failure-distribution that isn't reproducible between labellers is the only metric this project has
@@ -456,7 +457,28 @@ failures — which is exactly what D005 does. **The absence of the data is an ar
 - **Note:** `self_recovered` is a positive `mechanism` label, valid alongside `outcome=success`. It is
   the single most direct real-hardware evidence for D005's hypothesis — if recovery data works, this
   label's frequency should rise.
-- **Implemented in:** `docs/experiment_spec.md` §1-3, `eval/README.md`, `eval/_template.csv`.
+### 🔴 Amendment 2026-08-16 `[團隊決議]` — `repetition_loop` added to the `mechanism` vocabulary
+
+Ratified at the 2026-08-16 peer meeting (`docs/meeting/2026-08-16.md` §二-2, item 1 of §三).
+**Recorded in this entry on 2026-08-30 — it had been applied to the spec and the eval README for two
+weeks while the decision log, which is the 正本, still listed the pre-amendment vocabulary.**
+
+- **Definition:** the policy oscillates over, or repeatedly re-runs, the same trajectory interval
+  without progress.
+- **Why it is not covered by an existing label:** `stalled` means *never started or stopped in
+  place* — no motion. `drift` means motion in **one** direction, out of the workspace.
+  A repetition loop is motion, bounded, and going nowhere. Collapsing it into either loses the
+  distinction that tells you whether the policy has no signal or the wrong signal.
+- **Why it earns a label rather than `other` + a note:** `docs/act_evidence.md` §A-4 records it at
+  **92.45%** of surveyed ACT failures — third highest. A mechanism that common inside `other` makes
+  the failure distribution useless for deciding what to fix next, which is D015's whole purpose.
+- **Vocabulary consumers that must stay in sync** (all verified aligned 2026-08-30):
+  `docs/experiment_spec.md` §1-3, `eval/README.md`, `eval/_template.csv`, `episode_meta/README.md`,
+  `configs/episode_meta_schema.yaml` (`strict: true` — a value missing here is *rejected at the
+  prompt*, not merely undocumented).
+
+- **Implemented in:** `docs/experiment_spec.md` §1-3, `eval/README.md`, `eval/_template.csv`,
+  `episode_meta/README.md`, `configs/episode_meta_schema.yaml`.
 - **Reverse if:** the two-axis scheme itself produces annotator disagreement in practice — check this
   the first time two people independently label the same real eval run.
 
