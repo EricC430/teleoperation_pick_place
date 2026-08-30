@@ -168,6 +168,7 @@ before. See [Where the data lives](#where-the-data-lives).
 | `calibration/` | ★ One file per calibration run, filename dated (`YYYY-MM-DD_<leader\|follower>.json`). Never overwrite — always add a new dated file. This is how we detect "did the calibration drift?" when results suddenly get worse. |
 | `scripts/` | Thin wrappers around data collection / training / evaluation / deployment commands. `setup_device_bindings.sh` is **optional** — see the escalation conditions at the top of that file. |
 | `analysis/` | Plotting and stats code over `eval/` records. |
+| **`episode_meta/`** | ★ Per-episode metadata LeRobot does not record — object, start cell, lighting, outcome, failure mechanism, quality, operator. One CSV per dataset, keyed by `episode_index`, filled by `scripts/annotate_episodes.py`; the fields live in `configs/episode_meta_schema.yaml`, not in code. See `episode_meta/README.md`. |
 | `eval/` | ★ Evaluation run logs (CSV) and failure-mode classification tables. See `eval/README.md` for the required columns and run metadata; copy `_template.csv` per run. |
 | `docs/hardware.md` | Equipment inventory: models, firmware versions, which USB port is which. |
 | `docs/setup_env.md` | Site baseline: desk layout, lighting, camera placement (with photos). |
