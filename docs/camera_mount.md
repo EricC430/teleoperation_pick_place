@@ -128,3 +128,19 @@ Criterion: how many pixels? As a fraction of the target object's size in frame?
 **5. Stop the vehicle to grasp**
 - Vibration is acceptable while moving; the grasp phase must be static.
   Standard practice in mobile manipulation.
+
+---
+
+## 6. Reference Design: XLeRobot Multi-Camera & Clamping
+
+The open-source [XLeRobot (Vector-Wangel)](https://github.com/Vector-Wangel/XLeRobot) platform demonstrates a working multi-camera and mobile mount configuration for SO-101 in LeRobot:
+
+- **What to Adopt**:
+  - **Camera Models & Brackets**: Standardizes on Intel RealSense D415 (or C920) for top/third-person view and micro USB camera for wrist view. Provides ready-to-print 3D models (STL) for clamping cameras to extrusion profiles and arm brackets.
+  - **Quick Clamping**: Uses heavy-duty table clamps (桌夾) to secure arm base and camera fixtures to plates without destructive drilling.
+  - **Power & Wiring**: Type-C PD trigger cables to DC 12V + Anker SOLIX C300 power station.
+- **What NOT to Adopt (Height Mismatch)**:
+  - XLeRobot mounts arms on top of a 77cm-tall IKEA RÅSKOG utility cart intended for tabletop/household manipulation.
+  - **Highway debris picking requires ground-level reach.** A 77cm cart makes ground targets unreachable given SO-101's arm length (~30cm reach).
+  - *Resolution*: For Phase C/D mobile deployment, adopt a low-chassis platform (e.g. JetRover「小綠」/「小藍」/ AMR lower plate) or forward underslung mount, retaining XLeRobot's electrical, sensor, and bracket design.
+
