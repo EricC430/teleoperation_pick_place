@@ -997,9 +997,65 @@ decided it** `[Eric說]`. Under the source-tagging rule it is `[AI推論]` that 
 3. **`experiment_spec.md` §5**: delete the 3×3 grid and its placeholder "6 格各 3 次、3 格各 4 次"
    split. Replace with the sampling procedure and the frozen list.
 4. **Two frozen lists are needed, not one:** a training placement list and an evaluation placement
-   list, **drawn from the same distribution**. ⚠️ Whether they may overlap is **not yet decided** —
-   identical positions in train and eval would inflate the success rate.
-   **→ Open sub-question for Eric: may the eval placements coincide with training placements?**
+   list, **drawn from the same distribution**.
+
+### ✅ 2026-08-30 `[Eric決定]` — the two lists may NOT overlap
+
+> Eric's answer to the open sub-question, decided in another session and recorded here.
+> **This entry is the 正本 for it.**
+
+**What it settles:** an evaluation placement may not be a training placement. The reason is the one
+the question was asked for — reusing a trained-on position inflates the success rate, and the number
+that goes in the write-up would then be partly a memorisation score.
+
+**🔴 What it does NOT yet settle, and this is not pedantry — the sampler cannot be written without
+it.** Placements are drawn from a *continuous* annulus, so two independently drawn points coincide
+with probability zero. "Non-overlapping" as literally stated is satisfied by any two samples and
+therefore constrains nothing. To have force it must become a **minimum separation `d_min`**: every
+evaluation point is at least `d_min` from every training point.
+
+**🔴 And `d_min` runs into a packing limit that the provisional workspace cannot pay.** With
+`r_inner = 20`, `r_outer = 30` and an azimuth sector of `f` (fraction of a full turn):
+
+```
+A            = f · π · (r_outer² − r_inner²)          # usable area, cm²
+N_max(d)     ≈ A / (0.866 · d²)                       # hexagonal-packing upper bound
+spacing_rand ≈ 0.5 / sqrt(N / A)                      # mean nearest-neighbour for a random sample
+```
+
+For a **180° sector**, `A ≈ 785 cm²`, and the two frozen lists together need
+**N = 50 training + 30 evaluation = 80** distinct points:
+
+| `d_min` | Rationale for that value | `N_max` | Feasible for N = 80? |
+|---|---|---|---|
+| 7 cm | ≈ one aluminium-can diameter — "a different placement you could see" | ~18 | ❌ not close |
+| 5 cm | | ~36 | ❌ |
+| 3 cm | | ~101 | 🟡 only in theory; dart-throwing achieves far less than the packing bound |
+| 2 cm | ≈ twice the realistic placement-repeatability error | ~227 | ✅ |
+
+**And at N = 80 the mean nearest-neighbour distance is ≈ 1.6 cm regardless of what we ask for** —
+which is the same order as how accurately an object can be put down by hand off a printed mat.
+
+**→ The honest reading: at the provisional workspace, "non-overlapping" can only mean "far enough
+apart to be distinguishable placements", not "a different region of the workspace".** Three ways out,
+and Eric picks:
+
+| | Option | Cost |
+|---|---|---|
+| **甲** | Keep 80 points; set `d_min ≈ 2 cm`. Separation guarantees *distinguishability*, nothing more | The eval set is honestly in-distribution, and the claim in the write-up must say so |
+| **乙** | Cut the number of distinct placements (e.g. 15 training × repeats) to buy a real `d_min` | Loses the spatial coverage D024 chose option A for — and coverage is what makes failure clustering visible |
+| **丙** | Enlarge the annulus once the real r_inner / r_outer are measured | Free if the measurement happens to be generous; unknown until 2026-08-31 |
+
+⚠️ **Re-run the table with the measured numbers before choosing.** The whole calculation above uses
+PROVISIONAL 20/30 and a guessed 180° sector; the real sector is constrained by the arm cable (D023)
+and is likely *smaller*, which makes the packing problem worse, not better.
+
+⚠️ **One tension to state rather than paper over:** D024 says the closed-loop 30 is a coverage sample
+over the **same** distribution as training. Enforcing a separation makes the eval sample a *thinned*
+version of that distribution — points are pushed into the gaps between training points. At
+`d_min ≈ 2 cm` the bias is negligible; at `d_min ≈ 7 cm` the eval set would sit systematically in the
+holes, which is a different experiment. **This is a second reason the answer cannot be "make d_min as
+large as possible".**
 - **Reverse if:** the in-distribution success rate saturates so early that the 90 closed-loop trials
   stop discriminating between models — then reconsider adding held-out positions.
 - **Cross-reference:** D015, D016, D023, `docs/phase_plan.md` Phase B, `eval/README.md`.
