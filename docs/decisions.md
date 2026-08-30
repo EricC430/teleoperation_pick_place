@@ -1146,8 +1146,13 @@ Ratified while freezing the S2 spec. 正本 for the mechanics: `docs/specs/S2_pl
 - **`--margin` is NOT applied to `r_inner`** — only `r_outer −` and both azimuth edges. The failure
   mechanisms cluster at the outer boundary and constrained azimuth; margining the inner edge spends a
   large fraction of an already-tight annulus for little gain. Add `--margin-inner` later if needed.
-- **The `d_min` value is still un-arbitrated** (甲/乙/丙 above stand). S2 makes it a required
-  parameter with no default; the acceptance demo uses 2.0 cm provisionally (`[Eric決定]` 甲).
+- **`d_min` — option 甲 chosen, working value 2.0 cm** (`[Eric決定]` 2026-08-31). Keep the point
+  counts; `d_min` guarantees *distinguishable placements*, not *different regions*. 乙 (cut points)
+  and 丙 (wait) are not taken. The number 2.0 is provisional in the same sense as `r_inner` / `r_outer`
+  — it is pending the S1-measured sector. S2's own run shows 2.0 does **not** fit 90 points in the
+  provisional 123° sector (`N_rsa ≈ 85 < 90`), so once S1 gives the real sector, re-run
+  `sample_placements.py --dry-run` and confirm 2.0 holds or nudge it (e.g. 1.8). S2 keeps `--d-min`
+  a required parameter with no default regardless.
 
 - **Reverse if:** the in-distribution success rate saturates so early that the 90 closed-loop trials
   stop discriminating between models — then reconsider adding held-out positions.
