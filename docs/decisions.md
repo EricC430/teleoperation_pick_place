@@ -813,6 +813,45 @@ weeks while the decision log, which is the 正本, still listed the pre-amendmen
   > Freeze the feature-key order at collection time and never change it between training and
   > inference. Record the order in `experiment_spec.md` §3 alongside the extrinsics.
 
+  **🔴 2026-08-30 `[已查證]` — what actually determines that order, and what the NAME does and
+  does not do.** Read in the pinned source (`lerobot/`, commit `a16f34c0`), following the chain
+  end to end rather than assuming:
+
+  ```python
+  # policies/act/modeling_act.py:134,143
+  batch[OBS_IMAGES] = [batch[key] for key in self.config.image_features]
+
+  # configs/policies.py:151
+  return {key: ft for key, ft in self.input_features.items() if ft.type is FeatureType.VISUAL}
+
+  # policies/factory.py:298,315   <- input_features when inferred from the dataset
+  features = dataset_to_policy_features(ds_meta.features)
+  cfg.input_features = {k: ft for k, ft in features.items() if k not in cfg.output_features}
+
+  # utils/feature_utils.py:139    <- plain `for key, ft in features.items()`, no sort
+  ```
+
+  **There is no `sorted()` anywhere on that path** (checked in `feature_utils.py`,
+  `pipeline_features.py`, `policies/factory.py`). The order is dict-insertion order all the way
+  down, and its origin is `meta/info.json`'s `features` object — which `hw_to_dataset_features`
+  builds by iterating `robot.observation_features`, i.e. **the order the cameras are declared in
+  the record config's `cameras:` block.**
+
+  **Consequences, stated separately because they are different risks:**
+
+  | | What it controls | Failure mode |
+  |---|---|---|
+  | **Declaration order in `configs/record.yaml`** | the tensor order the transformer sees | 🔴 **silent** — swap it and the model still trains, just worse |
+  | **The key string itself** (`left_front` vs `cam1`) | nothing inside the model — no name embedding exists | — |
+  | **Key string, across configs** | training config and inference config must use the same keys | loud: `KeyError` |
+  | **Which physical camera is plugged in as which key** | the actual image content behind each key | 🔴 **silent** — the worst one |
+
+  **→ So the naming choice is not about the model, it is about catching the two silent failures.**
+  `left_front` / `right_front` encode a physical fact that a person can verify against the image in
+  two seconds; `cam1` / `cam2` cannot be checked at all. That is the entire argument for the names,
+  and it is an operational one, not a modelling one. (A side benefit: `left` sorts before `right`,
+  so the intended order survives even if some future tool does sort the keys.)
+
   **🔴 2026-08-27 `[Eric決策]` — recording and training plan (supersedes the interim recommendation
   that was here):**
 
