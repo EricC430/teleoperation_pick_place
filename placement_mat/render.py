@@ -42,6 +42,8 @@ class TileOpts:
     ray_step: float = 15.0
     ruler_cm: float = 10.0
     azimuth_offset_deg: float = 0.0
+    theta_min_deg: float = -90.0
+    theta_max_deg: float = 90.0
 
 
 @dataclass(frozen=True)
@@ -127,17 +129,22 @@ def build_tile_figure(
         ax.axhline(gy, color="0.45", lw=0.8, zorder=0)
         ax.text(tile.x0 + 0.3, gy + 0.15, f"y={gy:g}", fontsize=5, color="0.4", ha="left", va="bottom")
 
-    # --- polar overlay (clipped to r <= r_max) --------------------------
-    th = [math.radians(a) for a in range(-180, 181, 2)]
+    # --- polar overlay: rings + rays, only inside the 180deg (or given) sector --
+    a_lo, a_hi = opts.theta_min_deg, opts.theta_max_deg
+    th = [math.radians(a) for a in _frange(a_lo, a_hi, 1.0)]
     for rr in _frange(max(opts.ring_step, 0.1), opts.r_max, opts.ring_step):
-        xs = [rr * math.cos(t) for t in th]
-        ys = [rr * math.sin(t) for t in th]
-        ax.plot(xs, ys, color="tab:blue", lw=0.5, alpha=0.5, zorder=1)
-        ax.text(rr, 0.2, f"{rr:g}", fontsize=5, color="tab:blue", alpha=0.8)
-    for a in range(-180, 181, int(opts.ray_step)):
+        ax.plot([rr * math.cos(t) for t in th], [rr * math.sin(t) for t in th],
+                color="tab:blue", lw=0.5, alpha=0.5, zorder=1)
+        ax.text(rr * math.cos(math.radians(a_hi)), rr * math.sin(math.radians(a_hi)),
+                f"{rr:g}", fontsize=5, color="tab:blue", alpha=0.8)
+    ray0 = math.ceil(a_lo / opts.ray_step) * opts.ray_step
+    for a in _frange(ray0, a_hi, opts.ray_step):
         e = math.radians(a + opts.azimuth_offset_deg)
         ax.plot([0, opts.r_max * math.cos(e)], [0, opts.r_max * math.sin(e)],
                 color="tab:blue", lw=0.4, alpha=0.4, zorder=1)
+        lx, ly = opts.r_max * 1.0 * math.cos(e), opts.r_max * 1.0 * math.sin(e)
+        if tile.x0 <= lx <= tile.x1 and tile.y0 <= ly <= tile.y1:
+            ax.text(lx, ly, f"{a:g}°", fontsize=5, color="tab:blue", alpha=0.8)
 
     # origin furniture, only on the tile that contains (0,0)
     if tile.x0 <= 0 <= tile.x1 and tile.y0 <= 0 <= tile.y1:

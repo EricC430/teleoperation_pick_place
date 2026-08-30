@@ -40,7 +40,9 @@ def build_parser() -> argparse.ArgumentParser:
         description="A4-tiled Cartesian+polar placement mat with graduations (S3, D023).",
     )
     p.add_argument("--r-max", type=float, default=40.0, help="cm; largest radius drawn")
-    p.add_argument("--x-min", type=float, default=-8.0, help="cm; left edge of the mat")
+    p.add_argument("--x-min", type=float, default=-3.0, help="cm; left edge of the mat")
+    p.add_argument("--theta-min", type=float, default=-90.0, help="deg; sector drawn (default 180deg)")
+    p.add_argument("--theta-max", type=float, default=90.0, help="deg; sector drawn (default 180deg)")
     p.add_argument("--paper", choices=["a4"], default="a4")
     p.add_argument("--margin-mm", type=float, default=10.0, help="unprintable border per page")
     p.add_argument("--overlap-mm", type=float, default=15.0, help="overlap band between pages")
@@ -81,11 +83,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    import math
+
+    edge = [math.radians(a) for a in (args.theta_min, args.theta_max)]
+    y_lo = min(0.0, *(args.r_max * math.sin(e) for e in edge))
+    y_hi = max(0.0, *(args.r_max * math.sin(e) for e in edge))
+    if args.theta_min < 90 < args.theta_max or args.theta_min < -90 < args.theta_max:
+        y_hi, y_lo = args.r_max, -args.r_max  # sector crosses +/-90deg -> full height
     plan = plan_tiles(
         args.x_min,
         args.r_max,
-        -args.r_max,
-        args.r_max,
+        y_lo,
+        y_hi,
         margin_cm=args.margin_mm / 10.0,
         overlap_cm=args.overlap_mm / 10.0,
     )
@@ -95,9 +104,14 @@ def main(argv: list[str] | None = None) -> int:
         ring_step=args.ring_step,
         ray_step=args.ray_step,
         azimuth_offset_deg=offset,
+        theta_min_deg=args.theta_min,
+        theta_max_deg=args.theta_max,
     )
 
-    print(f"mat area: x [{args.x_min:g}, {args.r_max:g}]  y [{-args.r_max:g}, {args.r_max:g}]  cm")
+    print(
+        f"mat area: x [{args.x_min:g}, {args.r_max:g}]  y [{y_lo:g}, {y_hi:g}]  cm  "
+        f"(sector {args.theta_min:g}..{args.theta_max:g} deg)"
+    )
     print(f"pages: {len(plan.tiles)}  ({plan.n_rows} rows x {plan.n_cols} cols of A4)")
     for t in plan.tiles:
         print(f"  row {t.row + 1} col {t.col + 1}: x [{t.x0:.1f}, {t.x1:.1f}]  y [{t.y0:.1f}, {t.y1:.1f}]")
