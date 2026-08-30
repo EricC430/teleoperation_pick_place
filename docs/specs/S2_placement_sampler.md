@@ -48,8 +48,10 @@ A        = f * π * (r_outer² - r_inner²)
 ## 3. 輸入
 
 ```
---r-inner 20 --r-outer 30
---theta-min -35 --theta-max 88          # 度，來自 S1
+--from-summary analysis/reach_summary_YYYY-MM-DD.json  # S1 的產出（見下）；可選
+--r-inner 20 --r-outer 30              # 與 --from-summary 互斥
+--theta-min -35 --theta-max 88          # 度，來自 S1；與 --from-summary 互斥
+--margin 3.0                            # cm；🔴 用 --from-summary 時強制明給，套用 r_outer = r_outer_raw − margin
 --n-train 50 --n-eval 30
 --d-min 2.0                             # cm；🔴 沒有預設值，必須明給
 --seed 20260831
@@ -57,6 +59,13 @@ A        = f * π * (r_outer² - r_inner²)
 --label   campaign_A_pilot_2cam
 --dry-run                               # 只做可行性檢查與統計，不寫檔
 ```
+
+**`--from-summary`（可選，來自 S1 `reach_summary_<date>.json`）：**
+- 讀 `r_inner_cm` → `r_inner`、`r_outer_topdown_cm` → **`r_outer_raw`**、`azimuth_min_deg` / `azimuth_max_deg` → `theta_min` / `theta_max`。
+- **`--margin` 仍強制手動明給**，套用 `r_outer = r_outer_raw − margin`（D023 §2026-08-31：腳本不自動減 margin）。
+- **同時給 `--from-summary` 和明給 `--r-outer` / `--r-inner` / `--theta-*` → 直接報錯退出**，不要默默擇一。
+- summary 裡 `fk_validation.passed == false` 時，印一行警告（radius 來自捲尺 fallback，精度較低）但不擋。
+- `_meta.json` 要記錄 `from_summary` 的檔名與其 `git_commit`。
 
 ## 4. 演算法
 

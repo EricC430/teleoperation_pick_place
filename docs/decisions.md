@@ -17,7 +17,8 @@ tell at a glance which entries still govern current state.
 |---|---|
 | 🔴 **Superseded — do not read as current state** | **D002** (platform: SO-ARM) → superseded by **D021** |
 | 🟡 **Open / proposed — not decided** | **D019** (action representation), **D020** (mobile base & XLeRobot — *its 2026-08-25 trigger lapsed; the meeting did not happen*), — |
-| ✅ **Resolved 2026-08-27** | **D025** → do it, but only after Phase B real data exists (complement to D007, not a reversal). **D021** → 甲: OMX to the end, SO-ARM is a spare. **D022** single-camera verified + 3-config recording plan. **D023** → A7 design unblocked; cable = REPLACE; r_outer 30 / r_inner 20 provisional. **D024** → 60 per campaign, position-OOD cancelled, training positions seeded, closed-loop 30 is in-distribution, uniform sampling replaces the 3×3 grid. |
+| ✅ **Resolved 2026-08-27** | **D025** → do it, but only after Phase B real data exists (complement to D007, not a reversal). **D021** → 甲: OMX to the end, SO-ARM is a spare. **D022** single-camera verified + 3-config recording plan. **D023** → A7 design unblocked; cable = REPLACE; r_outer 30 / r_inner 20 provisional. **2026-08-31:** the 33–43 cm figure disambiguated (grasp-approach band, not annulus/azimuth); `r_max` verdict logic dropped. **D024** → 60 per campaign, position-OOD cancelled, training positions seeded, closed-loop 30 is in-distribution, uniform sampling replaces the 3×3 grid. |
+| ✅ **Resolved 2026-08-31** | **D026** → reach logger measures by FK from the `omx_f` URDF (placo, LeRobot-native); tape measure is the fallback. `placo` enters the pinned env. |
 | ⚪ **Descoped, not cancelled** | **D008** (tactile → Phase D, "if time allows") |
 | ✅ **In force** | D001, D003–D007, D009–D018, D021–D023 |
 | 🔴 **Cancelled** | **D009** — recovery-hypothesis experiment on public data. **Cancelled 2026-08-27**: only 1 of 50 public episodes contained a corrective motion, so the comparison arm cannot be populated. **D005 stands but is now an untested design choice.** |
@@ -929,15 +930,17 @@ mattering":**
    point but has no usable approach angle. So margin is not optional padding — it is the difference
    between "the gripper can touch it" and "the policy can be taught to pick it up."
 
-**⚠️ The 33–43 cm figure is ambiguous and has NOT been disambiguated. Two readings:**
+**⚠️ The 33–43 cm figure was ambiguous. 🔴 DISAMBIGUATED 2026-08-31 `[Eric說]` — see the block
+"what 33–43 cm actually meant" below. Both readings entertained here were wrong; they are kept only
+for the reasoning trail.**
 
-| Reading | Meaning | Implication |
+| Reading (SUPERSEDED) | Meaning | Implication |
 |---|---|---|
-| **(a) annulus** | contact ring spans r = 33 → 43 cm | usable outer bound ≈ 43 cm |
-| **(b) azimuth-dependent** | max reach varies 33–43 cm **by direction**, because the cable constrains some directions more | usable outer bound = **33 cm**, the worst direction |
+| ~~(a) annulus~~ | contact ring spans r = 33 → 43 cm | usable outer bound ≈ 43 cm |
+| ~~(b) azimuth-dependent~~ | max reach varies 33–43 cm **by direction**, because the cable constrains some directions more | usable outer bound = **33 cm**, the worst direction |
 
-**Reading (b) is the more likely one for a cable constraint, and it is also the conservative one.**
-**→ Design against (b). Do not use 43 until (a) is confirmed by measurement.**
+~~Reading (b) is the more likely one for a cable constraint, and it is also the conservative one.~~
+~~→ Design against (b). Do not use 43 until (a) is confirmed by measurement.~~
 
 **Provisional workspace `[AI提議]` — design against the worst case:**
 
@@ -948,9 +951,12 @@ azimuth = the unconstrained sector only      # which side the cable limits is NO
 ```
 
 **Three numbers must still be measured on the next lab day. ~15 minutes, before anything else:**
+*(🔴 item 2 revised by the 2026-08-31 block above — measure `r_outer` top-down and side-only
+separately, not a single "r_max"; there is no (a)/(b) reading to confirm.)*
 
 1. **Which azimuth range the cable actually constrains** (sweep the arm left→right at full extension)
-2. **r_max in the worst azimuth** — this confirms or refutes reading (b)
+2. ~~**r_max in the worst azimuth** — this confirms or refutes reading (b)~~ → **`r_outer` (top-down
+   graspable) per azimuth, plus `r_outer_side` for the record** (D023 §2026-08-31)
 3. **r_min where a grasp approach is still feasible** — the inner bound
 
 **Then the provisional grid either holds as-is, or shrinks. It can never need to grow, which is the
@@ -974,7 +980,7 @@ still applies.
 
 | # | Script | What it must do | ⚠️ Verified constraint |
 |---|---|---|---|
-| 1 | **Reach logger** | While teleoperating, capture the gripper's planar (x, y) at the moment it touches the table, to establish r_outer / r_inner empirically | 🔴 **`omx_follower` exposes JOINT STATES ONLY — no end-effector pose.** Verified in `lerobot/src/lerobot/robots/omx_follower/omx_follower.py`. `RobotKinematics` (`lerobot/src/lerobot/model/kinematics.py`) can do FK **but requires a URDF path you supply and the `placo` package — no URDF ships with LeRobot.** ⚠️ placo availability in our pinned env is **unverified**. **Cheapest route: log joint state on keypress + type in a tape-measure reading.** Full FK is an optimisation, not a prerequisite |
+| 1 | **Reach logger** | While teleoperating, capture the gripper's planar (x, y) at the moment it touches the table, to establish r_outer / r_inner empirically | 🔴 **REVISED BY D026 (2026-08-31): FK from the `omx_f` URDF is now the method; tape measure is the fallback. The `omx_f` URDF exists and matches our arm; `placo` will be added to the pinned env.** Original note (kept for trail): `omx_follower` exposes joint states only (`omx_follower.py`); `RobotKinematics` (`model/kinematics.py`) needs a URDF + `placo`; placo availability was then unverified. Spec: `docs/specs/S1_reach_logger.md` |
 | 2 | **Uniform sampler** | Draw N points uniformly over the annular sector | 🔴 **Sampling r ~ U(r_inner, r_outer) is WRONG — it biases points toward the centre.** For uniform *area* density: `r = sqrt(U(r_inner², r_outer²))`, `θ = U(θ_min, θ_max)`. This is the classic annulus-sampling bug |
 | 3 | **Placement registration** | Guarantee a sampled coordinate is physically placed at that coordinate | Proposal: print a polar mat (radius rings + azimuth rays) keyed to the arm base. ⚠️ **A mat left in frame becomes part of the background — a scene constant baked into every demo.** **Place the object using the mat, then REMOVE the mat before recording.** ~10 s per episode |
 
@@ -1000,8 +1006,34 @@ decided it** `[Eric說]`. Under the source-tagging rule it is `[AI推論]` that 
 `PROVISIONAL` and **no demo is recorded against it.** Recording still waits for the cable.
 **A7 is unblocked for design; A8 remains blocked.**
 
+### 🔴 2026-08-31 `[Eric說]` — what "33–43 cm" actually meant
 
-- **Cross-reference:** D021, `docs/phase_plan.md` A6/A7, `docs/meeting/2026-08-24.md`.
+The 2026-08-24 figure was never an annulus and never an azimuth-dependence. Eric's account:
+
+| Figure | Meaning |
+|---|---|
+| **≈ 43 cm** | arm **fully extended**, approximate farthest point it can reach on the table. At that distance the **only feasible grasp is from the side** (horizontal approach). |
+| **≈ 33 cm** | farthest distance at which a **top-down grasp** (vertical / oblique approach) is still feasible. |
+
+So 33–43 cm is a **grasp-approach band**, not a reachability range. It is exactly the
+"grasp-feasible ⊊ reachable" gap that condition 2 above already named — now with numbers.
+
+**Consequences:**
+
+1. **The (a)/(b) ambiguity table above is void.** There is no "annulus vs azimuth-dependent" question
+   to settle, and `r_max` is no longer the quantity that decides anything.
+2. **`r_outer` for this experiment is the top-down-graspable bound.** The task's demos approach an
+   upright container from above/obliquely (§1-1; `experiment_spec.md` §2 L1 = upright opaque
+   bottle/can). Seeding a placement past the top-down bound would force the demonstrator into an
+   inconsistent side grasp there and corrupt the data. → operative bound ≈ **33 cm − grasp-angle
+   margin**. PROVISIONAL `r_outer = 30` still sits inside this, so nothing already written breaks.
+3. **The reach logger (script 1) must measure reach *per grasp approach*,** not merely "gripper
+   touches table". See **D026** and `docs/specs/S1_reach_logger.md`.
+4. **The cable constraint is a separate, still-unmeasured axis.** The cable removes reachable space in
+   some azimuths; the azimuth-limit sweep captures that, independent of the 33/43 grasp band.
+
+
+- **Cross-reference:** D021, D026, `docs/phase_plan.md` A6/A7, `docs/meeting/2026-08-24.md`.
 
 ---
 
@@ -1288,6 +1320,75 @@ D007 反對的是**用模擬取代實機**；這裡是**用實機錨定模擬**�
 - ~~**Next step before this can be decided:** clone the two repos, confirm whether an OMX URDF exists and
   whether any OMX USD exists. **Until then this stays PROPOSED.**~~ → **DECIDED 2026-08-27, see above.**
 - **Cross-reference:** D007, D008, D021, `docs/phase_plan.md`.
+
+---
+
+## D026 — Reach logger measures via FK from the OMX URDF, not a tape measure
+
+- **Date:** 2026-08-31
+- **Decision `[Eric決定]`:** Script 1 (`scripts/reach_logger.py`, spec `docs/specs/S1_reach_logger.md`)
+  computes the gripper's planar `(x, y)` by **forward kinematics** from the live joint angles plus the
+  `omx_f` URDF. The tape measure becomes a **fallback**, used only if FK cannot be stood up or fails
+  its on-site validation.
+- **Supersedes:** the "⚠️ Verified constraint" note in D023's script table that read *"Cheapest route:
+  log joint state + type in a tape-measure reading. Full FK is an optimisation, not a prerequisite."*
+  That was correct when placo/URDF availability was unverified; both are now resolved.
+- **What changed since D023 said "tape measure":**
+  1. **The URDF exists and matches our arm.** `ROBOTIS-GIT/open_manipulator`
+     `open_manipulator_description/urdf/omx_f/omx_f.urdf` — 5 revolute arm joints + 2 gripper joints.
+     `joint1` axis `(0,0,1)` = the vertical base yaw = `shoulder_pan`; `joint2/3/4` = `shoulder_lift`
+     / `elbow_flex` / `wrist_flex` (axis `0,1,0`); `joint5` axis `(1,0,0)` = `wrist_roll`. Link
+     origins are concrete metres. `[已查證 2026-08-31 讀 raw URDF]`
+  2. **LeRobot ships an FK path.** `lerobot/src/lerobot/model/kinematics.py` `RobotKinematics(urdf_path,
+     target_frame_name, joint_names)` → `forward_kinematics(joint_pos_deg)` returns a 4×4 pose. It
+     needs the `placo` package (pyproject extra `placo-dep`). `[已查證]`
+  3. **`placo` is installable.** `[Eric決定]` accepts adding it to the pinned env. It is **not**
+     currently installed (`import placo` → ModuleNotFoundError, 2026-08-30).
+  4. **Eric's stated reason:** the base→table frame tie and the URDF FK capability will be **reused**
+     later — the placement mat (S3), placement-accuracy verification, and the mobile-base geometry
+     check in D023's §2026-08-27 criterion 1 all need a validated arm URDF + transform.
+- **Known URDF gaps (do not skip validating):**
+  - Joint limits in `omx_f.urdf` are placeholders (`±6.28`, effort `1000`, velocity `4.8` on every
+    joint). Fine for FK *geometry*; useless for dynamics. Same class of issue D025 flags for the
+    inertials.
+  - URDF joint zero ≠ Dynamixel factory-default encoder zero (`calibration/2026-08-24_omx_follower_arm.json`
+    is all factory defaults — `homing_offset 0`). A **per-joint offset** must be measured once, on
+    site, by the 5-pose validation test (`field_manual.md` §4-1 method).
+- **placo vs ROS 2 — resolved for this script:** use **placo** (LeRobot-native, one `uv` extra). If
+  placo will not install in the pinned env, fall back to a **hand-coded 5-transform chain** from the
+  URDF link origins (~30 lines, zero new dependency) — **not** ROS 2. ROS 2 (`robot_state_publisher` +
+  tf2) is the right tool for the *mobile-base* interface question (D023 §2026-08-27 criterion 6) but
+  is disproportionate for computing FK of five joints in a logging script. Listed as implementation
+  step 1 in S1 §3.
+- **🔴 2026-08-31 outcome — placo does NOT install on the Windows laptop → hand-coded FK it is.**
+  `uv pip install "placo>=0.9.6,<0.9.16" "cmeel-urdfdom>=4,<5" …` fails: `cmeel-urdfdom` has no
+  Windows wheel, builds from source via CMake, and the `cmeel-console-bridge` sub-build errors out.
+  This is the fallback branch D026 anticipated. **The hand-coded chain is now the implementation, not
+  a contingency.** It is clean here: `omx_f.urdf` has **all joint `rpy="0 0 0"`** and 5 revolute
+  joints, so FK = translate-by-origin then rotate-about-axis, five times, then the fixed EE offset.
+  URDF saved to `assets/omx_f/omx_f.urdf` and read in full (`[已查證 2026-08-31]`); joint table in
+  `docs/specs/S1_reach_logger.md` §2. `matplotlib` + `pytest` installed into the venv without issue.
+  The LeRobot `RobotKinematics`/placo path stays documented as the route to use if the reach logger
+  ever runs on a Linux box.
+- **🔴 2026-08-31 — placo has NO Windows wheel at all** (every version on PyPI ships only
+  macOS/manylinux + a source tarball; verified). Source build needs the whole cmeel/CMake/MSVC/Boost
+  chain — disproportionate. `[Eric決定]` adopt option (a): keep the hand-coded `reach_logger/fk.py`
+  and add **`urchin`** (pure-Python URDF FK, Windows wheels fine) as a **test-only** oracle —
+  `tests/test_fk_vs_urchin.py` cross-checks the 4×4 transform at random joint configs to 1e-9.
+  `fk.py` currently matches it exactly.
+- **Accepted costs:**
+  - `placo` enters the pinned environment → `docs/environment.md` gains an entry; existing
+    `lerobot-teleoperate` / `lerobot-record` must be smoke-tested after the install.
+  - One lab-day block (~15–20 min) spent on the 5-pose FK validation before any reach sample is
+    trusted. If it fails, the session falls back to the tape measure and no lab day is lost beyond
+    that block.
+  - S1 is on the critical path to unfreezing A7/A8; the FK setup adds risk to that path. Mitigation:
+    the tape-measure fallback keeps the lab day productive even if FK validation fails.
+- **Reverse if:** the 5-pose validation shows FK EE positions disagreeing with physical measurement by
+  more than ~1 cm and the cause is not a fixable constant offset → use the tape-measure fallback for
+  this campaign and reconsider the URDF.
+- **Cross-reference:** D023, D024, D025, `docs/specs/S1_reach_logger.md`, `docs/specs/S3_placement_mat.md`,
+  `docs/environment.md`, `lerobot/src/lerobot/model/kinematics.py`.
 
 ---
 

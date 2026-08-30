@@ -262,6 +262,21 @@ by the framework.
 Install on the **GPU machine first** — it has the tighter constraints (driver ceiling, no sudo).
 Whatever versions resolve cleanly there become the target for the laptop, not the other way round.
 
+## ⏳ Pending: `placo` for FK (D026, decided 2026-08-31, not yet installed)
+
+`scripts/reach_logger.py` (spec `docs/specs/S1_reach_logger.md`) needs `placo` for
+`lerobot.model.kinematics.RobotKinematics`. Install path: `uv sync --extra placo-dep`
+(or `uv pip install placo`). **As of 2026-08-31 it is NOT installed** (`import placo` →
+ModuleNotFoundError, laptop, pinned env).
+
+When installing:
+- Do it on the machine that will run the reach logger (the laptop at the lab).
+- **Smoke-test after:** `uv run lerobot-teleoperate --help` and a short `lerobot-record` dry run
+  must still pass — adding placo must not perturb the existing pipeline.
+- Record the resolved `placo` version in the Version record table below.
+- If it will not resolve in the pinned env, S1 falls back to a hand-coded transform chain from the
+  URDF (D026) — do **not** pull in ROS 2 for this.
+
 ## Pinning: `latest` is not a pin
 
 `latest` moves. Record the **digest**, which doesn't.

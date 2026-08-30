@@ -15,6 +15,8 @@
 - [ ] USB hub 已接、裝置都被辨識到（COM port & USB Cameras）
 - [ ] 相機已被系統與 LeRobot 辨識到（Wrist + Front）
 - [ ] 目標物體已備妥（見 `docs/experiment_spec.md` §2 物體清單）
+- [ ] 現場工具：**螺絲起子**（手臂底座／夾爪鎖固）、**捲尺**、**極座標定位墊**
+      （墊子供 S1 量工作範圍、後續放置配置點物體共用；見 `docs/specs/S1_reach_logger.md`、`docs/decisions.md` D023）
 
 ---
 
@@ -182,8 +184,11 @@ date,pose_id,joint,leader_deg,follower_deg,delta_deg,note
 在工作區桌面用膠帶標出**凍結抽樣清單裡的配置點**與**目標區**，然後逐點檢查。
 
 > 🔴 **2026-08-30：原文寫的「3×3 網格」已作廢（D024）。** 配置點來自 §5 的面積均勻抽樣清單。
-> ⚠️ **清單尚未產生**（要先量到 r_inner / r_outer / 受限方位角，見 D023）。
-> **在那之前，這一節只能用「暫定的幾個代表點」做可達性檢查，不得當成凍結配置。**
+> ⚠️ **清單尚未產生**（要先量到 r_inner / r_outer / 受限方位角）。
+> **量測程序見 `docs/specs/S1_reach_logger.md`（`scripts/reach_logger.py`，FK 量測，D026）；
+> 抽樣見 `docs/specs/S2_placement_sampler.md`；墊子見 `docs/specs/S3_placement_mat.md`。**
+> 🔴 **D023 §2026-08-31：`r_outer` 是「top-down 可夾」的最遠半徑，不是手臂伸直可及的 43 cm。**
+> **在清單產生前，這一節只能用「暫定的幾個代表點」做可達性檢查，不得當成凍結配置。**
 
 | 檢查項 | 怎麼做 | 不通過的意義 |
 |---|---|---|

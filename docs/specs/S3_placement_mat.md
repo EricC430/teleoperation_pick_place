@@ -26,13 +26,28 @@ A4「實際大小」列印在多數驅動裡不是預設值。縮放 96% 的墊�
 
 ### 2-3 原點對不準比刻度不準更嚴重
 
-墊子的極點必須對到**手臂基座的旋轉中心**，不是基座外殼的邊。
+墊子的極點必須對到**手臂基座的旋轉中心**（= `omx_f` URDF 的 `joint1` 軸 = S1 FK 的 base 原點），
+不是基座外殼的邊。
 → 墊子中央要有十字準星與一段說明；`docs/experiment_spec.md` §3 的「手臂基座位置」要一起量。
+
+### 2-4 墊子的 0° 射線 = S1 `reference` 的墊子框架
+
+S1（`docs/specs/S1_reach_logger.md` §6，D026）量到一個 `azimuth_offset_deg`，把 FK 的 base 框架
+綁到「這張墊子的 0° 射線」。S2 輸出的 `theta_deg` 就是**這個墊子框架**的角度。所以：
+
+- 墊子必須畫出一條明確標「0°」的射線，S3 的所有 `placement_id` 十字都相對它擺。
+- 墊子邊緣要有一個**實體對位記號**（缺口／對齊線／貼合基座夾具輪廓的形狀），讓現場每次都能把墊子
+  擺回同一個旋轉方向 —— 不能只靠目視「手臂大概指這邊」。
+- `--from-summary` 帶入 `reach_summary.json` 時，S3 要在操作卡上印出該檔的 `azimuth_offset_deg`
+  與 `azimuth_frame`，並在墊子上把 0° 射線標成「對齊 S1 reference」。
+- `reach_summary.json` 的 `azimuth_frame == "base"`（S1 沒記 reference）時 → **S3 拒絕出正式墊子**，
+  印訊息要求先補一次 S1 `reference` 樣本。粗界線可以沒有它，可比性配置點不行。
 
 ## 3. 輸入
 
 ```
 --placements configs/placements/<label>_train.csv    # S2 的輸出
+--from-summary analysis/reach_summary_YYYY-MM-DD.json # S1 產出；讀 azimuth_offset_deg + 檢查 frame（見 §2-4）
 --r-inner 20 --r-outer 30
 --theta-min -35 --theta-max 88
 --out docs/assets/placement_mat_<label>.pdf
