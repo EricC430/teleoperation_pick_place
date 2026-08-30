@@ -33,6 +33,19 @@ _MARKER = {
     "eval-close": "^",
 }
 
+# Print-tuned greyscale. A laser printer drops light greys (below ~0.75) at thin
+# line widths -- Eric's first print showed only the 5 cm lines. These are darker
+# and solid (no alpha, which compounds with grey to fade out on paper).
+_INK_MM = "0.60"       # fine mm grid
+_INK_CM = "0.38"       # 1 cm grid
+_INK_5CM = "0.10"      # 5 cm grid (near black)
+_INK_POLAR = "0.45"    # polar rings + rays
+_INK_LABEL = "0.25"    # axis / ring / ray numbers
+_LW_MM = 0.4
+_LW_CM = 0.7
+_LW_5CM = 1.1
+_LW_POLAR = 0.7
+
 
 @dataclass(frozen=True)
 class TileOpts:
@@ -113,38 +126,38 @@ def build_tile_figure(
         spine.set_linewidth(0.4)
         spine.set_color("0.6")
 
-    # --- Cartesian grid ---------------------------------------------------
+    # --- Cartesian grid -------------------------------------------------
     for gx in _frange(tile.x0, tile.x1, opts.grid_mm / 10.0):
-        ax.axvline(gx, color="0.90", lw=0.3, zorder=0)
+        ax.axvline(gx, color=_INK_MM, lw=_LW_MM, zorder=0)
     for gy in _frange(tile.y0, tile.y1, opts.grid_mm / 10.0):
-        ax.axhline(gy, color="0.90", lw=0.3, zorder=0)
+        ax.axhline(gy, color=_INK_MM, lw=_LW_MM, zorder=0)
     for gx in _frange(tile.x0, tile.x1, 1.0):
-        ax.axvline(gx, color="0.72", lw=0.5, zorder=0)
+        ax.axvline(gx, color=_INK_CM, lw=_LW_CM, zorder=0)
     for gy in _frange(tile.y0, tile.y1, 1.0):
-        ax.axhline(gy, color="0.72", lw=0.5, zorder=0)
+        ax.axhline(gy, color=_INK_CM, lw=_LW_CM, zorder=0)
     for gx in _frange(tile.x0, tile.x1, 5.0):
-        ax.axvline(gx, color="0.45", lw=0.8, zorder=0)
-        ax.text(gx, tile.y0 + 0.3, f"x={gx:g}", fontsize=5, color="0.4", ha="left", va="bottom")
+        ax.axvline(gx, color=_INK_5CM, lw=_LW_5CM, zorder=0)
+        ax.text(gx, tile.y0 + 0.3, f"x={gx:g}", fontsize=5, color=_INK_LABEL, ha="left", va="bottom")
     for gy in _frange(tile.y0, tile.y1, 5.0):
-        ax.axhline(gy, color="0.45", lw=0.8, zorder=0)
-        ax.text(tile.x0 + 0.3, gy + 0.15, f"y={gy:g}", fontsize=5, color="0.4", ha="left", va="bottom")
+        ax.axhline(gy, color=_INK_5CM, lw=_LW_5CM, zorder=0)
+        ax.text(tile.x0 + 0.3, gy + 0.15, f"y={gy:g}", fontsize=5, color=_INK_LABEL, ha="left", va="bottom")
 
     # --- polar overlay: rings + rays, only inside the 180deg (or given) sector --
     a_lo, a_hi = opts.theta_min_deg, opts.theta_max_deg
     th = [math.radians(a) for a in _frange(a_lo, a_hi, 1.0)]
     for rr in _frange(max(opts.ring_step, 0.1), opts.r_max, opts.ring_step):
         ax.plot([rr * math.cos(t) for t in th], [rr * math.sin(t) for t in th],
-                color="tab:blue", lw=0.5, alpha=0.5, zorder=1)
+                color=_INK_POLAR, lw=_LW_POLAR, zorder=1)
         ax.text(rr * math.cos(math.radians(a_hi)), rr * math.sin(math.radians(a_hi)),
-                f"{rr:g}", fontsize=5, color="tab:blue", alpha=0.8)
+                f"{rr:g}", fontsize=5, color=_INK_LABEL)
     ray0 = math.ceil(a_lo / opts.ray_step) * opts.ray_step
     for a in _frange(ray0, a_hi, opts.ray_step):
         e = math.radians(a + opts.azimuth_offset_deg)
         ax.plot([0, opts.r_max * math.cos(e)], [0, opts.r_max * math.sin(e)],
-                color="tab:blue", lw=0.4, alpha=0.4, zorder=1)
+                color=_INK_POLAR, lw=_LW_POLAR, zorder=1)
         lx, ly = opts.r_max * 1.0 * math.cos(e), opts.r_max * 1.0 * math.sin(e)
         if tile.x0 <= lx <= tile.x1 and tile.y0 <= ly <= tile.y1:
-            ax.text(lx, ly, f"{a:g}°", fontsize=5, color="tab:blue", alpha=0.8)
+            ax.text(lx, ly, f"{a:g}°", fontsize=5, color=_INK_LABEL)
 
     # origin furniture, only on the tile that contains (0,0)
     if tile.x0 <= 0 <= tile.x1 and tile.y0 <= 0 <= tile.y1:
