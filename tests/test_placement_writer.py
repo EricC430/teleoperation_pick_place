@@ -10,7 +10,7 @@ from placement_sampler.geometry import Sector
 from placement_sampler.sampler import sample_lists
 from placement_sampler.writer import OutputExists, write_outputs
 
-SECTOR = Sector(r_inner=20.0, r_outer=30.0, theta_min=-35.0, theta_max=88.0)
+SECTOR = Sector(r_inner=20.0, r_outer=30.0, theta_min=-90.0, theta_max=90.0)
 COUNTS = {"train": 50, "eval-open": 10, "eval-close": 30}
 
 

@@ -7,10 +7,45 @@ import math
 import pytest
 
 from placement_sampler.geometry import Sector
-from placement_sampler.sampler import SamplingStuck, sample_lists
+from placement_sampler.sampler import SamplingStuck, equal_area_cells, sample_lists
 
-SECTOR = Sector(r_inner=20.0, r_outer=30.0, theta_min=-35.0, theta_max=88.0)
+# A sector with real headroom for 90 points at d_min 2. The provisional
+# 123-deg sector is near saturation (see the feasibility check / D024) and is
+# covered by test_impossible_request_raises_sampling_stuck instead.
+SECTOR = Sector(r_inner=20.0, r_outer=30.0, theta_min=-90.0, theta_max=90.0)
 COUNTS = {"train": 50, "eval-open": 10, "eval-close": 30}
+
+
+def _cell_area(cell):
+    a0, a1, t0, t1 = cell
+    return math.radians(t1 - t0) / 2.0 * (a1 - a0)
+
+
+def test_equal_area_cells_are_all_the_same_area_and_cover_the_sector():
+    cells = equal_area_cells(50, SECTOR)
+    assert len(cells) >= 50
+    areas = [_cell_area(c) for c in cells]
+    assert max(areas) - min(areas) < 1e-9
+    # radius^2 range and angle range are fully covered
+    assert min(c[0] for c in cells) == SECTOR.r_inner**2
+    assert max(c[1] for c in cells) == SECTOR.r_outer**2
+    assert min(c[2] for c in cells) == SECTOR.theta_min
+    assert max(c[3] for c in cells) == SECTOR.theta_max
+
+
+def test_stratified_fills_every_coarse_quadrat():
+    # 12 equal-area quadrats (3 radius bands x 4 azimuth bands); with 50 points
+    # stratified, none should be empty -- that is the whole point of the change.
+    lists = sample_lists(SECTOR, d_min=2.0, counts=COUNTS, seed=20260831)
+    band_r = [SECTOR.r_inner**2 + k * (SECTOR.r_outer**2 - SECTOR.r_inner**2) / 3 for k in range(4)]
+    band_t = [SECTOR.theta_min + k * (SECTOR.theta_max - SECTOR.theta_min) / 4 for k in range(5)]
+    counts = {}
+    for p in lists["train"]:
+        i = max(0, min(2, next(k for k in range(3) if p.r_cm**2 <= band_r[k + 1] + 1e-6)))
+        j = max(0, min(3, next(k for k in range(4) if p.theta_deg <= band_t[k + 1] + 1e-6)))
+        counts[(i, j)] = counts.get((i, j), 0) + 1
+    assert len(counts) == 12
+    assert min(counts.values()) >= 1
 
 
 def _all_points(lists):
@@ -47,8 +82,8 @@ def test_every_pair_across_all_three_lists_is_at_least_d_min_apart():
 def test_all_points_lie_inside_the_sector():
     lists = sample_lists(SECTOR, d_min=2.0, counts=COUNTS, seed=3)
     for p in _all_points(lists):
-        assert 20.0 <= p.r_cm <= 30.0
-        assert -35.0 <= p.theta_deg <= 88.0
+        assert SECTOR.r_inner <= p.r_cm <= SECTOR.r_outer
+        assert SECTOR.theta_min <= p.theta_deg <= SECTOR.theta_max
 
 
 def test_same_seed_reproduces_identical_coordinates():

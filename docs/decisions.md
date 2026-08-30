@@ -1143,6 +1143,12 @@ Ratified while freezing the S2 spec. 正本 for the mechanics: `docs/specs/S2_pl
 - **`d_min` is the minimum separation between *every* pair of points across all three lists**, not
   just train↔eval. Area-uniform sampling rarely places points close anyway; making it global costs
   little and removes an ambiguity.
+- **Sampling is stratified, not pure random** (`[Eric決定]` 2026-08-31). Each list's sector is cut
+  into `n` equal-area cells (radius split on `r²`, azimuth split on angle); one uniform-random point
+  per cell. Pure dart-throwing at n≈30 leaves luck-of-the-seed empty patches, and these lists exist
+  to make failure *clustering* visible — a coverage sample must actually cover. Still seeded, still
+  random within each cell, still byte-identical per seed. `d_min` is enforced by redrawing inside the
+  same cell. 正本 for the algorithm: `docs/specs/S2_placement_sampler.md` §4.
 - **`--margin` is NOT applied to `r_inner`** — only `r_outer −` and both azimuth edges. The failure
   mechanisms cluster at the outer boundary and constrained azimuth; margining the inner edge spends a
   large fraction of an already-tight annulus for little gain. Add `--margin-inner` later if needed.
