@@ -1,0 +1,1 @@
+ts_iso,sample_type,method,radius_cm,ee_x_cm,ee_y_cm,ee_z_cm,azimuth_base_deg,azimuth_mat_deg,shoulder_pan_pos,shoulder_lift_pos,elbow_flex_pos,wrist_flex_pos,wrist_roll_pos,gripper_pos,note
