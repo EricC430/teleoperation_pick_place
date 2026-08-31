@@ -54,7 +54,7 @@ KEY = "episode_index"
 # schema
 # --------------------------------------------------------------------------
 def load_schema(path):
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         schema = yaml.safe_load(f)
     fields = schema.get("fields") or []
     if not fields:
@@ -143,7 +143,7 @@ def load_dataset_info_from_json(dataset, root=None):
     info_path = find_info_json(dataset, root)
     if info_path is None:
         return None, {}
-    with open(info_path) as f:
+    with open(info_path, encoding="utf-8") as f:
         info = json.load(f)
     return info.get("total_episodes"), {}
 
@@ -182,7 +182,7 @@ def csv_path_for(dataset, explicit):
 def read_csv(path):
     if not os.path.exists(path):
         return {}, []
-    with open(path, newline="") as f:
+    with open(path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         columns = list(reader.fieldnames or [])
         rows = {}
@@ -211,7 +211,7 @@ def write_csv(path, rows, fields, existing_columns):
         os.makedirs(directory)
 
     tmp = path + ".tmp"
-    with open(tmp, "w", newline="") as f:
+    with open(tmp, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=columns, extrasaction="ignore")
         writer.writeheader()
         for idx in sorted(rows):

@@ -81,6 +81,34 @@ def _ask(prompt: str) -> str:
         return ""
 
 
+def _pump_until_enter(robot, prompt: str) -> None:  # pragma: no cover - interactive
+    """Wait for Enter. In teleop mode, keep servoing the follower to the leader
+    meanwhile — otherwise the follower is torque-locked and never tracks while the
+    operator is posing the arm (a plain input() would freeze the teleop loop)."""
+    if getattr(robot, "mode", "") != "teleop":
+        input(prompt)  # follower-only / tape: nothing to servo, just block on Enter
+        return
+
+    from pynput import keyboard
+
+    print(prompt)
+    pressed: list[bool] = []
+
+    def on_press(key) -> bool:
+        if key == keyboard.Key.enter:
+            pressed.append(True)
+            return False
+        return True
+
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()
+    try:
+        while not pressed:
+            robot.step()
+    finally:
+        listener.stop()
+
+
 def _ask_float(prompt: str) -> float | None:
     raw = _ask(prompt)
     if not raw:
@@ -102,7 +130,7 @@ def run_five_pose_validation(
     names = ("home", "+J1", "+J2", "+J3", "gripper")
     checks: list[validation.PoseCheck] = []
     for name in names:
-        input(f"  put the arm at [{name}] and press Enter…")
+        _pump_until_enter(robot, f"  move the leader to [{name}] and press Enter…")
         jv = joints.joint_vector(robot.read_ticks(), calib)
         from reach_logger import fk
 

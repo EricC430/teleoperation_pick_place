@@ -12,6 +12,7 @@ test - loads without a serial port present.
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from pathlib import Path
 from types import TracebackType
 from typing import Protocol, runtime_checkable
 
@@ -158,8 +159,10 @@ def _load_omx(config_path: str, mode: str):  # pragma: no cover - needs lerobot 
 
     cfg = yaml.safe_load(open(config_path, encoding="utf-8"))
     rc = cfg["robot"]
+    # yaml.safe_load leaves calibration_dir as a str; the lerobot base classes
+    # call .mkdir() on it directly (draccus would coerce, but we bypass draccus).
     follower = OmxFollower(
-        OmxFollowerConfig(port=rc["port"], id=rc["id"], calibration_dir=rc["calibration_dir"])
+        OmxFollowerConfig(port=rc["port"], id=rc["id"], calibration_dir=Path(rc["calibration_dir"]))
     )
     leader = None
     if mode == "teleop":
@@ -167,7 +170,7 @@ def _load_omx(config_path: str, mode: str):  # pragma: no cover - needs lerobot 
 
         tc = cfg["teleop"]
         leader = OmxLeader(
-            OmxLeaderConfig(port=tc["port"], id=tc["id"], calibration_dir=tc["calibration_dir"])
+            OmxLeaderConfig(port=tc["port"], id=tc["id"], calibration_dir=Path(tc["calibration_dir"]))
         )
     return follower, leader
 
