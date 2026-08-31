@@ -17,7 +17,8 @@ tell at a glance which entries still govern current state.
 |---|---|
 | 🔴 **Superseded — do not read as current state** | **D002** (platform: SO-ARM) → superseded by **D021** |
 | 🟡 **Open / proposed — not decided** | **D019** (action representation), **D020** (mobile base & XLeRobot — *its 2026-08-25 trigger lapsed; the meeting did not happen*), — |
-| ✅ **Resolved 2026-08-27** | **D025** → do it, but only after Phase B real data exists (complement to D007, not a reversal). **D021** → 甲: OMX to the end, SO-ARM is a spare. **D022** single-camera verified + 3-config recording plan. **D023** → A7 design unblocked; cable = REPLACE; r_outer 30 / r_inner 20 provisional. **2026-08-31:** the 33–43 cm figure disambiguated (grasp-approach band, not annulus/azimuth); `r_max` verdict logic dropped. **D024** → 60 per campaign, position-OOD cancelled, training positions seeded, closed-loop 30 is in-distribution, uniform sampling replaces the 3×3 grid. |
+| ✅ **Resolved 2026-08-27** | **D025** → do it, but only after Phase B real data exists (complement to D007, not a reversal). **D021** → 甲: OMX to the end, SO-ARM is a spare. **D022** single-camera verified + 3-config recording plan; **2026-09-01 `[Eric決定]`: D405 is the interim wrist camera until the UVC module arrives OR Phase C is reached** — interim config = D405 wrist + D455 third-person; D405→UVC swap and Phase C are both re-record boundaries. **D024** → 60 per campaign, position-OOD cancelled, training positions seeded, closed-loop 30 is in-distribution, uniform sampling replaces the 3×3 grid. |
+| 🔴 **D023 — status changed 2026-08-31** | Cable resolved **by RE-ROUTING the existing cable, not replacement** (`[Eric說]`; lab had no spare). **The 2026-08-27 conservative-workspace exemption is VOID** (a re-route is not a monotone relaxation); A7's original gate is back. **Tape measurement (FK failed → D026):** `r_outer` top-down ≈ **41 cm**, side-only ≈ 49, `r_inner` ≈ **22** (all + `d_offset` 5 cm, pan axis → chassis edge). Azimuth sector ≈ **135°** (`theta ∈ [−90°, +45°]`), edge = **arm body physically hits the third-person camera mount** if rotated past — a hard mechanical limit, not FOV, not the cable. **Scope: Phase-A pilot layout only; Phase B on the vehicle re-runs S1/S2 from scratch** (`[Eric說]`). Next: S2 `--dry-run` feasibility. See D023 §2026-08-31 points 5–6. **2026-08-31 (earlier):** the 33–43 cm figure disambiguated (grasp-approach band); `r_max` verdict logic dropped. |
 | ✅ **Resolved 2026-08-31** | **D026** → reach logger measures by FK from the `omx_f` URDF (placo, LeRobot-native); tape measure is the fallback. `placo` enters the pinned env. |
 | ⚪ **Descoped, not cancelled** | **D008** (tactile → Phase D, "if time allows") |
 | ✅ **In force** | D001, D003–D007, D009–D018, D021–D023 |
@@ -872,10 +873,55 @@ weeks while the decision log, which is the 正本, still listed the pre-amendmen
   Since the pilot records both streams anyway, the comparison costs one extra training run, not one
   extra recording campaign. `[已查證：查了，沒有找到]`
 
+### 2026-08-31 `[Eric說]` — D405 physically mounted on the wrist for measurement; NO decision yet
+
+Eric mounted the D405 on the wrist using **a mounting method that had previously been set aside**,
+and ran a full teleop session with it in place.
+
+**Findings — evidence, not a reversal. D022 is unchanged:**
+
+- **The mount holds.** The previously-discarded method works mechanically.
+- **Observable droop:** with the arm fully extended, the wrist end **sags slightly** under the D405's
+  mass. This is the first *measured* confirmation of D022's "too heavy" claim, which until now was an
+  inference from the workshop discussion.
+- **Correlates with the §4-1 offset baseline:** `analysis/teleop_offset_2026-08-31.csv` shows
+  `wrist_flex` leader→follower deltas of **+3.5° to +6.0°** across poses (flagged 🟡/🔴) — by far the
+  largest of any joint (every other joint < 1.6°). Consistent with added wrist-end load on that axis.
+  ⚠️ **Not yet isolated:** this baseline was taken *with* the D405 on. A no-D405 baseline is needed to
+  separate gravity/load from intrinsic gear backlash.
+
+**Status (2026-08-31): `[未確認]` — deferred to an advisor / 柏宇 discussion.**
+
+### ✅ 2026-09-01 `[Eric決定]` — D405 IS the interim wrist camera, with a defined end condition
+
+**The D405 rides on the wrist and is recorded as the wrist camera until *either*:**
+
+1. **the dedicated USB UVC module arrives** (and proves usable), *or*
+2. **work has advanced to Phase C** (vehicle / outdoor — a full re-record anyway).
+
+This supersedes D022's earlier "two third-person cameras" interim plan: the interim configuration is
+now **D405 wrist + one third-person (D455)**, i.e. the wrist+third-person geometry, just with the
+D405 standing in for the future UVC module.
+
+**Consequences:**
+
+- The pilot / early-Phase-B campaign is **D405-wrist + D455-third-person**. `configs/record_omx.yaml`
+  reflects this (`wrist` = D405 SN 260322271459, `front-left` = D455 SN 262822305610).
+- **Swapping D405 → UVC later is a scene-constant change** (wrist mass *and* image characteristics)
+  → a re-record boundary. Data recorded with the D405 wrist is not poolable with post-UVC data.
+- Reaching **Phase C** is a re-record boundary regardless.
+- The known cost stands: D405 wrist mass droops the arm at full extension and inflates the
+  `wrist_flex` teleop offset (2026-08-31 block above; `analysis/teleop_offset_2026-08-31.csv`).
+- 🔴 **D405 RGB auto-exposure runs hot at wrist range** (washed-out / very bright — seen in the
+  2026-08-31 pilot videos). Before the real pilot, set fixed `exposure` / `gain` / `white_balance`
+  in `configs/record_omx.yaml`, freeze them as scene constants in `experiment_spec.md` §3, and
+  follow the tuning procedure in `docs/field_manual.md` §5-(0).
+
 - **Accepted costs:** one more purchase and its lead time; interim pilot data may not be poolable.
 - **Reverse if:** the UVC module arrives and proves unusable (frame rate, latency, or mounting), in
   which case re-open the D405-with-counterweight option or source a lighter depth camera.
-- **Cross-reference:** D004, D021, `docs/camera_mount.md`, `docs/hardware.md`.
+- **Cross-reference:** D004, D021, `docs/camera_mount.md`, `docs/hardware.md`,
+  `analysis/teleop_offset_2026-08-31.csv`.
 
 ---
 
@@ -1032,8 +1078,93 @@ So 33–43 cm is a **grasp-approach band**, not a reachability range. It is exac
 4. **The cable constraint is a separate, still-unmeasured axis.** The cable removes reachable space in
    some azimuths; the azimuth-limit sweep captures that, independent of the 33/43 grasp band.
 
+### 🔴 2026-08-31 `[Eric說]` — cable resolved by RE-ROUTING the existing cable, NOT replacement
 
-- **Cross-reference:** D021, D026, `docs/phase_plan.md` A6/A7, `docs/meeting/2026-08-24.md`.
+The lab had **no spare Robot Cable-X3P** (confirmed on site, 2026-08-31). The clearance problem was
+solved by **re-routing the existing cable through the space** (`docs/hardware.md` 解法 1), not by
+swapping in a longer one.
+
+**This voids the 2026-08-27 conservative-workspace exemption.** That exemption rested entirely on
+*"a longer cable only adds reachable space back"* — a monotone relaxation, under which any placement
+chosen strictly inside the currently-reachable region stays reachable afterwards. **A re-route is not
+monotone:** it can remove reachable space in one azimuth while adding it in another. Condition 1 of
+the 2026-08-27 exemption named this exact case as the thing that would void it. It fired.
+
+**Consequences:**
+
+1. **D023's original gate is back for A7.** The 30 seeded placements may still be *designed*, but the
+   frozen list must be built from a **fresh S1 measurement of the re-routed configuration** — in
+   particular the azimuth sweep (`a` key in `reach_logger.py`), to establish which directions, if
+   any, the re-routed cable still limits. Provisional `r_outer = 30 / r_inner = 20` stay PROVISIONAL
+   and are now *unbacked* by the invariance argument, not merely unmeasured.
+2. **The re-routed cable path is now a scene constant.** Photograph it and mark it (tape + pen).
+   If it is ever re-routed again, every demo recorded against the resulting placements is invalidated
+   — the failure mode D023 exists to prevent.
+3. **A8 (recording) stays blocked** until S1 has characterised the re-routed reachable set and the
+   placement list is frozen against it. Re-routing removed the *hard* motion limit; it did not
+   remove the requirement to measure before freezing.
+4. **No spare cable was bought.** If a proper-length replacement is later sourced and installed, that
+   is itself a workspace change → re-measure and re-freeze.
+5. **2026-08-31 tape measurement (`[Eric說]`; FK validation failed → D026 tape fallback):**
+   `d_offset` (pan axis → chassis bottom edge) ≈ 5 cm; radii below already add it back:
+   `r_outer` top-down ≈ **41 cm**, `r_outer` side-only ≈ **49 cm**, `r_inner` ≈ **22 cm**.
+   Effective azimuth sector ≈ **135°** (`theta ∈ [−90°, +45°]`, 0° = forward).
+   🔴 **The sector edge is a hard mechanical limit: rotate the arm past it and the arm body physically
+   strikes the third-person camera / its mount.** It is NOT camera field-of-view (not "the object
+   leaves frame") and NOT the re-routed cable. So the open worry in point 1 ("which directions the
+   re-route limits") resolves to: **the re-route imposed no azimuth limit in the task region; the
+   camera *mount position* does.** Consequence: the 135° figure is bound to the current camera mount —
+   move the mount and re-measure. Treat the sector edge as a no-go zone during teleop / S1 too, not
+   just for placement. Numbers in `experiment_spec.md` §3; PROVISIONAL pending an S2 `--dry-run`
+   feasibility pass.
+6. **Scope: this is the Phase-A pilot workspace only (`[Eric說]` 2026-08-31).** The S1/S2 output
+   (`campaign_A_pilot_2cam` bounds + the 90 seeded points) is computed for the current fixed-tabletop
+   pilot layout. **Phase B on the vehicle body gets a fresh S1/S2 from scratch** against the real
+   on-vehicle layout — consistent with D022 (pilot 2×third-person data is not pooled with the later
+   wrist+third-person campaign anyway). Because it is a pilot, the exact N is negotiable if the
+   `--dry-run` packing check is tight.
+
+### 🔴 2026-09-01 `[Eric說]` — the pilot is downgraded to manual eyeball placement; S3 mat needs a redesign for Phase B
+
+**On-site, the S1→S2→S3 flow proved impractical to execute:**
+
+- **The polar mat's origin (the pan axis) is not markable.** It sits under the chassis; the arm blocks
+  putting a mat there; and locating it needs an estimate of the pan axis plus its `d_offset`.
+- **The table cannot be marked** (`[Eric說]` 2026-09-01) — so "align the mat once, prick every seeded
+  point, remove the mat" is not available.
+- **Per-episode mat placement + object + removal is too fiddly**, and a mat left in frame becomes a
+  baked-in scene constant (D023 script 3 / D018).
+
+**Decision (pilot only):** the `campaign_A_pilot` recording uses **manual eyeball / roughly-random
+object placement**. Consequences, all accepted because a pilot is pipeline validation, not a result
+(`phase_plan.md` Phase A: "3 筆成功率預期 0%"):
+
+- `placement_id` is left blank in `episode_meta` (no frozen list to reference).
+- No location-based failure attribution (D015 spatial mechanisms).
+- **Not poolable with Phase B** (already true under D022).
+- 🔴 **The seeded S1→S2→S3 protocol still governs the real Phase B campaign** — this downgrade is
+  pilot-scoped only.
+
+**Phase B placement-registration options (needs the arm; not yet chosen), ranked:**
+
+1. **Camera-overlay placement (mat-free, recommended).** One-time ArUco/checkerboard →
+   camera↔table homography at scene-freeze; a small script overlays target crosshairs on the live
+   camera feed; the object is placed under the crosshair. Reusable into Phase C. The overlay script
+   is buildable off-arm.
+2. **Rigid jig-registered locator board, lifted away as one piece.** Divots on a stiff board that
+   butts against a table-clamped jig aligned to the chassis front edge; ~2 s per episode, no table
+   marking, nothing left in frame.
+3. **Permanent, campaign-consistent mat**, frozen as a scene constant. Least effort, but bakes a
+   spatial-reference shortcut into the policy (D018) and adds a Phase-C distribution shift.
+
+All three reference the **chassis-front-edge midpoint** as the physical datum; `d_offset` (pan axis →
+chassis front) ≈ 5 cm is measured once and S2 keeps sampling in pan-axis polar, translating its
+`x_cm/y_cm` output into that datum's frame.
+
+- **Cross-reference:** D024, `docs/specs/S3_placement_mat.md`, `eval/README.md` (ArUco note).
+
+- **Cross-reference:** D021, D026, `docs/phase_plan.md` A6/A7, `docs/meeting/2026-08-24.md`,
+  `docs/meeting/2026-08-31.md` §6, `docs/hardware.md` (Cable).
 
 ---
 
