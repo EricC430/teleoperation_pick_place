@@ -1,23 +1,23 @@
 teleop:
-  type: so101_leader
+  type: omx_leader
   port: COM6
-  id: 2026-08-31_leader
+  id: 2026-08-31_omx_leader
   calibration_dir: ./calibration
 
 robot:
-  type: so101_follower
+  type: omx_follower
   port: COM5
-  id: 2026-08-31_follower
+  id: 2026-08-31_omx_follower
   calibration_dir: ./calibration
   cameras:
-    left_front:
+    front-right:
       type: intelrealsense
       serial_number_or_name: "260322271459"
       width: 848
       height: 480
       fps: 30
       use_depth: false
-    right_front:
+    front-left:
       type: intelrealsense
       serial_number_or_name: "262822305610"
       width: 1280
@@ -25,10 +25,5 @@ robot:
       fps: 30
       use_depth: false
 
-dataset:
-  repo_id: <HF_USER>/so101_pick_place
-  num_episodes: 20
-  single_task: "Pick up the object and place it into the box"
-  streaming_encoding: true
-
+fps: 60
 display_data: true
