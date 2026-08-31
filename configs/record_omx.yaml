@@ -1,0 +1,52 @@
+teleop:
+  type: omx_leader
+  port: COM6
+  id: 2026-08-31_omx_leader
+  calibration_dir: ./calibration
+
+robot:
+  type: omx_follower
+  port: COM5
+  id: 2026-08-31_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: intelrealsense
+      serial_number_or_name: "260322271459"
+      width: 848
+      height: 480
+      fps: 15          # was 30 — RealSense-native step; halves camera + encode load
+      use_depth: false
+    front-left:
+      type: intelrealsense
+      serial_number_or_name: "262822305610"
+      width: 848        # was 1280 — the 720p stream was the main CPU hog
+      height: 480        # was 720
+      fps: 15
+      use_depth: false
+
+dataset:
+  # pilot data (D022 / D024 campaign_A_pilot_2cam) — local only, do NOT push
+  repo_id: EricC430/omx_pick_place_pilot   # replace with your real HF handle if you ever push
+  root: ./.cache/lerobot/omx_pick_place_pilot   # explicit → independent of HF_HOME / HF_LEROBOT_HOME
+  push_to_hub: false
+  num_episodes: 20
+  fps: 15                    # must match camera fps
+  episode_time_s: 45
+  reset_time_s: 15           # was 60 — pilot doesn't need a full minute to reposition
+  single_task: "Pick up the object and place it into the box"
+  # 🔴 do NOT encode video inside the record loop.
+  streaming_encoding: false
+  # 🔴 2026-08-31: even non-streaming SVT-AV1 x2 starved the D455 grab thread
+  # (frame 530ms stale → TimeoutError). This laptop (AVX2, 5 threads) cannot do
+  # 2x RealSense + real-time AV1. Switch to h264/veryfast + cap encoder threads.
+  # ⚠️ codec change ≠ resume-compatible with the av1 smoke-test dataset — start a
+  # FRESH repo_id/root for the real pilot.
+  encoder_threads: 2
+  rgb_encoder:
+    vcodec: h264
+    preset: veryfast
+    crf: 23
+    pix_fmt: yuv420p
+
+display_data: false          # was true — rerun rendering 2 cam streams also costs CPU during record
