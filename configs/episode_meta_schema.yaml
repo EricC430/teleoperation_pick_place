@@ -33,7 +33,9 @@
 #   default   fixed default when there is no previous answer
 #   auto      "now" = prefilled with the current timestamp (still editable)
 
-version: 2   # 2026-08-30: object_pos -> placement_id (D024); mechanism gains repetition_loop (D015, 2026-08-16)
+version: 3   # 2026-09-01: placement_id no longer required — pilot campaigns use manual
+             #             eyeball placement with no frozen list (D023 §2026-09-01).
+             # 2026-08-30: object_pos -> placement_id (D024); mechanism gains repetition_loop (D015, 2026-08-16)
 
 fields:
   - name: object_name
@@ -52,14 +54,15 @@ fields:
     values: ["", "label", "bare"]
 
   - name: placement_id
-    prompt: 物體起始位置 (frozen placement ID)
-    help: An ID from the frozen placement list in docs/experiment_spec.md §5.
-          The 3x3 grid this field used to encode was retired by D024 - placements
-          are now drawn once by uniform-AREA sampling over the annular workspace,
-          frozen, and given IDs. Renamed from object_pos on 2026-08-30; no data
-          had been collected under the old name, so nothing is orphaned.
-    required: true
-    values: []          # TODO: fill in from the frozen list once §5 has one
+    prompt: 物體起始位置
+    help: Real campaigns use an ID from the frozen placement list (S2 output,
+          docs/experiment_spec.md §5) - NOT the retired 3x3 grid (D024). Placements
+          are drawn once by uniform-AREA sampling over the annular sector, frozen,
+          and given IDs like train_00 / eval-close_29. Pilot campaigns have NO
+          frozen list - manual eyeball placement per D023 §2026-09-01 - so enter
+          `manual` or leave blank. Renamed from object_pos on 2026-08-30.
+    required: false     # was true until v3 (2026-09-01); pilot has no frozen list
+    values: ["", "manual"]   # real campaigns: also the IDs from the frozen §5 list
 
   - name: env_light
     prompt: 燈光
@@ -117,8 +120,13 @@ fields:
     required: true
 
   - name: record_ts
-    prompt: 錄製時間
-    auto: now
+    prompt: 錄製日期 (YYYY-MM-DD，該 demo 實際錄製的日子，不是今天標註的日子)
+    help: LeRobot does not store a wall-clock recording time in the dataset
+          metadata (checked meta/episodes/*.parquet and info.json, 2026-09-01) -
+          the only automatic proxy is the parquet/mp4 file mtime, which is
+          per-file not per-episode and is lost when files are copied. So type the
+          recording session date by hand. Sticky - enter it once for episode 0.
+    sticky: true
 
   - name: notes
     prompt: 備註
