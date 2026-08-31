@@ -1,0 +1,9 @@
+episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
+0,paper_cup,,manual,indoor_lab,"light background, keyboard, monitor, white table, blue booth",success,,4,1,,Eric,2026-08-31 17:29:59,
+1,paper_cup,stand,,indoor_lab,"light background, keyboard, monitor, white table, blue booth",success,,4,1,,Eric,2026-08-31 17:32:34,wrist_cam-overexposed
+2,paper_cup,stand,,indoor_lab,"light background, keyboard, monitor, white table, blue booth",success,,4,1,,Eric,2026-08-31 18:32:40,wrist_cam-overexposed
+3,paper_cup,stand,,indoor_lab,"light background, keyboard, monitor, white table, blue booth",success,self_recovered,3,1,,Eric,2026-08-31 18:33:35,wrist_cam-overexposed
+4,paper_cup,stand,,indoor_lab,"light background, keyboard, monitor, white table, blue booth",success,,4,1,,Eric,2026-08-31 18:45:53,wrist_cam-overexposed
+5,paper_cup,stand,,indoor_lab,"light background, keyboard, monitor, white table, blue booth",success,,4,1,,Eric,2026-08-31 18:46:42,wrist_cam-overexposed
+6,paper_cup,stand,,indoor_lab,"light background, keyboard, monitor, white table, blue booth",success,self_recovered,3,1,,Eric,2026-08-31 18:54:14,wrist_cam-overexposed
+7,paper_cup,stand,,indoor_lab,"light background, keyboard, monitor, white table, blue booth",success,,4,1,,Eric,2026-08-31 19:00:22,wrist_cam-overexposed
