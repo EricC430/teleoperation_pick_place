@@ -22,49 +22,31 @@ small enough to `git clone` in seconds.
 🚧 Bring-up in progress (started 2026-08-11). This README is a living document — fill in the `TODO`
 sections below as each step is actually validated, don't front-load commands that haven't been run yet.
 
-**Blocked on hardware.** Both lab arms are currently unavailable (one on loan, one under repair), so
-the on-site steps below are untested. Work that does *not* need hardware — environment setup, pipeline
-validation on public datasets, and filling in `docs/experiment_spec.md` — proceeds in the meantime.
+Phase A 管線驗證進行中（已完成 8 筆 Pilot 軌跡錄製 `omx_pick_place_pilot`，包含紙杯抓取與自我修正）。
+本階段核心目標為打通「資料集驗證 → 容器化 ACT 訓練 → 隔離 Open-Loop 評估」之全管線。
 
-## Quickstart: reproduce from zero
+## Quickstart: Phase A 訓練與開環評估
 
 ```bash
-# 1. Nothing to install. Step 3 pulls the image (~12.3 GB) on first run.
-#    We use LeRobot's official GPU image as-is for now; the version actually in
-#    use is pinned by DIGEST in docs/environment.md, because :latest moves.
-# TODO: replace with our own Dockerfile -- see "Container image" below.
+# 1. 確保資料集已載入至主機路徑：
+#    data/huggingface/lerobot/EricC430/omx_pick_place_pilot
+ls data/huggingface/lerobot/EricC430/omx_pick_place_pilot/meta/info.json
 
-# 2. Confirm hardware is connected and calibrated
-#    See docs/field_manual.md for the full on-site checklist.
-ls /dev/tty*                      # leader + follower serial bus servo boards should show up
-# TODO: calibration command
+# 2. 實際幀數與資料一致性驗證（退出碼必須為 0）
+./scripts/run_container.sh python scripts/verify_dataset.py /workspace/data/huggingface/lerobot/EricC430/omx_pick_place_pilot
 
-# 3. Open a shell in the container. Every flag lives in the script -- none of them
-#    are optional on the lab GPU box. docs/environment.md explains why.
-#    Run this ON THE HOST, not from inside a container.
-./scripts/run_container.sh
-# TODO: add --device flags for the arms and cameras once hardware is back
+# 3. 登入 Weights & Biases（首次執行，輸入 API Key 後持久化於 data/.netrc）：
+./scripts/run_container.sh wandb login
+# 或於主機環境變數設定：export WANDB_API_KEY="your_api_key"
 
-# 4+5. Train. The dataset is fetched automatically from the Hub on first run and
-#      cached in data/, so there is no separate download step.
-#      Written out in full on purpose -- knowing exactly what was run matters more
-#      than a short command. run_container.sh only starts the container; every
-#      training argument stays visible here.
-#      !! The dataset below is PIPELINE-VALIDATION DATA ONLY: a public dataset,
-#         NOT project data. Ours will live in our own private HF Hub repo.
-./scripts/run_container.sh lerobot-train \
-  --dataset.repo_id=lerobot/svla_so100_pickplace \
-  --policy.type=act \
-  --policy.push_to_hub=false \
-  --wandb.enable=false \
-  --steps=1000 \
-  --batch_size=32 \
-  --log_freq=200 \
-  --save_freq=1000 \
-  --output_dir=/workspace/data/train/perf-nw4
+# 4. 執行 ACT 模型訓練（8 筆資料：前 7 筆訓練、保留第 7 筆作為隔離評估，批次 16，500 步）
+./scripts/run_container.sh lerobot-train --config_path configs/train_omx_pilot.yaml
 
-# 6. Evaluate / deploy
-# TODO: eval script invocation, see eval/
+# 5. 執行 Open-Loop 開環評估（以 Checkpoint 評估隔離之 Episode 7）
+./scripts/run_container.sh python scripts/eval_open_loop.py \
+  --checkpoint=/workspace/data/train/phase_a_pilot/checkpoints/last/pretrained_model \
+  --dataset.root=/workspace/data/huggingface/lerobot/EricC430/omx_pick_place_pilot \
+  --episodes 7
 ```
 
 ### Using `run_container.sh`
@@ -89,11 +71,10 @@ boyuchen@06b0b64be1ff:/workspace$            <- already inside the container
 Note also that `~` inside the container is **not** your host home directory, so `cd ~/teleoperation_pick_place`
 will not work there — the repo is at `/workspace`.
 
-**Two arguments are not optional and not obvious:**
+**重要參數說明：**
 
-- `--policy.push_to_hub=false` — defaults to **true**. Without it `lerobot-train` refuses to start
-  at all: `ValueError: 'repo_id' argument missing. Please specify it to push the model to the hub.`
-- `--wandb.enable=false` — otherwise it tries to reach Weights & Biases.
+- `--policy.push_to_hub=false` — 預設為 true。若未指定且未給予 hub repo 會中斷，本設定已納入 yaml。
+- `wandb.enable: true` — 已於 `configs/train_omx_pilot.yaml` 啟用，訓練即時指標與 `eval_loss` 將上傳至 Weights & Biases（專案：`teleoperation_pick_place`）。若欲離線訓練可覆蓋 `--wandb.enable=false`。
 
 `--output_dir` **must start with `/workspace/`**. That is the container's name for this repo — the
 only host directory mounted into it — so anything written there lands on the real disk.
@@ -109,18 +90,8 @@ stops a rerun from quietly overwriting an earlier result.
 **Never pipe a training run into `tail`/`grep` and trust the exit code** — the status you get back
 is `tail`'s, so a crashed run looks like success. Redirect to a file and read the file.
 
-The dataset above is a public one used **only to validate the pipeline** — it is not project data.
-It was picked because it carries a wrist camera, matching D004.
-
-**That command was run end-to-end on 2026-08-12: 1000 steps in 4 min 57 s, GPU-bound at 97 %,
-13.1 of 24 GB.** Timings, resource use, the batch-size and `num_workers` comparison, and the
-pitfalls each run exposed are recorded in
-**[`docs/pipeline_validation.md`](docs/pipeline_validation.md)** — read it before concluding a slow
-or crashed run is normal.
-
-> ⚠️ Downloads ran unauthenticated (`Warning: You are sending unauthenticated requests to the HF
-> Hub`). Fine for public datasets; our own private dataset repo will need `HF_TOKEN`, which goes in
-> the environment and **never** into git (`docs/conventions.md`).
+Phase A Pilot 訓練使用 8 筆實機軌跡（`omx_pick_place_pilot`），批次 16、500 步預計於 2–3 分鐘內完成。
+相關資源佔用與管線驗證基準記錄於 **[`docs/pipeline_validation.md`](docs/pipeline_validation.md)**。
 
 ## Container image
 
@@ -196,12 +167,15 @@ dated record, no exceptions.
 
 | What | Where | Why not in this repo |
 |---|---|---|
-| Raw datasets (demos, recovery demos) | Hugging Face Hub, private repo — `TODO: repo_id` | Large, binary, versioned better by HF Hub / LeRobot tooling than git |
-| Model checkpoints | Hugging Face Hub — `TODO: repo_id` | Same as above |
+| Raw datasets (demos, recovery demos) | Hugging Face Hub, private repo — Phase A pilot: `ericc430/omx_pick_place_pilot` (lowercase — the Hub namespace, unlike this repo's local `EricC430/...` labels). Real campaigns get a fresh `repo_id`, see `configs/record_omx.yaml` | Large, binary, versioned better by HF Hub / LeRobot tooling than git |
+| Model checkpoints | Hugging Face Hub, private repo — Phase A pilot: `ericc430/act_omx_pick_place_pilot` | Same as above |
 | Raw video | Lab NAS — `TODO: path` | Large binary, no need to version in git |
 
 If you're missing access to any of the above, ask in `docs/meeting/` notes or the shared doc referenced
 there — don't recreate a local-only copy of something that should be centrally stored.
+
+**Setting up push/pull yourself (HF_TOKEN, `hf upload`/`download`, and pulling a checkpoint onto the
+laptop to actually drive the arm with `lerobot-rollout`):** see **`docs/field_manual.md` §8** (雲端同步與跨機部署).
 
 ## Related
 
