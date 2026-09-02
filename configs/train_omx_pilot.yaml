@@ -1,0 +1,20 @@
+dataset:
+  repo_id: EricC430/omx_pick_place_pilot
+  root: /workspace/data/huggingface/lerobot/EricC430/omx_pick_place_pilot
+  eval_split: 0.125 # 8 筆中留 1 筆 (Episode 7) 進行開環隔離評估，前 7 筆 (Episode 0-6) 進行訓練
+
+policy:
+  type: act
+  push_to_hub: false
+
+output_dir: /workspace/data/train/phase_a_pilot
+job_name: act_omx_pilot
+steps: 500
+batch_size: 16
+eval_steps: 100
+log_freq: 50
+save_freq: 500
+
+wandb:
+  enable: true
+  project: teleoperation_pick_place

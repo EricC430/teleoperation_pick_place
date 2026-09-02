@@ -44,4 +44,5 @@ exec docker run --rm "${TTY_FLAGS[@]}" \
   -e HF_LEROBOT_HOME=/workspace/data/huggingface/lerobot \
   -e TORCH_HOME=/workspace/data/torch \
   -e TRITON_CACHE_DIR=/workspace/data/triton \
+  -e WANDB_API_KEY="${WANDB_API_KEY:-}" \
   "$IMAGE" "$@"
