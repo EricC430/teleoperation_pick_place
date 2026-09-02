@@ -90,6 +90,29 @@ def plan_tiles(
     )
 
 
+def single_page_plan(x_min: float, x_max: float, y_min: float, y_max: float) -> TilePlan:
+    """One tile covering the exact area, for a print-shop large-format sheet.
+
+    No A4 constraint, no overlap, no seams -- the shop prints it at 100% on a
+    plotter. ``render_pdf(..., single_page=True)`` sizes the PDF page to match.
+    """
+    if x_max <= x_min or y_max <= y_min:
+        raise ValueError("empty mat area")
+    w, h = x_max - x_min, y_max - y_min
+    return TilePlan(
+        tiles=[Tile(row=0, col=0, x0=x_min, x1=x_max, y0=y_min, y1=y_max)],
+        n_rows=1,
+        n_cols=1,
+        content_w=w,
+        content_h=h,
+        overlap_cm=0.0,
+        x_min=x_min,
+        y_min=y_min,
+        step_x=w,
+        step_y=h,
+    )
+
+
 def seam_points(plan: TilePlan) -> list[tuple[float, float]]:
     """World coords of the interior page seams -- each lands in >=2 tiles.
 

@@ -2,7 +2,22 @@
 
 from __future__ import annotations
 
-from placement_mat.tiling import A4_H_CM, A4_W_CM, plan_tiles, seam_points
+from placement_mat.tiling import A4_H_CM, A4_W_CM, plan_tiles, seam_points, single_page_plan
+
+
+def test_single_page_plan_is_one_tile_covering_the_exact_area():
+    plan = single_page_plan(-2.0, 40.0, -30.0, 20.0)
+    assert plan.n_rows == 1 and plan.n_cols == 1
+    assert len(plan.tiles) == 1
+    t = plan.tiles[0]
+    assert (t.x0, t.x1, t.y0, t.y1) == (-2.0, 40.0, -30.0, 20.0)
+
+
+def test_single_page_plan_rejects_empty_area():
+    import pytest
+
+    with pytest.raises(ValueError):
+        single_page_plan(10.0, 10.0, -5.0, 5.0)
 
 
 def test_small_area_is_a_single_page():

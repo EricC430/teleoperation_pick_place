@@ -61,3 +61,51 @@ def test_placements_render_every_id(tmp_path, capsys):
     rc = main(["--r-max", "25", "--out", str(tmp_path / "m.pdf"), "--placements", str(a), str(b)])
     assert rc == 0
     assert "3" in capsys.readouterr().out  # 3 ids reported drawn
+
+
+def test_paper_single_needs_datum_offset(tmp_path):
+    rc = main(["--paper", "single", "--r-max", "40", "--out", str(tmp_path / "m.pdf")])
+    assert rc == 2
+
+
+def test_paper_single_writes_one_page_pdf_and_label_map(tmp_path):
+    a = _csv(tmp_path / "train.csv", [("train_001", 30.0, 5.0), ("eval-open_003", 25.0, -6.0)])
+    out = tmp_path / "m.pdf"
+    rc = main(
+        [
+            "--paper", "single", "--datum-offset", "4", "--r-max", "40",
+            "--placements", str(a), "--out", str(out), "--label", "campA",
+        ]
+    )
+    assert rc == 0
+    assert out.stat().st_size > 0
+    mapf = out.parent / "placement_label_map_campA.csv"
+    assert mapf.exists()
+    body = mapf.read_text(encoding="utf-8")
+    assert "t1,train_001" in body and "o3,eval-open_003" in body
+    assert "26.0" in body  # x_mat_cm = 30 - 4
+
+
+def test_paper_single_draws_every_point_even_at_the_sector_edges(tmp_path, capsys):
+    # inner radius at a steep angle -> x_mat goes slightly negative (past --x-min);
+    # radius == r_max -> x_mat lands at r_max - datum_offset. Neither may be clipped.
+    a = _csv(tmp_path / "p.csv", [("train_001", 1.2, -22.0), ("eval-close_002", 39.0, 3.0)])
+    rc = main(
+        [
+            "--paper", "single", "--datum-offset", "4", "--x-min", "-1", "--r-max", "39",
+            "--placements", str(a), "--out", str(tmp_path / "m.pdf"), "--label", "e",
+        ]
+    )
+    assert rc == 0
+    assert "2 label(s), 2 distinct id(s)" in capsys.readouterr().out
+
+
+def test_paper_single_allows_placements_without_a_summary(tmp_path):
+    a = _csv(tmp_path / "train.csv", [("train_001", 30.0, 5.0)])
+    rc = main(
+        [
+            "--paper", "single", "--datum-offset", "4", "--r-max", "40",
+            "--placements", str(a), "--out", str(tmp_path / "m.pdf"),
+        ]
+    )
+    assert rc == 0

@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
 
+from placement_mat.labels import short_label
 from placement_mat.tiling import A4_H_CM, A4_W_CM, Tile, TilePlan, seam_points
 
 _CM_PER_IN = 2.54
@@ -60,6 +61,12 @@ class TileOpts:
     theta_min_deg: float = -90.0
     theta_max_deg: float = 90.0
     line_scale: float = 1.0  # multiplies every grid/overlay line width
+    # --- single-page print-shop mat only ---------------------------------
+    polar_origin_x: float = 0.0    # x of the pan axis in drawing coords (= -datum_offset)
+    near_edge: bool = False        # draw the arm-tips registration line at x=0
+    chassis_gap_cm: float = 5.9    # C-opening inner width -> tick spacing on that line
+    azimuth_calibrated: bool = True  # False -> print "azimuth UNCALIBRATED - base frame"
+    short_labels: bool = False     # annotate points t1/o1/c1 instead of train_001
 
 
 @dataclass(frozen=True)
@@ -114,13 +121,21 @@ def build_tile_figure(
     opts: TileOpts,
     *,
     points: Sequence[tuple[str, float, float]] | None = None,
+    single_page: bool = False,
 ) -> tuple[Figure, int]:
-    fig = plt.figure(figsize=(A4_W_CM / _CM_PER_IN, A4_H_CM / _CM_PER_IN))
-    ax_w_frac = (tile.x1 - tile.x0) / A4_W_CM
-    ax_h_frac = (tile.y1 - tile.y0) / A4_H_CM
-    left = (1.0 - ax_w_frac) / 2.0
-    bottom = (1.0 - ax_h_frac) / 2.0
-    ax = fig.add_axes((left, bottom, ax_w_frac, ax_h_frac))
+    w_cm, h_cm = tile.x1 - tile.x0, tile.y1 - tile.y0
+    if single_page:
+        # one large-format page: the figure IS the mat area, axes fill it,
+        # so 1 data-cm == 1 paper-cm at 100% print with no A4 furniture.
+        fig = plt.figure(figsize=(w_cm / _CM_PER_IN, h_cm / _CM_PER_IN))
+        ax = fig.add_axes((0.0, 0.0, 1.0, 1.0))
+    else:
+        fig = plt.figure(figsize=(A4_W_CM / _CM_PER_IN, A4_H_CM / _CM_PER_IN))
+        ax_w_frac = w_cm / A4_W_CM
+        ax_h_frac = h_cm / A4_H_CM
+        left = (1.0 - ax_w_frac) / 2.0
+        bottom = (1.0 - ax_h_frac) / 2.0
+        ax = fig.add_axes((left, bottom, ax_w_frac, ax_h_frac))
     ax.set_xlim(tile.x0, tile.x1)
     ax.set_ylim(tile.y0, tile.y1)
     ax.set_xticks([])
@@ -146,25 +161,43 @@ def build_tile_figure(
         ax.axhline(gy, color=_INK_5CM, lw=_LW_5CM * s, zorder=0)
         ax.text(tile.x0 + 0.3, gy + 0.15, f"y={gy:g}", fontsize=5, color=_INK_LABEL, ha="left", va="bottom")
 
-    # --- polar overlay: rings + rays, only inside the 180deg (or given) sector --
+    # --- polar overlay: rings + rays, centred on the pan axis (ox, 0) ----
+    # ox is 0 for the A4 mat (origin on the sheet); for the single-page mat the
+    # pan axis sits off-sheet at x = -datum_offset, so every arc/ray shifts by ox.
+    ox = opts.polar_origin_x
     a_lo, a_hi = opts.theta_min_deg, opts.theta_max_deg
     th = [math.radians(a) for a in _frange(a_lo, a_hi, 1.0)]
     for rr in _frange(max(opts.ring_step, 0.1), opts.r_max, opts.ring_step):
-        ax.plot([rr * math.cos(t) for t in th], [rr * math.sin(t) for t in th],
+        ax.plot([ox + rr * math.cos(t) for t in th], [rr * math.sin(t) for t in th],
                 color=_INK_POLAR, lw=_LW_POLAR * s, zorder=1)
-        ax.text(rr * math.cos(math.radians(a_hi)), rr * math.sin(math.radians(a_hi)),
+        ax.text(ox + rr * math.cos(math.radians(a_hi)), rr * math.sin(math.radians(a_hi)),
                 f"{rr:g}", fontsize=5, color=_INK_LABEL)
     ray0 = math.ceil(a_lo / opts.ray_step) * opts.ray_step
     for a in _frange(ray0, a_hi, opts.ray_step):
         e = math.radians(a + opts.azimuth_offset_deg)
-        ax.plot([0, opts.r_max * math.cos(e)], [0, opts.r_max * math.sin(e)],
+        ax.plot([ox, ox + opts.r_max * math.cos(e)], [0, opts.r_max * math.sin(e)],
                 color=_INK_POLAR, lw=_LW_POLAR * s, zorder=1)
-        lx, ly = opts.r_max * 1.0 * math.cos(e), opts.r_max * 1.0 * math.sin(e)
+        lx, ly = ox + opts.r_max * math.cos(e), opts.r_max * math.sin(e)
         if tile.x0 <= lx <= tile.x1 and tile.y0 <= ly <= tile.y1:
             ax.text(lx, ly, f"{a:g}°", fontsize=5, color=_INK_LABEL)
 
-    # origin furniture, only on the tile that contains (0,0)
-    if tile.x0 <= 0 <= tile.x1 and tile.y0 <= 0 <= tile.y1:
+    if single_page:
+        if opts.near_edge:
+            half = opts.chassis_gap_cm / 2.0
+            ax.axvline(0.0, color="k", lw=1.6, zorder=5)
+            for ty in (-half, half):
+                ax.plot([-0.4, 0.4], [ty, ty], color="k", lw=1.6, zorder=5)
+            ax.text(0.3, tile.y1 - 0.6,
+                    "align this line to BOTH C-arm front tips  (fixes forward + rotation)",
+                    fontsize=6, rotation=90, va="top")
+            ax.text(0.3, half + 0.2, "L C-arm tip", fontsize=5, color=_INK_LABEL)
+            ax.text(0.3, -half - 0.5, "R C-arm tip", fontsize=5, color=_INK_LABEL)
+        if not opts.azimuth_calibrated:
+            ax.text((tile.x0 + tile.x1) / 2, tile.y1 - 0.3,
+                    "azimuth UNCALIBRATED - base frame (no S1 reference sample)",
+                    fontsize=7, ha="center", va="top", color="0.25")
+    # origin furniture, only on the tile that contains (0,0) (A4 mat)
+    elif tile.x0 <= 0 <= tile.x1 and tile.y0 <= 0 <= tile.y1:
         ax.plot(0, 0, "k+", ms=16, mew=2, zorder=5)
         ax.plot([0, opts.r_max], [0, 0], color="k", lw=1.0, zorder=4)
         ax.text(opts.r_max * 0.4, 0.4, "0deg ray -- align to S1 reference", fontsize=6)
@@ -179,29 +212,31 @@ def build_tile_figure(
     ax.text(rx, ry + 0.4, f"{opts.ruler_cm:.1f} cm  -- measure me; reprint at 100% if wrong",
             fontsize=6, zorder=6)
 
-    # --- registration crosses on the shared seams ---------------------
-    for sx, sy in seam_points(plan):
-        if tile.x0 <= sx <= tile.x1 and tile.y0 <= sy <= tile.y1:
-            ax.plot(sx, sy, "k+", ms=10, mew=1.2, zorder=6)
-            ax.text(sx + 0.2, sy + 0.2, f"({sx:g},{sy:g})", fontsize=4.5, color="0.3", zorder=6)
+    if not single_page:
+        # --- registration crosses on the shared seams -------------------
+        for sx, sy in seam_points(plan):
+            if tile.x0 <= sx <= tile.x1 and tile.y0 <= sy <= tile.y1:
+                ax.plot(sx, sy, "k+", ms=10, mew=1.2, zorder=6)
+                ax.text(sx + 0.2, sy + 0.2, f"({sx:g},{sy:g})", fontsize=4.5, color="0.3", zorder=6)
 
-    # --- page label -------------------------------------------------------
-    ax.text(
-        tile.x1 - 0.3,
-        tile.y1 - 0.3,
-        f"row {tile.row + 1}/{plan.n_rows}  col {tile.col + 1}/{plan.n_cols}",
-        fontsize=7,
-        ha="right",
-        va="top",
-        bbox=dict(boxstyle="round", fc="white", ec="0.6", lw=0.5),
-        zorder=7,
-    )
+        # --- page label ------------------------------------------------------
+        ax.text(
+            tile.x1 - 0.3,
+            tile.y1 - 0.3,
+            f"row {tile.row + 1}/{plan.n_rows}  col {tile.col + 1}/{plan.n_cols}",
+            fontsize=7,
+            ha="right",
+            va="top",
+            bbox=dict(boxstyle="round", fc="white", ec="0.6", lw=0.5),
+            zorder=7,
+        )
 
     # --- placement points ----------------------------------------------
     drawn = 0
     for pid, x, y in points_on_tile(points or [], tile):
+        label = short_label(pid) if opts.short_labels else pid
         ax.plot(x, y, marker=_MARKER[_prefix(pid)], mfc="none", mec="k", mew=1.0, ms=7, zorder=8)
-        ax.annotate(pid, (x, y), textcoords="offset points", xytext=(4, 3), fontsize=5, zorder=8)
+        ax.annotate(label, (x, y), textcoords="offset points", xytext=(4, 3), fontsize=5, zorder=8)
         drawn += 1
 
     return fig, drawn
@@ -213,12 +248,13 @@ def render_pdf(
     opts: TileOpts,
     *,
     points: Sequence[tuple[str, float, float]] | None = None,
+    single_page: bool = False,
 ) -> RenderReport:
     path = Path(path)
     total = 0
     with PdfPages(path) as pdf:
         for tile in plan.tiles:
-            fig, drawn = build_tile_figure(tile, plan, opts, points=points)
+            fig, drawn = build_tile_figure(tile, plan, opts, points=points, single_page=single_page)
             pdf.savefig(fig)
             plt.close(fig)
             total += drawn

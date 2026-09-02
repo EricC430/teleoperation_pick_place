@@ -67,19 +67,33 @@ S1（`S1_reach_logger.md` §6，D026）量到一個 `azimuth_offset_deg`，把 F
 ## 3. 輸入
 
 ```
---r-max 40                      # cm；要畫到的最大半徑（墊子涵蓋 x∈[-8, r_max]、y∈[-r_max, r_max]）
---paper a4                      # 目前只支援 a4 拼貼
---margin-mm 10                  # 每頁不可印邊界
---overlap-mm 15                 # 相鄰 A4 頁的重疊寬度（拼貼用）
---grid-mm 5                     # 笛卡兒細格間距
---ring-step 5                   # 半徑環間距 cm
---ray-step 15                   # 方位角射線間距 度
+--r-max 40                      # cm；要畫到的最大半徑
+--paper a4|single               # a4 = 多張 A4 拼貼；single = 一張大圖（印刷店，2026-09-01 加）
+--datum-offset D                # cm；single 必填。pan 軸中心 → C 底盤兩根前端的對位線。
+                                #     S2 點平移 x_mat = x_cm − D 到墊子框架（pan 軸在墊子外 x=−D）
+--chassis-gap 5.9               # cm；single。C-opening 內寬 → 對位線上兩個刻度的間距
+--x-min -3                      # cm；墊子左緣（single 下 = 對位線後方留白，可為小負值）
+--margin-mm 10 / --overlap-mm 15  # a4 拼貼用
+--grid-mm 5 / --ring-step 5 / --ray-step 15
 --out docs/assets/placement_mat_blank.pdf
---placements  a.csv b.csv c.csv # 可選：S2 的三份輸出，畫進 PDF（見 §2-4 的 frame 檢查）
+--placements  a.csv b.csv c.csv # 可選：S2 的三份輸出，畫進 PDF
 --from-summary analysis/reach_summary_YYYY-MM-DD.json  # 可選：讀 azimuth_offset_deg + 檢查 frame
 --label blank                   # 進檔名與操作卡
---dry-run                       # 只印頁數、涵蓋範圍、每頁範圍，不寫檔
+--dry-run                       # 只印範圍，不寫檔
 ```
+
+### `--paper single`（印刷店大圖，2026-09-01）
+
+- **一張 PDF，頁面尺寸 = 圖面實際大小**，座標軸鋪滿整頁 → 100% 列印時 1 data-cm = 1 paper-cm。
+- **原點 = C 底盤兩根前端的對位線**（不是 pan 軸 —— 紙進不了 C-opening，會被手臂結構擋住）。
+  墊子畫一條粗線在 `x_mat=0`，上下各一刻度在 `±chassis_gap/2`，標「align to L / R C-arm front tip」。
+  **兩點接觸 → 前後位置與旋轉都固定。印的是那條線，不是紙邊**（紙的留白可退進 C-slot）。
+- pan 軸在墊子外 `x_mat = −D`；極座標環／射線仍以它為圓心畫。
+- 點標成短 id：`train_007 → t7`、`eval-open_003 → o3`、`eval-close_010 → c10`。
+- 另存 `docs/assets/placement_label_map_<label>.csv`：`short_id, placement_id, x_pan_cm, y_pan_cm, x_mat_cm, y_mat_cm`
+  —— eval 記錄用 `placement_id` 時可回查。
+- 沒有 mat-frame 的 `--from-summary` 時允許 `--placements`，但墊子上會印「azimuth UNCALIBRATED − base frame」。
+- 墊子區域會自動長大到容納所有平移後的點（含內半徑陡角、`r == r_max` 的點）。
 
 ## 4. 輸出
 
