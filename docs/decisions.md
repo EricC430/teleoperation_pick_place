@@ -16,7 +16,7 @@ tell at a glance which entries still govern current state.
 | Status | Entries |
 |---|---|
 | 🔴 **Superseded — do not read as current state** | **D002** (platform: SO-ARM) → superseded by **D021** |
-| 🟡 **Open / proposed — not decided** | **D019** (action representation), **D020** (mobile base & XLeRobot — *its 2026-08-25 trigger lapsed; the meeting did not happen*), — |
+| 🟡 **Open / proposed — not decided** | **D019** (action representation), **D020** (mobile base & XLeRobot — *2026-09-01: candidate list expanded (七 chassis options with pricing), still not scored against the 七判準 table*), **D027** (IK / traditional-method fallback when ACT plateaus — approved in principle, unscoped), **D028** (3-phase state machine wrapping ACT — approved in principle, execution gated on B2) |
 | ✅ **Resolved 2026-08-27** | **D025** → do it, but only after Phase B real data exists (complement to D007, not a reversal). **D021** → 甲: OMX to the end, SO-ARM is a spare. **D022** single-camera verified + 3-config recording plan; **2026-09-01 `[Eric決定]`: D405 is the interim wrist camera until the UVC module arrives OR Phase C is reached** — interim config = D405 wrist + D455 third-person; D405→UVC swap and Phase C are both re-record boundaries. **D024** → 60 per campaign, position-OOD cancelled, training positions seeded, closed-loop 30 is in-distribution, uniform sampling replaces the 3×3 grid. |
 | 🔴 **D023 — status changed 2026-08-31** | Cable resolved **by RE-ROUTING the existing cable, not replacement** (`[Eric說]`; lab had no spare). **The 2026-08-27 conservative-workspace exemption is VOID** (a re-route is not a monotone relaxation); A7's original gate is back. **Tape measurement (FK failed → D026):** `r_outer` top-down ≈ **41 cm**, side-only ≈ 49, `r_inner` ≈ **22** (all + `d_offset` 5 cm, pan axis → chassis edge). Azimuth sector ≈ **135°** (`theta ∈ [−90°, +45°]`), edge = **arm body physically hits the third-person camera mount** if rotated past — a hard mechanical limit, not FOV, not the cable. **Scope: Phase-A pilot layout only; Phase B on the vehicle re-runs S1/S2 from scratch** (`[Eric說]`). Next: S2 `--dry-run` feasibility. See D023 §2026-08-31 points 5–6. **2026-08-31 (earlier):** the 33–43 cm figure disambiguated (grasp-approach band); `r_max` verdict logic dropped. |
 | ✅ **Resolved 2026-08-31** | **D026** → reach logger measures by FK from the `omx_f` URDF (placo, LeRobot-native); tape measure is the fallback. `placo` enters the pinned env. |
@@ -663,6 +663,33 @@ weeks while the decision log, which is the 正本, still listed the pre-amendmen
 **→ 先問到回廠日期，再評估。這是最便宜的排除手段。**
 💡 候選 ①（柏宇現有 mbot）的最大優點是**可及性**——同 D021 的邏輯：**能碰到的車勝過更好但碰不到的車**。
 
+
+### 🟡 2026-09-01 `[團隊決議]`：新增候選車體清單與第三視角相機安裝卡點
+
+**來源：`docs/meeting/2026-09-01.md`。9/1 死線到期，但這次會議只是把候選清單擴大，柏宇的成本試算尚未產出結論——D020 仍是 PROPOSED, NOT DECIDED，狀態沒有變。**
+
+**新增／重提的候選（車體會動）：**
+
+| 候選 | 附帶需求 | 價格 |
+|---|---|---|
+| 小藍（原已排除，見上） | 需拆光達、需架高平台、需額外可充電式電池、需放邊緣硬體、需固定手臂在平台上、需放垃圾桶 | — |
+| 成大那台大隻的 | 需額外可充電式電池、需找位置放 AI PC、需拆掉斜蓋、需固定手臂在平台上、需放垃圾桶 | — |
+| [履帶平板車（Hiwonder）](https://www.hiwonder.com/products/suspended-shock-absorbing-tracked-chassis?variant=40410257162327) | — | NT$2400–3600 |
+| [履帶平板車2（Zanrobot）](https://zanrobot.com/shop/200012/) | — | NT$3500 |
+| [ZW5863 四輪兩驅 ROS 自走車，60kg 載重，戶外可](https://zanrobot.com/shop/zw5863_ros_4w2d/) | — | NT$51900 |
+| [麥克納姆輪輕載車（ROS 自主導航）](https://zanrobot.com/shop/4mecanumros/) | — | NT$28800 |
+| [Devastator Tank Mobile Robot Platform（DFRobot）](https://www.dfrobot.com/product-1219.html) | — | NT$2100 |
+
+**新增候選（車體不動，降風險／fallback）：** 桌子、柏宇家那台、推車。
+
+**新增待決問題（進 `docs/meeting/2026-09-01.md` §四）：**
+1. 車體選型判準未定案——要能裝手臂並固定不晃、要能移動且放得下電池／AI PC、要能安排第三視角相機。`[老師交辦]` 待問。
+2. **自走車上第三視角相機安裝困難**：架高於後方可能震動、不可影響手臂動作空間、如何固定於車體未解、傳輸線路徑未解，且要等車體確定才知道怎麼放。
+
+⚠️ **這批候選都還沒套進上面 2026-08-27 的七判準表逐一評分**——那張表本身也還在等 OMX 行程重算後回填（見表格判準 1 的備註）。
+**下次更新這條時，要嘛先套表打分，要嘛明說「還沒套」，不要讓候選清單的擴大被誤讀成決策有進展。**
+
+- **Cross-reference:** `docs/meeting/2026-09-01.md`, D020 §2026-08-27（七判準表）, `docs/hardware.md`.
 
 - **Cross-reference:** `docs/camera_mount.md` §6, `docs/hardware.md`, `docs/meeting/2026-08-18.md` §六.
 
@@ -1553,6 +1580,72 @@ D007 反對的是**用模擬取代實機**；這裡是**用實機錨定模擬**�
   this campaign and reconsider the URDF.
 - **Cross-reference:** D023, D024, D025, `docs/specs/S1_reach_logger.md`, `docs/specs/S3_placement_mat.md`,
   `docs/environment.md`, `lerobot/src/lerobot/model/kinematics.py`.
+
+---
+
+## D027 — 🟡 PROPOSED (approved in principle, unscoped): IK / traditional-method fallback when ACT plateaus, per advisor guidance
+
+- **Date:** 2026-09-01 (raised in the 2026-09-01 team meeting; the underlying advisor conversation's
+  date is not stated in the meeting note — `[未確認]` which session it came from).
+- **Decision:** **approved, owner Eric Chen** — when ACT hits a bottleneck, or reaches a defined stage
+  (stage not specified), incorporate traditional methods (IK) as a fallback / complement rather than
+  relying on ACT end-to-end for the whole task.
+- **Advisor's broader framing (context, not itself a ratified sub-decision):**
+  1. Use IK.
+  2. Choose IK vs ACT "like an agent" — pick whichever method has the advantage in the current
+     situation, rather than one fixed policy for the whole task.
+  3. Wrap execution in a state machine (see D028 — the concrete 3-phase form this takes for the
+     grasp task).
+  4. Detect failure and reset to the initial state.
+- **Alternatives:** not stated in the meeting note.
+- **Why:** not recorded beyond "老師的建議" (advisor's suggestion). 待補：下次師生會議把理由記下來。
+- **Accepted costs:** not estimated yet.
+- **Trigger / timing:** not specified. D001 already carries a reversal condition ("ACT plateaus below
+  ~60% success with clean data and we've exhausted data-side fixes") — **unconfirmed whether this
+  meeting intends to reuse that threshold or set a new one.** Do not assume they're the same until
+  someone says so.
+- **Status:** 🟡 approved in principle, **not scoped** — no committed timeline, no defined trigger
+  threshold, no cost estimate, no IK implementation started.
+- **Reverse if:** N/A — nothing has been built yet to reverse.
+- **Cross-reference:** D001 (ACT plateau reversal condition), D028 (3-phase state machine — the
+  concrete architecture this fallback takes), `docs/meeting/2026-09-01.md`.
+
+---
+
+## D028 — 🟡 PROPOSED (approved in principle, execution gated on B2): 3-phase state machine wrapping ACT
+
+- **Date:** 2026-09-01
+- **Decision:** **approved in principle, owner 陳柏宇, status per meeting = 尚未開始 (not started)** —
+  wrap ACT execution in a 3-phase state machine with a per-phase success/failure check, and re-attempt
+  on failure. **Adoption is explicitly gated on B2 completing** (`phase_plan.md`: B2 = train the B1
+  model, evaluate same-scene / in-distribution success rate) — "B2 訓練完成後再視情況採用" is a real
+  gate, not a target date.
+  - **Phase 1 — approach:** success check = gripper end-effector coordinate close enough to the
+    YOLO-detected object coordinate.
+  - **Phase 2 — grasp + lift:** success check = YOLO sees the gripper and the object overlapping.
+  - **Phase 3 — move to target + release:** success check = FK confirms the end-effector is at the
+    target position; wrist-camera YOLO confirms the object's bounding box is inside the trash-bin's
+    bounding box.
+  - The reset-on-failure behaviour described under D027's advisor framing (point 4) is **not explicitly
+    re-stated as part of this 3-phase design in the meeting note** — `[未確認]` whether "reset to
+    initial state" is meant to apply per-phase here, or is a separate general principle.
+- **Alternatives:** not stated in the meeting note.
+- **Why:** not recorded beyond the advisor's general framing in D027.
+- **Accepted costs (inferred from what the design requires, not itself decided at the meeting):**
+  - Needs a YOLO-based object / gripper / trash-bin detector as a new subsystem for phases 1–3.
+    **Not yet specced; no owner assigned as of 2026-09-01.**
+  - Needs FK for the phase-3 check. D026 already has a working hand-coded FK for OMX (`urchin`-validated,
+    2026-08-31) — likely reusable, but reuse has not been confirmed by the team.
+  - Adds engineering scope during the September crunch window (`phase_plan.md`'s 產能 ≈ 0 window,
+    9/15–10/14), on top of everything already queued for Phase B.
+- **Reverse if:** not stated. 待補（例如：B2 的 in-distribution 成功率已經夠高，不需要三階段拆解就足以debug／提升；
+  或 YOLO 偵測在所需精度下不可靠）。
+- **Status:** 🟡 approved in principle, execution **not started**, explicitly gated on B2.
+- **Cross-reference:** D001, D019 (action representation — interacts with what "EE 座標" means depending
+  on absolute-joint-position vs delta-EE-pose, still 🟡 open), D026 (FK availability for OMX), D015
+  (failure-mechanism taxonomy — phase-level pass/fail here is a different granularity from D015's
+  per-episode `mechanism` tags; **relationship between the two not yet worked out**), D027,
+  `docs/meeting/2026-09-01.md`.
 
 ---
 
