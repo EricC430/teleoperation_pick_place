@@ -17,6 +17,7 @@ Re-measure and add a row whenever the environment changes: a new image, a driver
 | 2026-08-12 | GPU box | `lerobot/svla_so100_pickplace` | same, `num_workers` 16 | ✅ 5 min 03 s — no gain |
 | 2026-08-12 | GPU box | `lerobot/svla_so100_pickplace` | same, batch 8 | ✅ 94 samples/s vs 122 at batch 32 |
 | 2026-08-12 | GPU box | `edgarcancinoe/soarm101_pickplace_orange_080e_ts_closed` | ACT, 1000 steps, batch 32 | ❌ crashed at step 167 — corrupt dataset, see below |
+| 2026-09-01 | GPU box | `EricC430/omx_pick_place_pilot` (8 eps) | ACT, 500 steps, batch 16, `eval_split` 0.125 | ✅ 2 min 43 s, eval_loss 0.4866, open-loop MAE 11.29° |
 
 ## What a healthy run looks like
 
