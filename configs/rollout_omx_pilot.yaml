@@ -30,7 +30,10 @@ robot:
       use_depth: false
 
 policy:
-  path: EricC430/act_omx_pick_place_pilot  # pulled from HF Hub on first run, cached after
+  path: ericc430/act_omx_pick_place_pilot  # pulled from HF Hub on first run, cached after
+  # lowercase: the Hub account namespace is "ericc430", not "EricC430" -- local dataset
+  # dirs/repo_id strings elsewhere in this repo keep the mixed-case spelling since they're
+  # local-only labels, but an actual Hub path must match the real (lowercase) namespace.
 
 strategy:
   type: base  # fully autonomous, no dataset — sentry/highlight/dagger need --dataset

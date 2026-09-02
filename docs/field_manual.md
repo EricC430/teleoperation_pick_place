@@ -598,13 +598,13 @@ uv run python scripts/annotate_episodes.py --dataset ./.cache/lerobot/omx_pick_p
 
 ```bash
 # 模型 checkpoint（A11 訓練出的 pilot ACT 模型）
-./scripts/run_container.sh hf upload EricC430/act_omx_pick_place_pilot \
+./scripts/run_container.sh hf upload ericc430/act_omx_pick_place_pilot \
   data/train/phase_a_pilot/checkpoints/last/pretrained_model \
   --repo-type model --private \
   --commit-message "Phase A pilot ACT -- 500 steps, eval_loss 0.4866, open-loop MAE 11.29 deg (ep7)"
 
 # 資料集（可選，用於留存/回溯；部署真機不需要它，只有 eval_open_loop.py 需要）
-./scripts/run_container.sh hf upload EricC430/omx_pick_place_pilot \
+./scripts/run_container.sh hf upload ericc430/omx_pick_place_pilot \
   data/huggingface/lerobot/EricC430/omx_pick_place_pilot \
   --repo-type dataset --private
 ```
