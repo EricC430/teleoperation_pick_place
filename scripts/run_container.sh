@@ -45,4 +45,5 @@ exec docker run --rm "${TTY_FLAGS[@]}" \
   -e TORCH_HOME=/workspace/data/torch \
   -e TRITON_CACHE_DIR=/workspace/data/triton \
   -e WANDB_API_KEY="${WANDB_API_KEY:-}" \
+  -e HF_TOKEN="${HF_TOKEN:-}" \
   "$IMAGE" "$@"
