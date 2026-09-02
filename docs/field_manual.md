@@ -555,4 +555,88 @@ uv run python scripts/annotate_episodes.py --dataset ./.cache/lerobot/omx_pick_p
 
 ---
 
+## 8. 雲端同步與跨機部署（4090 → 筆電 → 真機）
+
+**目的：** A11/A12 已在 4090 本機完成訓練與開環評估，但 A13「部署在手臂推論」要在**筆電**上對**真機**
+下指令。模型只存在 4090 磁碟不夠——兩台機器需要一個交接點，用 HF Hub 的 private repo 扮演這個角色，
+不必手動複製檔案或靠隨身碟版本對不上。
+
+以下指令都用 `hf --help`（pinned 容器內 `huggingface_hub` 1.26.0）逐一核對過，不是憑記憶寫的。
+
+### (1) Token 設定（兩台機器都要做，一次性）
+
+1. 到 https://huggingface.co/settings/tokens 建一個 **write** 權限的 token。
+2. **4090（訓練端，容器內）：**
+   ```bash
+   export HF_TOKEN="hf_xxx"      # 寫進 ~/.bashrc，之後每次開 shell 自動有
+   ```
+   `scripts/run_container.sh` 已把 `HF_TOKEN` 透傳進容器（比照 `WANDB_API_KEY` 的模式，見
+   `docs/environment.md`）；容器內 `HF_HOME=/workspace/data/huggingface`，token 落在 `data/` 下，
+   `.gitignore` 已排除，不會進 git。或用互動式登入（存到同一個路徑，效果一樣）：
+   ```bash
+   ./scripts/run_container.sh hf auth login
+   ```
+3. **筆電（部署端）：** 先照 §2-(3) 把 `HF_HOME` / `HF_LEROBOT_HOME` 重定向到專案內 `.cache/`，
+   再登入：
+   ```powershell
+   $env:HF_HOME = "$PWD\.cache\hf"
+   $env:HF_LEROBOT_HOME = "$PWD\.cache\lerobot"
+   uv run hf auth login
+   ```
+   （若 `hf` 指令不存在，代表這台的 `huggingface_hub` 版本較舊，改用 `huggingface-cli login`，
+   語法相同。）
+
+**絕對不要**把 token 寫進任何 `configs/*.yaml` 或貼進 commit —— 見 `docs/conventions.md`
+「Never commit」一節。
+
+### (2) 從 4090 push 目前的 pilot checkpoint（+ 資料集）
+
+`configs/record_omx.yaml` 原本標記 `omx_pick_place_pilot` 「local only, do NOT push」——因為那
+是 smoke-test/管線驗證用資料，不是正式 campaign。**現在要驗證的是「4090 訓練 → 筆電部署 → 真機
+動作」這條交接鏈路本身**，所以把這組已經訓練、驗證過的模型（和它對應的資料集，方便回溯）實際搬
+上 Hub 一次；這跟「是否升級成正式資料」是兩件事——正式 campaign 仍照原計畫另開新 `repo_id`。
+
+```bash
+# 模型 checkpoint（A11 訓練出的 pilot ACT 模型）
+./scripts/run_container.sh hf upload EricC430/act_omx_pick_place_pilot \
+  data/train/phase_a_pilot/checkpoints/last/pretrained_model \
+  --repo-type model --private \
+  --commit-message "Phase A pilot ACT -- 500 steps, eval_loss 0.4866, open-loop MAE 11.29 deg (ep7)"
+
+# 資料集（可選，用於留存/回溯；部署真機不需要它，只有 eval_open_loop.py 需要）
+./scripts/run_container.sh hf upload EricC430/omx_pick_place_pilot \
+  data/huggingface/lerobot/EricC430/omx_pick_place_pilot \
+  --repo-type dataset --private
+```
+
+`--private` 只有在 repo 尚未存在時才會套用（`hf upload --help` 原文：「Ignored if the repo
+already exists」）——如果不小心先建成 public，要自己到 Hub 網站的 repo 設定頁改回 private。
+
+### (3) 在筆電上 pull 並對真機跑推論
+
+`lerobot-rollout` 是這個 pinned 版本裡真正會驅動真機的指令——`lerobot-record` 的 `teleop` 是
+必填、無法用 policy 取代；`lerobot-eval` 只接受模擬環境（`env.type` 只有 `aloha` / `pusht` /
+`libero` 等，沒有真機選項）；兩個都用 `--help` 核對過，都不適用。`lerobot-rollout` 吃
+`--policy.path=<repo_id>`，會自動用登入的 token 從 Hub 拉取並快取，不必手動 `hf download`。
+
+`configs/rollout_omx_pilot.yaml`（已建立，機型/相機沿用 `configs/record_omx.yaml`）：
+
+```powershell
+uv run lerobot-rollout --config_path configs/rollout_omx_pilot.yaml
+```
+
+🔴 **第一次真機跑推論：手放在緊急停止/斷電開關上，`--duration` 先設短**（config 裡預設 20 秒，
+確認動作方向合理再拉長）。**開環 MAE 11.29°（A12）是「軌跡跟真人示範差多少」，不是「閉環會不會
+撞」的保證**——那是本節要驗證的，兩者是不同的失敗模式。
+
+### (4) 驗證完成的判準
+
+- [ ] 筆電上 `uv run hf auth whoami` 能認得到帳號（token 生效）
+- [ ] `lerobot-rollout` 成功從 Hub 抓到 checkpoint（log 會印 repo_id）
+- [ ] 手臂真的依照畫面前方物體位置動作，不是原地不動或亂動
+- [ ] 至少完整跑完一次 `--duration` 區間，沒有觸發緊急停止
+- [ ] 觀察到的失敗模式（若有）記錄回 `docs/pipeline_validation.md` 或 `eval/`，供下一輪比較
+
+---
+
 **現場護欄：** 同一個問題卡超過 90 分鐘就跳過，記錄下來，往下一項走。現場時間太貴，不要拿來 debug 單一問題——那件事回家也能做。

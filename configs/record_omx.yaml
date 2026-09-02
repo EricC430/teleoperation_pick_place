@@ -26,7 +26,13 @@ robot:
       use_depth: false
 
 dataset:
-  # pilot data (D022 / D024 campaign_A_pilot_2cam) — local only, do NOT push
+  # pilot data (D022 / D024 campaign_A_pilot_2cam) — recorded local-only (push_to_hub: false below
+  # is what future re-recordings from THIS config will do).
+  # 🔴 2026-09-03: this specific already-recorded snapshot WAS manually pushed once —
+  # `hf upload EricC430/omx_pick_place_pilot ...` — to validate the 4090-train -> HF Hub ->
+  # laptop-deploy handoff for A13. See docs/field_manual.md §8. That is a one-off manual push of
+  # existing data, not a change to this config's default behavior — real campaigns still get a
+  # fresh repo_id, decided when Phase A/B recording actually starts.
   repo_id: EricC430/omx_pick_place_pilot   # replace with your real HF handle if you ever push
   root: ./.cache/lerobot/omx_pick_place_pilot   # explicit → independent of HF_HOME / HF_LEROBOT_HOME
   push_to_hub: false

@@ -183,6 +183,13 @@ excludes. So datasets are visible on the host, survive container exit, and still
 consistent with `experiment_spec.md` §12. Note this is a *local cache*, not storage: our own demo
 data still belongs on HF Hub (see the README's [Where the data lives](../README.md#where-the-data-lives)).
 
+**`HF_TOKEN`** (added 2026-09-03) is passed through the same way — `-e HF_TOKEN="${HF_TOKEN:-}"` in
+`run_container.sh`, empty string if the host has none. It authenticates `hf upload` / `hf download` /
+`lerobot-train --policy.push_to_hub` / `lerobot-record --dataset.push_to_hub` against our **private**
+Hub repos instead of running unauthenticated. See `docs/field_manual.md` §8 for the full push/pull
+walkthrough (verified against this pinned environment's own `hf --help`, `lerobot-rollout --help`).
+Never export it into a config file — env var or `hf auth login` only, per `docs/conventions.md`.
+
 > Without a volume mount, downloads land inside the container and `--rm` deletes them on exit — the
 > dataset is re-fetched every single run.
 

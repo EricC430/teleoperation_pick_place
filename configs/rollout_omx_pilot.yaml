@@ -1,0 +1,45 @@
+# Real-robot deployment test for the A11 Phase A pilot ACT checkpoint.
+# Run on the LAPTOP (not the 4090 box) against the physical OMX follower arm.
+# See docs/field_manual.md §8 for the HF Hub push/pull steps this depends on.
+#
+#   uv run lerobot-rollout --config_path configs/rollout_omx_pilot.yaml
+#
+# `lerobot-rollout` (not `lerobot-record` — teleop is mandatory there — and not
+# `lerobot-eval` — sim environments only) is the command that actually drives
+# hardware from a policy. Verified against this pinned lerobot's own --help.
+
+robot:
+  type: omx_follower
+  port: COM5
+  id: 2026-08-31_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: intelrealsense
+      serial_number_or_name: "260322271459"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+    front-left:
+      type: intelrealsense
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+
+policy:
+  path: EricC430/act_omx_pick_place_pilot  # pulled from HF Hub on first run, cached after
+
+strategy:
+  type: base  # fully autonomous, no dataset — sentry/highlight/dagger need --dataset
+
+inference:
+  type: sync
+
+fps: 15                # must match the cameras / the fps the policy was trained at
+duration: 20            # seconds — SHORT on purpose for the first real-hardware run; raise once verified
+task: "Pick up the object and place it into the box"
+display_data: true       # watch joints/cameras live via rerun during the first run
+return_to_initial_position: true

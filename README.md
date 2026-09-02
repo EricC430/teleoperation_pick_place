@@ -167,12 +167,15 @@ dated record, no exceptions.
 
 | What | Where | Why not in this repo |
 |---|---|---|
-| Raw datasets (demos, recovery demos) | Hugging Face Hub, private repo — `TODO: repo_id` | Large, binary, versioned better by HF Hub / LeRobot tooling than git |
-| Model checkpoints | Hugging Face Hub — `TODO: repo_id` | Same as above |
+| Raw datasets (demos, recovery demos) | Hugging Face Hub, private repo — Phase A pilot: `EricC430/omx_pick_place_pilot`. Real campaigns get a fresh `repo_id`, see `configs/record_omx.yaml` | Large, binary, versioned better by HF Hub / LeRobot tooling than git |
+| Model checkpoints | Hugging Face Hub, private repo — Phase A pilot: `EricC430/act_omx_pick_place_pilot` | Same as above |
 | Raw video | Lab NAS — `TODO: path` | Large binary, no need to version in git |
 
 If you're missing access to any of the above, ask in `docs/meeting/` notes or the shared doc referenced
 there — don't recreate a local-only copy of something that should be centrally stored.
+
+**Setting up push/pull yourself (HF_TOKEN, `hf upload`/`download`, and pulling a checkpoint onto the
+laptop to actually drive the arm with `lerobot-rollout`):** see **`docs/field_manual.md` §8** (雲端同步與跨機部署).
 
 ## Related
 
