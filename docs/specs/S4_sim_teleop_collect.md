@@ -64,7 +64,56 @@
 🔴 **模擬要套的是「原廠行程 ∩ 現場實測限制」**：`experiment_spec.md` §3 的方位角扇區 ≈135°
 是相機支架**實體擋路**造成的，比原廠行程更緊。只套原廠行程 = 模擬裡的手臂能去實機去不了的地方。
 
-### 2-2 🔴 新的必做項：8/28 那份 USD 的稽核
+### 2-2 ✅ 2026-09-03 已完成：USD 稽核，結論是重轉一份
+
+**做法與完整對照表：`sim/README.md`。工具：`sim/audit_usd.py`（唯讀，可對任何 USD 跑）。**
+
+**稽核 8/28 那份 GUI 匯入的 `wildbot_with_omxaiarm.usd`，六項全中：**
+
+| 項目 | GUI 匯入版（8/28） |
+|---|---|
+| joint limits | 🔴 六個關節全是 ±360°（URDF 佔位值原封不動） |
+| drive `maxForce` | 🔴 全是 1000 N·m |
+| max joint velocity | 🔴 全是 275 °/s（匯入器預設） |
+| drive stiffness | 🔴 0.41 / 1.38 / 4.58 / 3.39 / 0.27 / 0.03，**與馬達規格無任何關係** |
+| drive damping | 🔴 **每個關節都是 0** —— 無阻尼位置驅動，會震盪 |
+| collision | 🔴 手臂 14 個 `convexHull` ＋ 車體 8 個 `convexDecomposition` |
+| mimic | ✅ 有（唯一沒壞的一項） |
+| articulation root | ⚠️ **兩個**：`/World/car/...` 與 `/World/omx_f/...`——**車與臂之間沒有任何關節** |
+
+⚠️ **最後一項值得單獨說**：8/28 的資產是「把手臂放在車體上方」，**不是把手臂裝在車上**。
+這與 `[Eric說]` 一致，本身沒有錯，但**它不是一份 mobile manipulator 資產**，而且 D020 的車體還沒定案。
+
+**→ `[Eric決定 2026-09-03]` 重轉一份，並且把轉換腳本化。** GUI 匯入的根本問題不是參數錯，是
+**沒有記錄**：產生它的設定沒有留下，下一個人重匯會得到不同的東西。
+
+### 2-2b ✅ 重轉結果（`sim/convert_omx_urdf.py`，2026-09-03）
+
+```
+./sim/run_in_container.sh convert_omx_urdf.py \
+    --urdf $GUEST/assets/open_manipulator_description/urdf/omx_f/omx_f.urdf \
+    --out  $GUEST/assets/omx_f_generated/omx_f.usd --headless
+```
+
+轉換後逐項套上 `sim/omx_constants.py` 的值並印出 `原值 → 新值`（S4 §7 驗收條件）。
+**`sim/audit_usd.py` 對產物的結果：✅ 全數相符。**
+
+💡 **一個意外的交叉驗證：重轉後八個 link 的質量總和 = 0.5588 kg，ROBOTIS 規格寫 560 g。**
+**URDF 的 inertial 是真值，而且完整地進到 USD 了。**
+
+**兩個沒有關閉的缺口，不要當成已解決：**
+
+1. 🔴 **drive gains 是暫定值。** 規則是 `stiffness = 堵轉扭矩 / 5°`、`damping = 0.05 × stiffness`
+   ——量綱誠實、可重現，**但不是校正**。要關閉它必須拿實機軌跡回歸（D029）。
+2. 🔴 **mimic 的 gearing 正負號未驗證。** URDF 寫 `multiplier="-1"`，USD 寫 `gearing=1.0`
+   （沿用 Isaac Sim GUI 匯入器對同一份 URDF 的產出）。**兩者的符號約定不同，光讀規格無法決定。**
+   **由 §5-1 五姿態對照的「夾爪開閉」那一列來裁決**——`--mimic-gearing` 這個旗標就是為此存在。
+
+⚠️ **另外發現一個匯入器 bug**：Isaac Lab 5.1 的轉換器**不會**把 URDF 的 `<mimic>` 帶進 USD
+（即使 `convert_mimic_joints_to_normal_joints=False`）。`convert_omx_urdf.py` 已在後處理補上，
+**若日後升級 Isaac Lab，這段要重驗**——否則第二根手指會靜靜地變成自由關節。
+
+### 2-2c 舊的必做清單（保留為對照）
 
 `isaaclab_volume/assets/wildbot_with_omxaiarm.usd` **目前只是「匯入手臂並擺在車體上方」**
 `[Eric說 2026-09-03]`——車體暫定（D020 未定案）、無固定件、未做干涉檢查、未做下列修正。

@@ -33,3 +33,6 @@ Thumbs.db
 *.local.*
 .cache/
 outputs/
+
+# Isaac Sim build artefacts live in ~/isaaclab_volume, never here
+sim/__pycache__/

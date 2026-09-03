@@ -1798,6 +1798,22 @@ S4 §3 當初主張 MuJoCo 的理由是「Isaac 上手成本高、沒有現成 O
   **做法：USD 只留幾何＋慣性（那是 URDF 唯一給對的東西），第 1–6 項全部寫進 Isaac Lab 的
   `ArticulationCfg` / `ImplicitActuatorCfg` 程式碼裡**，並把匯入本身寫成可重跑的腳本
   （`IsaacLab/scripts/tools/convert_urdf.py`）。這也是 cyclo_lab 與官方資產的做法。
+### ✅ 2026-09-03 當日執行結果：稽核 → 重轉 → 稽核通過
+
+**工具寫在 `sim/`（`omx_constants.py` / `convert_omx_urdf.py` / `audit_usd.py` / `run_in_container.sh`），
+完整對照表在 `sim/README.md`，規格回填在 S4 §2-2。**
+
+- **上表六項在 8/28 的 GUI 匯入版全部命中**，其中最貴的一項是 **drive damping 每個關節都是 0**
+  ——無阻尼位置驅動會震盪，而症狀看起來像「模擬不穩定」而不是「參數寫錯」。
+- **另外查到一件事**：8/28 的資產有**兩個 articulation root**（`/World/car/...` 與 `/World/omx_f/...`），
+  **車與臂之間沒有任何關節**。它是「手臂放在車上方」，不是 mobile manipulator 資產。
+- **重轉後 `audit_usd.py` 全綠**，且八個 link 質量總和 **0.5588 kg vs 原廠 560 g**
+  ——URDF 的 inertial 是真值，並且完整進到 USD。
+- 🔴 **兩個缺口沒有關閉**：drive gains 是暫定值（要用實機軌跡回歸）、
+  mimic gearing 的正負號未驗證（由 S4 §5-1 五姿態對照的夾爪那一列裁決）。
+- ⚠️ **Isaac Lab 5.1 的轉換器不會把 URDF 的 `<mimic>` 帶進 USD**，即使
+  `convert_mimic_joints_to_normal_joints=False`。已在後處理補上；**升級 Isaac Lab 後要重驗。**
+
 - ⚠️ `wildbot_with_omxaiarm.usd` **目前只是「把手臂匯入並擺在車體上方的位置」** `[Eric說 2026-09-03]`
   ——**車體本身是暫定的（D020 未定案），沒有固定件、沒有做干涉檢查，也還沒有做上述 1–6 項修正。**
   **在稽核完成前，不要把它當成可用的模擬資產引用。**
