@@ -20,6 +20,8 @@ fi
 
 mkdir -p "$HOST_VOLUME/omx_sim"
 cp "$HERE"/*.py "$HOST_VOLUME/omx_sim/"
+# the seeded placement list travels with the code: sim and real share placement ids
+cp "$HERE"/../docs/assets/placement_label_map_*.csv "$HOST_VOLUME/omx_sim/" 2>/dev/null || true
 
 SCRIPT="$1"; shift
 echo "[run_in_container] $CONTAINER : /isaac-sim/python.sh $GUEST_VOLUME/omx_sim/$SCRIPT $*"

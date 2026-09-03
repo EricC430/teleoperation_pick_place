@@ -147,6 +147,47 @@
 `assets/omx_f/omx_f.urdf` md5 相同**（2026-09-03 驗）——S1 的 FK 與模擬用的是同一份 URDF，
 **這是好事，但也代表任何一邊改了它，另一邊會靜靜地跟著錯。改動要同時記在 D026 與這裡。**
 
+## 2-4 ✅ 2026-09-03 已完成：場景骨架與端到端煙霧測試
+
+**新增 `sim/scene_constants.py`、`sim/omx_scene_cfg.py`、`sim/preview_scene.py`。**
+桌子、手臂（用 §2-2b 重轉的 USD）、一個依照 seeded placement CSV 擺放的物體、垃圾桶、兩台相機
+（依 dataset 順序 `wrist` → `front-left`）。**跑通了，且逐項印出診斷數字，不是只截圖看起來像樣。**
+
+```
+./sim/run_in_container.sh preview_scene.py --headless --enable_cameras \
+    --placements docs/assets/placement_label_map_campA_20260831.csv --place t1 --out <dir>
+```
+
+**這個煙霧測試證明的事，僅此而已**：轉換好的手臂能載入成一個 articulation、seeded placement CSV
+能驅動模擬座標系裡的物體位置（用同一個 `placement_id`，這正是「sim 資料與實機資料可比較」的關鍵）、
+兩台相機以錄製解析度、以宣告順序渲染出畫面。**沒有證明幾何對齊**——`experiment_spec.md` §3 仍是空白，
+`scene_constants.py` 的桌面/相機/光照數字明確標為 PLACEHOLDER，不是量出來的。
+
+### 🔴 過程中抓到一個真的 bug，不是待測量的空格
+
+第一次跑，物體放在桌面上方 6 cm，落地後停在 **z = 357.6 cm**——穿過桌子飛走了。
+根因（用 `sim/inspect_object_usd.py` 純讀 USD、不跑物理查出來）：`assets/trash_obj/` 全部 8 個物體
+**都是 `metersPerUnit = 0.01`**（自己的座標用公分），但 Isaac Sim 的世界舞台是公尺。
+**USD reference 不會自動處理 stage 間的 `metersPerUnit` 落差**——一個 8 公分的罐頭沒加縮放，
+會被當成 8 **公尺**的物體匯入，一接觸就爆開。
+
+**修法：`trash_obj` 的物件一律套 `scale=(0.01, 0.01, 0.01)`**（`scene_constants.TRASH_OBJ_SCALE`）。
+八個物體全部檢查過，換算後的真實尺寸都合理（香蕉 15×8×18 cm、寶特瓶 9×31×9 cm……），
+**這是整個資產家族的通性，不是單一物體的猜測**。修完重跑：物體穩定停在 z = 79.0 cm
+（桌面 75 cm + 4 cm，正是罐頭躺在桌上該有的高度）。
+
+### ⚠️ 確認了、但沒有關閉：暫定 drive gains 撐不住手臂自身重量
+
+命令全零關節姿態並保持 120 步（1 秒），**漂移 19–35°**（依 run 而異；第一次的異常值可能被物體爆炸的
+衝擊波影響，19° 是較乾淨的讀數）。前視角畫面裡看得出手臂明顯下垂。
+**這正是 `omx_constants.py` docstring 與 D029 早就標記的缺口，現在多了一個具體數字。**
+**不要用「調大 tracking error 常數」這種猜測方式關閉它**——有兩個猜不出來的可能性：
+(a) 增益真的太軟，(b) 全零關節角對這隻臂而言不是機械上輕鬆的姿態
+（例如若那對應「手臂水平伸直」而非「摺疊收起」），而 XL330 在實機上能撐住，靠的是堵轉扭矩數字
+沒表達出來的餘裕。**需要拿實機錄到的軌跡回歸，不是再調一次常數。**
+
+---
+
 ## 3. ✅ 技術選型已裁決：Isaac Sim（D029）
 
 **原本的 MuJoCo vs Isaac Sim 比較表已移除**（完整經過留在 `decisions.md` D025 §2026-09-03 與 D029）：

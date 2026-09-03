@@ -1,0 +1,176 @@
+"""Scene geometry for the simulated pick-and-place cell.
+
+🔴 READ THIS BEFORE TRUSTING ANY NUMBER HERE.
+
+`docs/experiment_spec.md` §3 (場景常數表) is the authority for every constant in this file, and
+most of its rows are still BLANK — table height, camera x/y/z, camera pitch, lighting are all
+`___` as of 2026-09-03, and the D405 exposure fix has not happened yet either.
+
+So the values below are of two kinds, and they are labelled:
+
+  MEASURED    — taken from a real measurement already in the repo (S1 tape measure, the S2
+                seeded placement list, `configs/record_omx.yaml`).
+  PLACEHOLDER — invented so the scene can be built and rendered at all. NOT the real cell.
+
+A scene built from PLACEHOLDER values is good for exactly one thing: checking that the pipeline
+runs (S4 §5-5 says so explicitly). It is NOT geometrically aligned with the real cell, and any
+dataset recorded from it must say so in its `meta`.
+
+The path to replacing the placeholders is S4 §5-5 T1/T2: read the RealSense intrinsics off the
+device, and solve the extrinsics from ArUco markers on the placement mat. Both happen on the next
+lab day (9/6-9/7 work order, `docs/meeting/2026-09-03.md` §4-3).
+"""
+
+from __future__ import annotations
+
+import csv
+import math
+from dataclasses import dataclass
+from pathlib import Path
+
+# --------------------------------------------------------------------------------------
+# Frame convention — the same one the placement mat uses
+# --------------------------------------------------------------------------------------
+# Origin  = the pan axis (joint1) of the arm, projected onto the table top.
+# +X      = straight ahead, away from the operator.   (theta = 0 in experiment_spec §3)
+# +Y      = to the operator's left.                   (theta > 0)
+# +Z      = up.
+# This matches `docs/assets/placement_label_map_*.csv` columns x_pan_cm / y_pan_cm exactly,
+# which is the whole point: a sim placement and a real placement can share an id.
+
+# --------------------------------------------------------------------------------------
+# MEASURED
+# --------------------------------------------------------------------------------------
+R_INNER_M = 0.22            # S1 tape measure 2026-08-31 (17 cm + 5 cm d_offset)
+R_OUTER_M = 0.41            # S1 tape measure 2026-08-31 (36 cm + 5 cm d_offset)
+THETA_MIN_DEG = -90.0       # experiment_spec §3: camera-rig collision, not FOV
+THETA_MAX_DEG = 45.0
+
+CAM_WIDTH = 848             # configs/record_omx.yaml — both cameras record at 848x480
+CAM_HEIGHT = 480
+CAM_FPS = 15                # configs/record_omx.yaml (dataset fps must match)
+
+# --------------------------------------------------------------------------------------
+# PLACEHOLDER — every one of these replaces a blank row in experiment_spec §3
+# --------------------------------------------------------------------------------------
+TABLE_TOP_Z = 0.75          # PLACEHOLDER  桌面高度 ___ cm
+TABLE_SIZE = (1.20, 0.80, 0.04)  # PLACEHOLDER  table top slab (x, y, thickness)
+
+BIN_POS = (0.10, 0.30, 0.0)      # PLACEHOLDER  目標區位置 (relative to the pan axis, on the table)
+BIN_SIZE = (0.16, 0.16, 0.12)    # PLACEHOLDER
+
+# --------------------------------------------------------------------------------------
+# MEASURED (of the asset files, not the real cell) — `assets/trash_obj/*.usd`
+# --------------------------------------------------------------------------------------
+# 🔴 Every trash_obj USD is authored with stage metersPerUnit=0.01 (its own coordinates are
+#    centimetres), but Isaac Sim's world stage is metersPerUnit=1.0 (metres). USD reference
+#    composition does NOT auto-rescale for a metersPerUnit mismatch between stages — the raw
+#    numbers are taken as-is. Referencing one of these without this scale makes an 8 cm can
+#    render as an 8-METRE object.
+#
+# [已查證 2026-09-03] checked via `sim/inspect_object_usd.py` (no simulation, just UsdGeom.BBoxCache)
+# on all 8 objects in assets/trash_obj/: every one reports metersPerUnit=0.01, and the resulting
+# real-world sizes are all physically plausible (banana 15x8x18cm, bottle_1 9x31x9cm, cans_1
+# 7.7x16.6x8.1cm, ...). This is a property of the asset family, not a per-object guess.
+#
+# First-run evidence this matters: with scale=1.0, an object placed 6cm above the table
+# (`preview_scene.py`, object USD trash_cans_1) settled at z=357.6cm after 120 physics steps —
+# it was never "on the table", it exploded through it.
+TRASH_OBJ_SCALE = (0.01, 0.01, 0.01)
+
+# Third-person camera, "front-left" — the name is from the OPERATOR's seat, see D022.
+CAM_FRONT_LEFT_POS = (0.62, 0.34, 0.42)   # PLACEHOLDER  外部相機位置 (x, y, z) ___
+CAM_FRONT_LEFT_LOOKAT = (0.26, 0.00, 0.02)  # PLACEHOLDER  外部相機角度（俯角）___
+
+# Wrist camera, mounted on link5 (the gripper base). Offset is in the link frame.
+CAM_WRIST_PARENT_LINK = "link5"
+CAM_WRIST_OFFSET_POS = (0.02, 0.0, 0.03)   # PLACEHOLDER  手腕相機安裝方式 ___
+CAM_WRIST_OFFSET_ROT = (0.5, -0.5, 0.5, -0.5)  # PLACEHOLDER (ros convention)
+
+DOME_LIGHT_INTENSITY = 1200.0   # PLACEHOLDER  光照強度 ___ lux
+
+# --------------------------------------------------------------------------------------
+# Intrinsics — PROVISIONAL, from datasheets. S4 §5-5 T1 says read them off the DEVICE.
+# --------------------------------------------------------------------------------------
+# 🔴 A datasheet FOV is the nominal design value. The per-unit intrinsics that pyrealsense2
+#    reports are what actually determines where a 3-D point lands in the image. Do not treat
+#    these as "the cameras are aligned" — they are "the scene can be rendered".
+SENSOR_APERTURE_MM = 20.955     # Isaac Sim's standard 35 mm-equivalent horizontal aperture
+HFOV_WRIST_DEG = 87.0           # D405 datasheet RGB horizontal FOV        [PROVISIONAL]
+HFOV_FRONT_LEFT_DEG = 90.0      # D455 datasheet RGB horizontal FOV        [PROVISIONAL]
+CLIP_WRIST = (0.04, 2.0)        # D405 min range ~4 cm
+CLIP_FRONT_LEFT = (0.10, 3.0)
+
+
+def focal_length_mm(hfov_deg: float, aperture_mm: float = SENSOR_APERTURE_MM) -> float:
+    """f = aperture / (2 tan(hfov/2)) — the conversion Isaac Sim's PinholeCameraCfg wants."""
+    return aperture_mm / (2.0 * math.tan(math.radians(hfov_deg) / 2.0))
+
+
+# --------------------------------------------------------------------------------------
+# Seeded placements — the same frozen list the real campaign uses
+# --------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Placement:
+    short_id: str
+    placement_id: str
+    x_m: float
+    y_m: float
+
+    @property
+    def radius_m(self) -> float:
+        return math.hypot(self.x_m, self.y_m)
+
+    @property
+    def theta_deg(self) -> float:
+        return math.degrees(math.atan2(self.y_m, self.x_m))
+
+
+def load_placements(csv_path: str | Path) -> list[Placement]:
+    """Read `docs/assets/placement_label_map_<camp>.csv` (S2/S3 output).
+
+    Using the SAME file as the printed mat is deliberate: a sim episode and a real episode can
+    then carry the same `placement_id`, which is the only way the two datasets are comparable
+    at all (D025 premise 2 forbids pooling them, not comparing them).
+    """
+    out: list[Placement] = []
+    with open(csv_path, newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            out.append(
+                Placement(
+                    short_id=row["short_id"],
+                    placement_id=row["placement_id"],
+                    x_m=float(row["x_pan_cm"]) / 100.0,
+                    y_m=float(row["y_pan_cm"]) / 100.0,
+                )
+            )
+    return out
+
+
+def check_placement_reachable(p: Placement) -> list[str]:
+    """Complain if a seeded point falls outside the measured workspace."""
+    problems = []
+    if not (R_INNER_M <= p.radius_m <= R_OUTER_M):
+        problems.append(f"radius {p.radius_m*100:.1f} cm outside [{R_INNER_M*100:.0f}, {R_OUTER_M*100:.0f}]")
+    if not (THETA_MIN_DEG <= p.theta_deg <= THETA_MAX_DEG):
+        problems.append(f"theta {p.theta_deg:.1f} deg outside [{THETA_MIN_DEG:.0f}, {THETA_MAX_DEG:.0f}]")
+    return problems
+
+
+if __name__ == "__main__":
+    import sys
+
+    print(f"frame: origin = pan axis on the table top, +X ahead, +Y operator-left, +Z up")
+    print(f"workspace: r {R_INNER_M*100:.0f}-{R_OUTER_M*100:.0f} cm, theta {THETA_MIN_DEG:.0f}..{THETA_MAX_DEG:.0f} deg")
+    print(f"cameras: {CAM_WIDTH}x{CAM_HEIGHT} @ {CAM_FPS} fps")
+    print(f"  wrist       hfov {HFOV_WRIST_DEG} deg -> focal {focal_length_mm(HFOV_WRIST_DEG):.3f} mm  [PROVISIONAL]")
+    print(f"  front-left  hfov {HFOV_FRONT_LEFT_DEG} deg -> focal {focal_length_mm(HFOV_FRONT_LEFT_DEG):.3f} mm  [PROVISIONAL]")
+    if len(sys.argv) > 1:
+        ps = load_placements(sys.argv[1])
+        bad = [(p, check_placement_reachable(p)) for p in ps]
+        bad = [(p, w) for p, w in bad if w]
+        print(f"\nplacements: {len(ps)} loaded, {len(bad)} outside the measured workspace")
+        for p, w in bad[:10]:
+            print(f"  {p.short_id:<5}{p.placement_id:<14}r={p.radius_m*100:5.1f}cm theta={p.theta_deg:6.1f}deg  {'; '.join(w)}")
