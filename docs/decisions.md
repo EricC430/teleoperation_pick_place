@@ -246,6 +246,20 @@ Anything in this repo written before 2026-08-24 that names SO-ARM as the platfor
   SO-100/SO-101 assets exist (D002), so falling back to simulation would not start from zero.
   Note that reversing *after* demo collection begins means discarding that data.
 
+### 🔴 2026-09-03 `[Eric決定]` — D007 的範圍縮小到「不用模擬取代實機」，模擬本身不再是禁區
+
+**D007 的標題「No simulation」從今天起是錯的標題，正文的理由則仍然成立。** 正確的表述是：
+
+| D007 仍然反對 | D007 從未反對、現在明確允許 |
+|---|---|
+| 用模擬**取代**實機蒐集 | 用模擬**擴充**實機（實機是 ground truth） |
+| 用 sim2real 成功率當成專案成果 | 用模擬做幾何／可達／干涉評估 |
+| 回到 PPO＋課程學習那條路線 | 用模擬做變因掃描與 domain randomization |
+
+**觸發原因不是改變心意，是 D025 的路徑已經走通了一半而沒人回填記錄**（見 D025 §2026-09-03、D029）。
+**去年失敗在 sim2real 的教訓沒有被推翻**——它現在的作用是決定**順序**（實機先、模擬後）與
+**歸因方式**（有實機基準才能判斷是模擬錯還是策略錯），不再是「不准碰模擬」。
+
 ---
 
 ## D008 — Tactile modality descoped to Phase D; Outdoor vision generalization prioritized (Phase C)
@@ -876,6 +890,14 @@ weeks while the decision log, which is the 正本, still listed the pre-amendmen
   | **Which physical camera is plugged in as which key** | the actual image content behind each key | 🔴 **silent** — the worst one |
 
   **→ So the naming choice is not about the model, it is about catching the two silent failures.**
+  🔴 **2026-09-03 更正 `[Eric決定]`：實際採用的鍵名是 `wrist` / `front-left`，不是 `left_front` /
+  `right_front`。** 現行組態 = D405 手腕 ＋ D455 第三視角，鍵序為
+  **1. `observation.images.wrist` → 2. `observation.images.front-left`**
+  （證據：`data/huggingface/lerobot/EricC430/omx_pick_place_pilot/meta/info.json`，與
+  `configs/record_omx.yaml` 的宣告順序一致）。
+  **`left_front` / `right_front` 降為「手腕相機不可用時」的退路組態**（兩台第三視角），
+  本條以下關於「順序即場景常數」的論證**完全不受影響**——變的是鍵名，不是道理。
+
   `left_front` / `right_front` encode a physical fact that a person can verify against the image in
   two seconds; `cam1` / `cam2` cannot be checked at all. That is the entire argument for the names,
   and it is an operational one, not a modelling one. (A side benefit: `left` sorts before `right`,
@@ -1507,7 +1529,60 @@ D007 反對的是**用模擬取代實機**；這裡是**用實機錨定模擬**�
 - cyclo_lab 的環境定義能不能直接換 robot asset，還是綁死 OMY
 
 
-- **Next step:** clone the two repos and check the three items above.
+### ✅ 2026-09-03 `[已查證]`：待驗證的三項全部有答案了，而且比 8/27 預期的好
+
+**一、`omx_f` URDF 的 inertial 不是佔位值——是真的。** 逐 link 讀 `urdf/omx_f/omx_f.urdf`：
+每個 link 都有具體 `mass`（例：link1 `2.2389e-01` kg、link6 `2.9975e-02` kg）與**完整慣性張量**
+（ixx/ixy/ixz/iyy/iyz/izz 六項齊備，量級 1e-4~1e-6，非 1e-3 佔位）。**8/27 擔心的那件事沒有發生。**
+
+**二、joint limits 確實是佔位值——但原廠規格查得到，不需要用猜的。**
+URDF 七個 joint 全部是 `lower="-6.283" upper="6.283" effort="1000" velocity="4.8"`。
+**[已查證 2026-09-03，[docs.robotis.com OMX 規格頁](https://docs.robotis.com/docs/systems/omx/specifications/hardware/)]：**
+
+| Joint | LeRobot 名稱 | 馬達 | 原廠行程 | 堵轉扭矩 | 空載轉速 |
+|---|---|---|---|---|---|
+| joint1 | `shoulder_pan` | **XL430-W250-T** | **−270° ~ +360°** | 1.5 N·m @12 V | 61 rpm ≈ **6.39 rad/s** |
+| joint2 | `shoulder_lift` | XL330-M288-T | **−120° ~ +90°** | 0.52 N·m @5 V | 103 rpm ≈ **10.8 rad/s** |
+| joint3 | `elbow_flex` | XL330-M288-T | **−120° ~ +90°** | 同上 | 同上 |
+| joint4 | `wrist_flex` | XL330-M288-T | **−100° ~ +100°** | 同上 | 同上 |
+| joint5 | `wrist_roll` | XL330-M288-T | **±270°** | 同上 | 同上 |
+| joint6 | `gripper` | **XL330-M077-T** | **0° ~ +100°** | 0.18–0.228 N·m | 278–456 rpm |
+
+齒輪比：XL430-W250 `258.5:1`、XL330-M288 `288.4:1`；兩者解析度皆 `4096 pulse/rev`
+（對得上 `calibration/*.json` 的 `range_max: 4095`）。
+OMX-F 整體：**5+1 DOF、full reach 400 mm、560 g、12 VDC、payload 100 g @full reach / 250 g @normal reach**。
+OMX-L（leader）：J1–J5 皆 XL330-M288-T、J6 XL330-M077-T、reach 335 mm、360 g、5 VDC。
+
+- 💡 **交叉驗證：原廠 full reach 400 mm vs S1 捲尺量到的 r_outer ≈ 410 mm（含 d_offset 5 cm）——兩者互相印證。**
+- 🔴 **payload 100 g @ full reach 要進 `experiment_spec.md` §2 物體清單**：空鋁罐（≈15 g）沒問題，
+  **裝滿的鋁罐（≈330 g）超出規格**。這是硬體限制，不是操作技巧問題。
+- ⚠️ `[未確認]` OMX-F 系統標 12 VDC，但 XL330 的容許電壓只有 3.7–6.0 V ⇒ XL330 必然吃穩壓後的 5 V 軌。
+  上表 XL330 的數字取 5 V 那一列。**要用在 effort limit 上之前，先確認電源板的實際供電。**
+- ⚠️ **原廠行程 ≠ 本專案可用行程。** `calibration/2026-08-31_omx_follower.json` 全是原廠預設
+  （`range 0–4095`、`homing_offset 0`），**沒有量過實際行程**；且 D023／`experiment_spec.md` §3 的
+  方位角扇區 ≈135° 是**相機支架實體擋路**造成的，比原廠行程更緊。**模擬要套的是兩者取交集。**
+
+**三、`gripper_joint_2` 是 mimic joint。** `ros2_control/omx_f.ros2_control.xacro` 在 `use_sim` 分支
+明寫 `<param name="mimic">gripper_joint_1</param><param name="multiplier">-1</param>`，
+且只有 6 個 command interface（`number_of_joints: 6`）。**匯進 Isaac Sim 時這條約束要確認有被帶過去，
+否則第二根手指會變成自由關節**——見 D029 §URDF→USD。
+
+**四、cyclo_lab 換 robot asset：仍然是 OMY/FFW/SH5，沒有 OMX**（2026-09-03 覆查：Isaac Sim 5.1.0 +
+Isaac Lab ≥2.3.0）。**但它有 `scripts/imitation_learning/isaaclab_recorder/record_demos.py` 與
+`scripts/sim2real/` 一整套錄製／標註／mimic 流程——骨架可抄，資產不可抄。** 8/27 的判斷維持不變。
+
+### 🔴 2026-09-03 `[Eric決定]`：執行前提 3 撤銷
+
+> **原文：「不佔用 9/26 前的任何工時。這是 Phase B 之後的工作。」→ 作廢。**
+
+**撤銷理由不是「改變優先序」，是這條前提事實上已經在 8/28 被跨過了**：
+`isaaclab_volume/assets/wildbot_with_omxaiarm.usd`（2026-08-28 18:15 產出）已經是 URDF→USD 匯入的成品，
+`open_manipulator_description` 也在同日 clone。**維持一條已被違反的前提，只會讓工作繼續發生而記錄繼續說「尚未開始」。**
+
+**前提 1 與前提 2 維持有效，但前提 1 的措辭要收緊**：實機基準不是「動手做模擬」的門檻，
+而是**「用模擬資料訓練、或在書審／報告裡宣稱模擬有效」的門檻**。資產準備與管線打通不受此限。
+
+- **Next step:** → 由 **D029** 承接。
 - ~~**Next step before this can be decided:** clone the two repos, confirm whether an OMX URDF exists and
   whether any OMX USD exists. **Until then this stays PROPOSED.**~~ → **DECIDED 2026-08-27, see above.**
 - **Cross-reference:** D007, D008, D021, `docs/phase_plan.md`.
@@ -1646,6 +1721,92 @@ D007 反對的是**用模擬取代實機**；這裡是**用實機錨定模擬**�
   (failure-mechanism taxonomy — phase-level pass/fail here is a different granularity from D015's
   per-episode `mechanism` tags; **relationship between the two not yet worked out**), D027,
   `docs/meeting/2026-09-01.md`.
+
+---
+
+## D029 — ✅ DECIDED 2026-09-03: 模擬器＝Isaac Sim；模擬工作解除封鎖；leader 直插模擬主機
+
+- **Date:** 2026-09-03 `[Eric決定]`
+- **Supersedes:** D025 執行前提 3（見 D025 §2026-09-03）；`S4_sim_teleop_collect.md` §3 的
+  「MuJoCo vs Isaac Sim 待裁決」與 §0 的排序衝突警告。
+- **Decision（三件事一起定）:**
+  1. **模擬器 = Isaac Sim / Isaac Lab。MuJoCo 不再是候選。**
+  2. **模擬工作即刻可做**，不再排在 Phase B 之後（D025 前提 1／2 仍有效，見該條）。
+  3. **leader 臂以 USB 直插跑模擬的那台 Linux 機器**（實驗室 5090 筆電）。
+     **不做「個人筆電讀 leader、跨網餵給實驗室機器」的架構。**
+
+### Why 1 — 選 Isaac Sim（8/27 提 MuJoCo 時不知道的四件事）
+
+S4 §3 當初主張 MuJoCo 的理由是「Isaac 上手成本高、沒有現成 OMX 資產」。**兩條都已不成立** `[已查證 2026-09-03]`：
+
+| 8/27 的假設 | 2026-09-03 的事實 |
+|---|---|
+| 沒有現成 OMX 資產，要自己匯入 | `isaaclab_volume/assets/wildbot_with_omxaiarm.usd`（8.2 MB，2026-08-28 產出，prim 含 `omx_f`／`base_link`）**已經匯入完成** |
+| 場景要從零搭 | `assets/trash_obj/` 已有 14 個垃圾物體 USD（鋁罐×3、寶特瓶×3、香蕉、蘋果、柳橙、蛋盒、廚餘…）＋`assets/Trashcan/`＋`wildbot_car_urdf/wildbot_car.usd` |
+| 沒有可抄的環境程式 | `isaaclab_volume/pickup_place_direct_0203/` 是一份**雙相機 pick-place DirectRLEnv**（含 per-env randomization、YOLO 觀測），骨架可抄 |
+| 安裝成本高 | docker `isaac-lab` 容器**已在跑**；`nvcr.io/nvidia/isaac-sim:5.0.0` 已拉 |
+
+**反過來，MuJoCo 在這台機器上是從零開始。** 原本「用便宜的模擬器驗便宜的問題」的論證，
+在既有資產盤點後反轉了：**現在 Isaac Sim 才是便宜的那一個。**
+
+⚠️ **保留 S4 §3 的精神**：第一版**只驗管線**（leader → sim → LeRobot dataset），**不做 domain randomization**。
+選 Isaac Sim 不等於第一版就要做 DR。
+
+### Why 3 — 為什麼 leader 一定要插在模擬主機上
+
+**有兩條迴路，只有一條可以容忍網路：**
+
+| 迴路 | 內容 | 跨網的後果 |
+|---|---|---|
+| **控制迴路** leader 序列埠 → sim 關節目標 | 需要穩定的 30–60 Hz | jitter。**與 D006 同類問題**，且 S4 §5-2 已把時間基準列為三大易錯點之一 |
+| 🔴 **人在迴路** sim 畫面 → 操作者眼睛 → 手 | 遙操作示範全靠這條 | Isaac Sim livestream／遠端桌面的影像延遲落在數十至上百 ms。**人會下意識放慢、猶豫、過衝修正** |
+
+**第二條才是致命的，而且它的失敗是隱形的**：你不會看到錯誤訊息，你會得到一份「慢而猶豫」的資料集，
+**而 ACT 會忠實地學會慢而猶豫**。資料收完之後沒有任何檢查能把這件事驗出來。
+
+**NVIDIA 的 SO-101 sim2real 教材採用的正是直插架構** `[已查證 2026-09-03]`：leader 以 USB 接在跑
+`teleop-docker` 的那台機器上（`TELEOP_PORT`），`lerobot_agent --task <IsaacLab task> --repo_id … --repo_root …`
+在同一台機器內完成 leader→sim→LeRobot dataset。**沒有跨機分工。**
+
+- **Accepted costs:**
+  - **要在 Linux 上重建一份 lerobot 環境**（目前 leader 的環境在 Windows 筆電上，`COM6`），
+    並做 `/dev/ttyUSB*` 的 udev／by-id 綁定（`experiment_spec.md` §7 已有做法）。
+    校正檔可直接沿用（`calibration/2026-08-31_omx_leader.json`，純馬達參數，與作業系統無關）。
+  - **`docs/environment.md` 的「兩台機器」模型作廢**，實際是三台（Windows 筆電＝實機蒐集／部署、
+    4090＝訓練、5090 Linux 筆電＝模擬蒐集）。**三台的 LeRobot 版本必須一起釘選**，理由同該檔。
+  - 模擬蒐集**只能在人到實驗室、且該台機器空著**時做——這比原本想像的「lab day 之外也能蒐集」弱。
+    ⚠️ **這削弱了 S4 §1 的第一條賣點，要誠實寫進計畫書，不要繼續宣稱「隨時可蒐集」。**
+- **Reverse if:**
+  1（模擬器）：Isaac Sim 的 OMX 資產稽核（D029 §URDF→USD）發現 USD 不可修復，且重匯入成本 > 3 天。
+  3（執行位置）：實測跨網延遲 < 20 ms 且畫面延遲不影響示範品質——**要拿 dt 分佈與示範速度分佈當證據，不能憑感覺。**
+
+### 🔴 URDF→USD：轉出來的東西和 URDF 差在哪，以及 8/28 那份 USD 要稽核什麼
+
+**URDF 是「機構描述」，USD 是「場景描述＋PhysX 參數」。匯入器必須在 URDF 沒寫的地方自己填值，
+而它填的預設值幾乎都不是我們要的。** 六個必查項：
+
+| # | 項目 | URDF 有什麼 | 匯入後會變成什麼 | 要做什麼 |
+|---|---|---|---|---|
+| 1 | **joint limits** | 佔位值 ±6.283 rad | 照抄 ⇒ 手臂可以穿過自己 | 換成 D025 §2026-09-03 的原廠行程 ∩ 現場方位角扇區 |
+| 2 | **effort / velocity** | 佔位 1000 / 4.8 | 照抄 ⇒ 模擬臂力氣無限大 | 換成馬達規格（同上表） |
+| 3 | 🔴 **drive gains（stiffness / damping）** | **URDF 裡根本沒有這個概念** | 匯入器塞一組預設值 | **這是 sim2real 的主要缺口**，只能用實機軌跡回歸 |
+| 4 | 🔴 **collision approximation** | `<collision>` 是網格 | 預設 **convex hull** ⇒ 夾爪兩指之間被填滿，**夾不到東西** | 夾爪與物體改 convex decomposition 或 SDF |
+| 5 | 🔴 **mimic joint** | `gripper_joint_2` mimic `gripper_joint_1`，multiplier −1 | 視匯入器版本，可能變成自由關節 | 確認有 mimic 約束，否則手動加 |
+| 6 | **self-collision** | — | 預設關閉 | 依需要開啟（開了會變慢） |
+
+- 🔴 **不要用 GUI 手改 USD。** 重新匯入一次就全部消失。
+  **做法：USD 只留幾何＋慣性（那是 URDF 唯一給對的東西），第 1–6 項全部寫進 Isaac Lab 的
+  `ArticulationCfg` / `ImplicitActuatorCfg` 程式碼裡**，並把匯入本身寫成可重跑的腳本
+  （`IsaacLab/scripts/tools/convert_urdf.py`）。這也是 cyclo_lab 與官方資產的做法。
+- ⚠️ `wildbot_with_omxaiarm.usd` **目前只是「把手臂匯入並擺在車體上方的位置」** `[Eric說 2026-09-03]`
+  ——**車體本身是暫定的（D020 未定案），沒有固定件、沒有做干涉檢查，也還沒有做上述 1–6 項修正。**
+  **在稽核完成前，不要把它當成可用的模擬資產引用。**
+
+- **Cross-reference:** D006（jitter）, D007（§2026-09-03 範圍縮小）, D020（車體未定案）, D021, D025,
+  D026（同一份 URDF 的 FK 用途）, `docs/specs/S4_sim_teleop_collect.md`, `docs/environment.md`,
+  [cyclo_lab](https://github.com/ROBOTIS-GIT/cyclo_lab),
+  [NVIDIA SO-101 sim2real 教材](https://docs.nvidia.com/learning/physical-ai/sim-to-real-so-101/latest/09-strategy1-dr-teleop.html),
+  [Sim-to-Real-SO-101-Workshop](https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop).
 
 ---
 

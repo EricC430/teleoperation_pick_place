@@ -1,13 +1,18 @@
 # Environment & version pinning
 
-Two machines, one hard requirement.
+🔴 **2026-09-03 起是三台機器，不是兩台**（D029：模擬蒐集上線）。一個硬性要求不變。
 
 ## The setup
 
 | Machine | Role | Environment | Constraint |
 |---|---|---|---|
 | Lab GPU (4090 / A6000) | **Training** | Docker (`huggingface/lerobot-gpu`) | Host driver caps the usable CUDA version — see the gotcha below |
-| Laptop (RTX 3050 4GB, **Windows**) | **Data collection + inference deployment** | **uv** (decided 2026-08-13, D014) | ⚠️ Issue #4093 — see below |
+| Laptop (RTX 3050 4GB, **Windows**) | **實機蒐集 + 推論部署** | **uv** (decided 2026-08-13, D014) | ⚠️ Issue #4093 — see below |
+| 🔴 **Lab laptop (RTX 5090, Linux)** | **模擬蒐集**（Isaac Sim + leader 直插，D029） | Docker (`isaac-lab` / `nvcr.io/nvidia/isaac-sim`) ＋ 一份 lerobot | **leader 走 `/dev/ttyUSB*`，不是 `COM6`** — 需 udev／by-id 綁定（`experiment_spec.md` §7） |
+
+> 🔴 **第三台加入後，「LeRobot 版本必須完全一致」這條規則適用於三台，不是兩台。**
+> 模擬那台錄出來的 dataset 若用不同版本的 LeRobot 寫，會和實機資料在 schema 上分岔，
+> 而 D025 前提 2 要求兩份資料可以被**比較**（雖然不能混用）——比較不了就等於白錄。
 
 **Different environments on the two machines are fine.** What is not fine is letting the two
 drift onto different library versions.
