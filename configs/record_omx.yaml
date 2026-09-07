@@ -1,13 +1,13 @@
 teleop:
   type: omx_leader
-  port: COM6
-  id: 2026-08-31_omx_leader
+  port: COM9
+  id: 2026-09-07_omx_leader
   calibration_dir: ./calibration
 
 robot:
   type: omx_follower
-  port: COM5
-  id: 2026-08-31_omx_follower
+  port: COM8
+  id: 2026-09-07_omx_follower
   calibration_dir: ./calibration
   cameras:
     wrist:
