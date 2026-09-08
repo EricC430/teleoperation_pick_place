@@ -326,6 +326,29 @@ An entry without a date is not a record.
 |---|---|---|---|---|---|---|---|
 | 2026-08-12 | GPU | `huggingface/lerobot-gpu@sha256:62df079f02b7fa26963d35466c12fa230be9f51a3b0ea2327297a84f70041c6c` (image built 2026-08-12) | 0.6.2 | 2.11.0+cu128 | 550.54.14 / 12.4 | | Requires the compat workaround above. Python 3.12.3, numpy 2.2.6. |
 | 2026-08-13 | Laptop (Windows 11) | n/a — uv venv, not a container | 0.6.2 | 2.11.0+cu126 | RTX 3050 4GB / driver TBD | | `scripts/setup_laptop.ps1` run successfully. torchvision 0.26.0+cu126, Python 3.12.13. Verified via `docs/field_manual.md` §2. **LeRobot version matches the GPU box exactly** — the hard requirement in the table above is met. |
+| 2026-09-07 | Laptop (Windows 11) | n/a — uv venv, not a container | 0.6.2 @ **`a16f34c0`** | 2.11.0+**cu128** | RTX 3050 4GB / **610.62, CUDA UMD 13.3** | Boyu | Rebuild of the laptop env in-repo (`./lerobot` + `./.venv`). torchvision 0.26.0+cu128, Python 3.12.13, numpy 2.2.6 (matches GPU box). Verified: `torch.cuda.is_available()` True, 2000×2000 GPU matmul on the 3050, `lerobot-teleoperate --help` lists `omx_leader`/`omx_follower`, repo suite 193 passed. **cu128 not cu126** — the wheels were already in the local uv cache and `docs/environment.md` states the CUDA build variant need not match across machines; only the torch version must, and 2.11.0 holds. `placo` still NOT installed (D026 pending). |
+
+### 🔴 `0.6.2` is not a tag — always pin the commit
+
+Verified 2026-09-07: **LeRobot `0.6.2` does not exist as a git tag or a PyPI release.** Upstream stops
+at `v0.6.1` in both places; `0.6.2` is the in-development version string carried on `main` after the
+0.6.1 release, and it stays `0.6.2` across many commits.
+
+So `assert lerobot.__version__ == '0.6.2'` in `scripts/setup_laptop.ps1` **cannot detect drift** — a
+clone of `main` today passes it while sitting weeks of commits away from what recorded our data.
+
+**The pin is the commit `a16f34c0`** (2026-08-12 18:18 +0200, `perf(policies): move image
+normalization to device in prepare_observation_for_inference` #4433) — the same commit
+`docs/decisions.md` D022 read the ACT source at, and the day the GPU box's pinned image was built.
+
+Measured on 2026-09-07: `a16f34c0..main` was 26 commits, 9 of them touching
+`src/lerobot/{datasets,configs,scripts}` — including `fix(datasets): keep small splits from dropping
+episodes`, `fix: use <= instead of < for timestamp tolerance in video_utils`, and `fix(control):
+unify control-loop pacing`. Exactly the code paths that decide whether recorded data is consistent,
+and the version string is identical on both sides of them.
+
+**Clone with `git clone` then `git checkout a16f34c0` before installing.** Record any future move off
+this commit as a decision in `docs/decisions.md`, not as a silent `git pull`.
 
 ## Verification log
 
