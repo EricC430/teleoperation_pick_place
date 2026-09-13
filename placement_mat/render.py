@@ -67,6 +67,10 @@ class TileOpts:
     chassis_gap_cm: float = 5.9    # C-opening inner width -> tick spacing on that line
     azimuth_calibrated: bool = True  # False -> print "azimuth UNCALIBRATED - base frame"
     short_labels: bool = False     # annotate points t1/o1/c1 instead of train_001
+    chassis_outline: bool = False  # draw the C-base footprint behind the reg line + a notch-cut guide
+    chassis_arm_cm: float = 4.5    # inner-edge line -> front tips
+    chassis_back_cm: float = 7.5   # back-segment depth, behind the inner-edge line
+    chassis_outer_w_cm: float = 12.0  # full plate width
 
 
 @dataclass(frozen=True)
@@ -192,6 +196,29 @@ def build_tile_figure(
                     fontsize=6, rotation=90, va="top")
             ax.text(0.3, half + 0.2, "L C-arm tip", fontsize=5, color=_INK_LABEL)
             ax.text(0.3, -half - 0.5, "R C-arm tip", fontsize=5, color=_INK_LABEL)
+        if opts.chassis_outline:
+            # datum (x=0) is the front-tips line; the C-base sits behind it.
+            ho = opts.chassis_outer_w_cm / 2.0
+            inner_x = -opts.chassis_arm_cm                       # inner-edge line
+            true_back_x = inner_x - opts.chassis_back_cm         # real rear face
+            back_x = max(true_back_x, tile.x0)                   # clamp to the sheet edge
+            rect = dict(color="0.35", lw=1.1, zorder=4)
+            # two arms (the C legs): inner-edge line -> tips, gap..outer on each side
+            for lo, hi in ((half, ho), (-ho, -half)):
+                ax.plot([inner_x, 0, 0, inner_x, inner_x], [lo, lo, hi, hi, lo], **rect)
+            # back segment (full width, behind the inner-edge line; may be clipped to the sheet)
+            ax.plot([back_x, inner_x, inner_x, back_x, back_x], [-ho, -ho, ho, ho, -ho], **rect)
+            ax.plot([inner_x, inner_x], [-half, half], **rect)  # inner-edge line across the opening
+            if true_back_x < tile.x0:
+                ax.text(tile.x0 + 0.2, ho - 1.0, "base continues <--", fontsize=5, color=_INK_LABEL)
+            if tile.x0 <= ox:
+                ax.plot(ox, 0.0, "+", color="k", ms=13, mew=1.8, zorder=6)
+                ax.text(ox + 0.3, 0.4, "pan axis", fontsize=5, color=_INK_LABEL)
+            # dashed notch-cut guide: trim this from the sheet so it clears the base
+            ax.plot([0, tile.x0, tile.x0, 0], [-ho, -ho, ho, ho],
+                    color="0.35", lw=1.0, ls="--", zorder=4)
+            ax.text(tile.x0 + 0.3, ho - 0.3, "cut this notch (base sits here)", fontsize=5,
+                    color=_INK_LABEL, va="top")
         if not opts.azimuth_calibrated:
             ax.text((tile.x0 + tile.x1) / 2, tile.y1 - 0.3,
                     "azimuth UNCALIBRATED - base frame (no S1 reference sample)",

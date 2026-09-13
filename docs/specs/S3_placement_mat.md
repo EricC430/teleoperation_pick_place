@@ -71,7 +71,11 @@ S1（`S1_reach_logger.md` §6，D026）量到一個 `azimuth_offset_deg`，把 F
 --paper a4|single               # a4 = 多張 A4 拼貼；single = 一張大圖（印刷店，2026-09-01 加）
 --datum-offset D                # cm；single 必填。pan 軸中心 → C 底盤兩根前端的對位線。
                                 #     S2 點平移 x_mat = x_cm − D 到墊子框架（pan 軸在墊子外 x=−D）
---chassis-gap 5.9               # cm；single。C-opening 內寬 → 對位線上兩個刻度的間距
+--chassis-gap 5.9               # cm；single。C-opening 內寬
+--chassis-outline / --no-chassis-outline   # single 預設畫 C 底盤輪廓 + 缺口裁切線
+--chassis-arm 4.5              # cm；內緣線 → 突出前緣（＝手臂長）
+--chassis-back 7.5            # cm；後段深度（內緣線之後）
+--chassis-outer-w 12.0       # cm；底板全寬
 --x-min -3                      # cm；墊子左緣（single 下 = 對位線後方留白，可為小負值）
 --margin-mm 10 / --overlap-mm 15  # a4 拼貼用
 --grid-mm 5 / --ring-step 5 / --ray-step 15
@@ -85,10 +89,16 @@ S1（`S1_reach_logger.md` §6，D026）量到一個 `azimuth_offset_deg`，把 F
 ### `--paper single`（印刷店大圖，2026-09-01）
 
 - **一張 PDF，頁面尺寸 = 圖面實際大小**，座標軸鋪滿整頁 → 100% 列印時 1 data-cm = 1 paper-cm。
-- **原點 = C 底盤兩根前端的對位線**（不是 pan 軸 —— 紙進不了 C-opening，會被手臂結構擋住）。
-  墊子畫一條粗線在 `x_mat=0`，上下各一刻度在 `±chassis_gap/2`，標「align to L / R C-arm front tip」。
-  **兩點接觸 → 前後位置與旋轉都固定。印的是那條線，不是紙邊**（紙的留白可退進 C-slot）。
-- pan 軸在墊子外 `x_mat = −D`；極座標環／射線仍以它為圓心畫。
+- **原點 = C 底盤兩根手臂的突出前緣線**（不是 pan 軸；也不是凹內緣 —— 未來裝上車體時，
+  基座前方地面與基座平面有高低差，對凹內緣會讓前緣以外的紙垂到地面）。
+  墊子畫一條粗線在 `x_mat=0`，上下各一刻度在 `±chassis_gap/2`。
+  **兩點接觸（貼齊兩根前端尖角）→ 前後位置與旋轉都固定。印的是那條線，不是紙邊。**
+- `--datum-offset D` = pan 軸中心 → 前緣線（本臂實測 ≈ 7.13 cm）。點平移 `x_mat = x_cm − D`。
+- **`--chassis-outline`（single 預設開）**：在對位線後方畫出 C 底盤輪廓 —— 兩根手臂
+  （`x_mat ∈ [−chassis_arm, 0]`、內側 `±chassis_gap/2`、外側 `±chassis_outer_w/2`）、
+  內緣線（`x_mat = −chassis_arm`）、後段、pan 軸十字（`x_mat = −D`）—— 加一條**虛線缺口裁切線**：
+  把那塊剪掉，紙其餘部分平貼地面、後方缺口套過基座。輪廓對齊實體 C 底盤 = 位置＋旋轉都對。
+- 極座標環／射線仍以 pan 軸（`x_mat = −D`）為圓心畫。
 - 點標成短 id：`train_007 → t7`、`eval-open_003 → o3`、`eval-close_010 → c10`。
 - 另存 `docs/assets/placement_label_map_<label>.csv`：`short_id, placement_id, x_pan_cm, y_pan_cm, x_mat_cm, y_mat_cm`
   —— eval 記錄用 `placement_id` 時可回查。

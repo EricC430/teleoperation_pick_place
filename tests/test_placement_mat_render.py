@@ -73,6 +73,29 @@ def test_single_page_annotates_points_with_short_ids():
     assert "t7" in texts and "train_007" not in texts
 
 
+def test_chassis_outline_marks_the_pan_axis_at_minus_datum_offset():
+    plan = single_page_plan(-9.0, 32.0, -30.0, 20.0)
+    opts = TileOpts(
+        r_max=39.0, polar_origin_x=-7.13, near_edge=True, chassis_outline=True,
+        chassis_gap_cm=5.9, chassis_arm_cm=4.5, chassis_back_cm=7.5, chassis_outer_w_cm=12.0,
+    )
+    fig, _ = build_tile_figure(plan.tiles[0], plan, opts, single_page=True)
+    ax = fig.axes[0]
+    pan_marks = [
+        ln for ln in ax.get_lines()
+        if ln.get_marker() == "+" and list(ln.get_xdata()) == [-7.13] and list(ln.get_ydata()) == [0.0]
+    ]
+    assert pan_marks, "expected a '+' pan-axis marker at (-datum_offset, 0)"
+
+
+def test_chassis_outline_is_off_by_default_and_needs_single_page():
+    plan = single_page_plan(-9.0, 32.0, -30.0, 20.0)
+    base = TileOpts(r_max=39.0, polar_origin_x=-7.13)
+    fig, _ = build_tile_figure(plan.tiles[0], plan, base, single_page=True)
+    ax = fig.axes[0]
+    assert not [ln for ln in ax.get_lines() if ln.get_marker() == "+" and list(ln.get_xdata()) == [-7.13]]
+
+
 def test_single_page_render_pdf_is_one_page(tmp_path):
     plan = single_page_plan(-2.0, 40.0, -30.0, 20.0)
     opts = TileOpts(

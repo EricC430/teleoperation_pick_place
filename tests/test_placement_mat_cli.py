@@ -100,6 +100,31 @@ def test_paper_single_draws_every_point_even_at_the_sector_edges(tmp_path, capsy
     assert "2 label(s), 2 distinct id(s)" in capsys.readouterr().out
 
 
+def test_paper_single_draws_the_chassis_outline_by_default(tmp_path, capsys):
+    a = _csv(tmp_path / "train.csv", [("train_001", 30.0, 5.0)])
+    rc = main(
+        [
+            "--paper", "single", "--datum-offset", "7.13", "--r-max", "39",
+            "--chassis-arm", "4.5", "--chassis-back", "7.5", "--chassis-outer-w", "12",
+            "--placements", str(a), "--out", str(tmp_path / "m.pdf"), "--label", "c",
+        ]
+    )
+    assert rc == 0
+    assert "chassis outline" in capsys.readouterr().out.lower()
+
+
+def test_paper_single_no_chassis_outline_flag_disables_it(tmp_path, capsys):
+    a = _csv(tmp_path / "train.csv", [("train_001", 30.0, 5.0)])
+    rc = main(
+        [
+            "--paper", "single", "--datum-offset", "7.13", "--r-max", "39", "--no-chassis-outline",
+            "--placements", str(a), "--out", str(tmp_path / "m.pdf"), "--label", "c",
+        ]
+    )
+    assert rc == 0
+    assert "chassis outline" not in capsys.readouterr().out.lower()
+
+
 def test_paper_single_allows_placements_without_a_summary(tmp_path):
     a = _csv(tmp_path / "train.csv", [("train_001", 30.0, 5.0)])
     rc = main(

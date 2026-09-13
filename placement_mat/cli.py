@@ -68,6 +68,11 @@ def build_parser() -> argparse.ArgumentParser:
                         "S2 points are shifted x_mat = x_cm - datum_offset onto the mat frame.")
     p.add_argument("--chassis-gap", type=float, default=5.9,
                    help="cm; C-opening inner width -> tick spacing on the registration line (single)")
+    p.add_argument("--chassis-outline", action=argparse.BooleanOptionalAction, default=True,
+                   help="single: draw the C-base footprint behind the reg line + a notch-cut guide")
+    p.add_argument("--chassis-arm", type=float, default=4.5, help="cm; inner-edge line -> front tips")
+    p.add_argument("--chassis-back", type=float, default=7.5, help="cm; back-segment depth")
+    p.add_argument("--chassis-outer-w", type=float, default=12.0, help="cm; full plate width")
     p.add_argument("--margin-mm", type=float, default=10.0, help="unprintable border per page")
     p.add_argument("--overlap-mm", type=float, default=15.0, help="overlap band between pages")
     p.add_argument("--grid-mm", type=float, default=5.0, help="fine Cartesian grid pitch")
@@ -139,6 +144,11 @@ def main(argv: list[str] | None = None) -> int:
             x_hi = max(x_hi, max(xs) + pad)
             y_lo = min(y_lo, min(ys) - pad)
             y_hi = max(y_hi, max(ys) + pad)
+        if args.chassis_outline:
+            # show the arms, the inner-edge line and the pan-axis mark on the sheet
+            x_lo = min(x_lo, -dx - 1.5, -args.chassis_arm - 1.5)
+            y_lo = min(y_lo, -args.chassis_outer_w / 2.0 - 1.0)
+            y_hi = max(y_hi, args.chassis_outer_w / 2.0 + 1.0)
         plan = single_page_plan(x_lo, x_hi, y_lo, y_hi)
     else:
         plan = plan_tiles(
@@ -160,6 +170,10 @@ def main(argv: list[str] | None = None) -> int:
         chassis_gap_cm=args.chassis_gap,
         azimuth_calibrated=(args.from_summary is not None and frame == "mat"),
         short_labels=single,
+        chassis_outline=single and args.chassis_outline,
+        chassis_arm_cm=args.chassis_arm,
+        chassis_back_cm=args.chassis_back,
+        chassis_outer_w_cm=args.chassis_outer_w,
     )
 
     print(
@@ -169,6 +183,9 @@ def main(argv: list[str] | None = None) -> int:
     if single:
         print(f"single page: {x_hi - x_lo:g} x {y_hi - y_lo:g} cm  "
               f"(datum offset {dx:g} cm, pan axis at x_mat={-dx:g})")
+        if args.chassis_outline:
+            print(f"chassis outline: drawn (arm {args.chassis_arm:g} / back {args.chassis_back:g} "
+                  f"/ outer-w {args.chassis_outer_w:g} cm) + notch-cut guide")
     else:
         print(f"pages: {len(plan.tiles)}  ({plan.n_rows} rows x {plan.n_cols} cols of A4)")
         for t in plan.tiles:
