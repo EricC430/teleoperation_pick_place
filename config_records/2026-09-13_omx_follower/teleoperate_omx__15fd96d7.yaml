@@ -1,0 +1,51 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/teleoperate_omx.yaml
+# saved_at:      2026-09-13T16:02:12
+# entrypoint:    lerobot-teleoperate
+# cli overrides: (none)
+# ids:           robot=2026-09-13_omx_follower, teleop=2026-09-13_omx_leader
+# git:           fbc43fb (config file committed)
+# digest:        15fd96d7  (sha256[:8] of the YAML below + the CLI overrides)
+teleop:
+  type: omx_leader
+  port: COM9
+  id: 2026-09-13_omx_leader
+  calibration_dir: ./calibration
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-09-13_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      # 2026-09-13：D405 → Innomaker U20CAM-720P（USB UVC，D022 §2026-09-13）
+      # ⚠️ index 3 不是固定 ID —— 每個 lab day 先確認，理由見 record_omx.yaml 同一段
+      type: opencv_uvc
+      index_or_path: 3
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 30
+      fourcc: YUY2
+    front-left:
+      type: intelrealsense
+      serial_number_or_name: "262822305610"
+      width: 848        # 2026-09-13：1280×720 → 848×480，跟 record_omx.yaml 同框（取景檢查看到的 = 錄到的）
+      height: 480       #             且送 rerun 的資料量是 720p 的 44%
+      fps: 30
+      use_depth: false
+
+# 2026-09-13：60 → 30。rerun 畫面延遲 ~4 秒的主因（[AI推論]）：teleop 迴圈每一圈都把兩張 raw 影像送給 rerun，
+# 60 Hz × (1280×720 + 640×480) ≈ 221 MB/s，viewer 消化不完開始排隊。相機本身只出 30 fps，
+# 所以 60 Hz 是把同一張圖送兩次 —— 純浪費。代價：手臂控制頻率 60 → 30 Hz
+# （lerobot-record 錄製時本來就只跑 15 Hz，所以 30 不會比錄製時差）。
+fps: 30
+display_data: true
+# 🔴 2026-09-13：不要開 JPEG 壓縮 —— 開了會把 teleop 迴圈卡死（手臂不跟、畫面全無）。
+# 證據（2026-09-13，只連相機、不連手臂，同樣 2 台相機 / 30 Hz / 848×480 + 640×480）：
+#   JPEG 壓縮：乾淨重現 2/2 次在 ~28 s 卡死（rr.log 不返回，`log_channel ... Sender has been blocked`），
+#              實機 teleop 1/1 次卡死 → 迴圈停住 → follower 不再跟、rerun 無畫面。
+#   raw      ：40 s、120 s 各 1 次，0 次卡死，rr.log 平均 3–4 ms；viewer 在 ~31 s 達 1 GiB 後丟最舊資料、持續正常。
+#   壓縮在「送出端」很便宜（1.7–2.5 ms/幀），問題在 viewer 消化不了（[AI推論]，機制未查證）。
+display_compressed_images: false

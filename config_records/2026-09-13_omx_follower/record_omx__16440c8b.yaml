@@ -1,0 +1,102 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/record_omx.yaml
+# saved_at:      2026-09-13T16:48:01
+# entrypoint:    lerobot-record
+# cli overrides: (none)
+# ids:           robot=2026-09-13_omx_follower, teleop=2026-09-13_omx_leader
+# git:           fbc43fb (config file has UNCOMMITTED changes)
+# digest:        16440c8b  (sha256[:8] of the YAML below + the CLI overrides)
+teleop:
+  type: omx_leader
+  port: COM9
+  id: 2026-09-13_omx_leader
+  calibration_dir: ./calibration
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-09-13_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      # 🔴 2026-09-13：D405 → Innomaker U20CAM-720P（USB UVC，D022 §2026-09-13）。
+      #    換相機 = 場景常數改變 = 重錄邊界 → dataset root 也換了（見下方 dataset.root）。
+      # ⚠️ Windows 上的 OpenCV index 不是固定 ID：插拔、重開機、換 USB 孔都可能改變編號。
+      #    每個 lab day 開錄前跑 `uv run lerobot-find-cameras opencv`，
+      #    確認 outputs/captured_images/opencv_3.png 拍到的是夾爪。
+      #    🔴 index 錯了「不會報錯」—— 會安靜地錄到筆電鏡頭（index 0）之類的別台相機。
+      type: opencv_uvc  # plugin (D022 §2026-09-13). Revert on trouble: type: opencv (and drop the 3 values below)
+      index_or_path: 3
+      backend: DSHOW    # index 3 是在 DSHOW 下列舉到的；ANY 在 Windows 可能改選 MSMF，編號不同
+      width: 640        # 848×480 不支援：DSHOW 吸附成 800 寬 → lerobot 拒絕開啟（2026-09-13 實測）
+      height: 480
+      fps: 15           # 相機實際仍送 30 fps；lerobot 只驗 CAP_PROP_FPS，錄製迴圈取最新幀
+      fourcc: YUY2      # 640×480 非壓縮就能跑 30 fps，省掉 MJPG 解碼的 CPU
+      # 2026-09-13 [柏宇] tune_uvc_exposure.py `f` at the grasp close-up (curtains drawn + ceiling light + desk lamp):
+      # AUTO's exposure pinned, white balance matched to AUTO (this camera cannot freeze WB). -5 = 31.25 ms (< 1 frame at 30 fps).
+      exposure: -5
+      gain: 0
+      white_balance: 3600
+    front-left:
+      type: intelrealsense
+      serial_number_or_name: "262822305610"
+      width: 848        # was 1280 — the 720p stream was the main CPU hog
+      height: 480        # was 720
+      fps: 15
+      use_depth: false
+      # 2026-09-13 matched to AUTO (freeze does not hold on this D455; D022): brightness 0.0 %, B/R 4.2 % off.
+      # exposure is quantised (power_line_frequency=Auto); 400 is ~40 ms if the unit is 100 us ([AI推論]).
+      exposure: 400
+      gain: 70
+      white_balance: 3500
+
+dataset:
+  # pilot data (D022 / D024 campaign_A_pilot_2cam) — recorded local-only (push_to_hub: false below
+  # is what future re-recordings from THIS config will do).
+  # 🔴 2026-09-03: this specific already-recorded snapshot WAS manually pushed once —
+  # `hf upload EricC430/omx_pick_place_pilot ...` — to validate the 4090-train -> HF Hub ->
+  # laptop-deploy handoff for A13. See docs/field_manual.md §8. That is a one-off manual push of
+  # existing data, not a change to this config's default behavior — real campaigns still get a
+  # fresh repo_id, decided when Phase A/B recording actually starts.
+  repo_id: EricC430/omx_pick_place_pilot   # replace with your real HF handle if you ever push
+  # 🔴 2026-09-13：pilot_2 裡已有 1 集 D405-wrist（848×480）資料。UVC 資料不可混入（D022 重錄邊界），
+  #    所以開新 root。pilot / pilot_2 原封保留，不刪。
+  root: ./.cache/lerobot/omx_pick_place_pilot_uvc   # explicit → independent of HF_HOME / HF_LEROBOT_HOME
+  push_to_hub: false
+  num_episodes: 20
+  fps: 15                    # must match camera fps
+  episode_time_s: 45
+  reset_time_s: 30           # was 60 — pilot doesn't need a full minute to reposition
+  single_task: "Pick up the object and place it into the box"
+  # 🔴 do NOT encode video inside the record loop.
+  streaming_encoding: false
+  # 🔴 2026-08-31: even non-streaming SVT-AV1 x2 starved the D455 grab thread
+  # (frame 530ms stale → TimeoutError). This laptop (AVX2, 5 threads) cannot do
+  # 2x RealSense + real-time AV1. Switch to h264/veryfast + cap encoder threads.
+  # ⚠️ codec change ≠ resume-compatible with the av1 smoke-test dataset — start a
+  # FRESH repo_id/root for the real pilot.
+  encoder_threads: 2
+  rgb_encoder:
+    vcodec: h264
+    preset: veryfast
+    crf: 23
+    pix_fmt: yuv420p
+
+# 🔴 2026-09-08：改回 true —— 錄製時同時在 rerun 看兩路相機。
+# 上面宣告幾台相機，rerun 就開幾格畫面：blueprint 是 grid，每個 image entity 一格
+# （`observation.wrist`、`observation.front-left`）＋ observation / action 兩個時序圖。
+# ⚠️ 不是 `observation.images.*` —— 那是 dataset 的 feature 名，不是 rerun 的 entity path。
+# 代價：每幀多送 640×480 + 848×480 兩張 raw frame 給 viewer（@15fps ≈ 32 MB/s）。比 2026-08-31 餓死抓幀執行緒的
+# AV1 編碼輕得多（image 走 static log，不累積記憶體），但不是零成本。
+# 🔻 退回 false 的判準（任一出現就關掉，不要用感覺判斷）：
+#   ① 終端出現 `Record loop is running slower (X Hz) than the target FPS`
+#   ② `TimeoutError: latest frame is too old ...ms`（hardware.md §2026-08-31）
+display_data: true
+# 🔴 2026-09-13：不要開 JPEG 壓縮 —— 在 teleop 實測會把控制迴圈卡死；錄製迴圈同樣會被卡住（整集作廢）。
+# 證據（2026-09-13，只連相機、不連手臂，同樣 2 台相機 / 30 Hz / 848×480 + 640×480）：
+#   JPEG 壓縮：乾淨重現 2/2 次在 ~28 s 卡死（rr.log 不返回，`log_channel ... Sender has been blocked`），
+#              實機 teleop 1/1 次卡死 → 迴圈停住 → follower 不再跟、rerun 無畫面。
+#   raw      ：40 s、120 s 各 1 次，0 次卡死，rr.log 平均 3–4 ms；viewer 在 ~31 s 達 1 GiB 後丟最舊資料、持續正常。
+#   壓縮在「送出端」很便宜（1.7–2.5 ms/幀），問題在 viewer 消化不了（[AI推論]，機制未查證）。
+# 錄製時 rerun 若延遲或出現 `Sender has been blocked` → 直接 `display_data: false`，不要改壓縮。
+display_compressed_images: false
