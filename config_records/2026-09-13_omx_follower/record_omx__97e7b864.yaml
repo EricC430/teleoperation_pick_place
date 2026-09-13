@@ -1,3 +1,11 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/record_omx.yaml
+# saved_at:      2026-09-13T16:58:52
+# entrypoint:    lerobot-record
+# cli overrides: (none)
+# ids:           robot=2026-09-13_omx_follower, teleop=2026-09-13_omx_leader
+# git:           fbc43fb (config file has UNCOMMITTED changes)
+# digest:        97e7b864  (sha256[:8] of the YAML below + the CLI overrides)
 teleop:
   type: omx_leader
   port: COM9
@@ -30,7 +38,7 @@ robot:
       gain: 0
       white_balance: null   # = AUTO. Fixed WB leaves a green cast on this camera, no temperature removes it (D022 2026-09-13)
     front-left:
-      type: intelrealsense_pinned  # plugin (D022 2026-09-13): null = AUTO, set explicitly on every connect
+      type: intelrealsense
       serial_number_or_name: "262822305610"
       width: 848        # was 1280 — the 720p stream was the main CPU hog
       height: 480        # was 720
@@ -40,7 +48,7 @@ robot:
       # exposure is quantised (power_line_frequency=Auto); 400 is ~40 ms if the unit is 100 us ([AI推論]).
       exposure: 400
       gain: 70
-      white_balance: null   # = AUTO: fixed 3500 K looked green (D022 2026-09-13). exposure/gain were matched with WB 3500; re-check with freeze_realsense_exposure.py (--wb auto)
+      white_balance: 3500
 
 dataset:
   # pilot data (D022 / D024 campaign_A_pilot_2cam) — recorded local-only (push_to_hub: false below
@@ -58,7 +66,7 @@ dataset:
   num_episodes: 20
   fps: 15                    # must match camera fps
   episode_time_s: 45
-  reset_time_s: 120           # was 60 — pilot doesn't need a full minute to reposition
+  reset_time_s: 30           # was 60 — pilot doesn't need a full minute to reposition
   single_task: "Pick up the object and place it into the box"
   # 🔴 do NOT encode video inside the record loop.
   streaming_encoding: false

@@ -37,6 +37,15 @@ $ErrorActionPreference = "Stop"
 # a version-drift risk against the GPU box.
 uv pip install -e ".\lerobot[core_scripts,feetech,dynamixel]"
 
+# Project camera plugin (D022 §2026-09-13): registers `type: opencv_uvc` so the wrist UVC camera's
+# exposure / gain / white balance can live in the YAML. lerobot only finds it if it is INSTALLED in this
+# venv (it matches installed distribution names against the `lerobot_camera_` prefix).
+uv pip install -e ".\plugins\lerobot_camera_uvc"
+
+# Project config-record plugin (2026-09-13): every lerobot-record / -teleoperate / -calibrate / -replay /
+# -rollout run copies its --config_path YAML to config_records/<robot id>/, like calibration/<id>.json.
+uv pip install -e ".\plugins\lerobot_robot_config_record"
+
 # --- 2. Repair torch --------------------------------------------------------
 # Versions must stay inside LeRobot's bounds or the next install will fight us.
 # cu126 chosen for this laptop's driver; the GPU box uses cu128. The CUDA build

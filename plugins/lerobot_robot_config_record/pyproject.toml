@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# Must stay "lerobot_robot_config_record" (underscores): lerobot's register_third_party_plugins() matches installed
+# distribution names against the "lerobot_robot_" prefix and then imports that exact name. Importing it is the hook.
+name = "lerobot_robot_config_record"
+version = "0.1.0"
+description = "LeRobot plugin: snapshot the YAML config of every lerobot command, keyed by robot id (like calibration)."
+requires-python = ">=3.12"
+# lerobot is deliberately NOT declared: it is installed editable from ./lerobot at a pinned commit
+# (docs/environment.md) and must never be re-resolved from PyPI through this package.
+dependencies = []
+
+[tool.setuptools]
+packages = ["lerobot_robot_config_record"]

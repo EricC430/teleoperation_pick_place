@@ -362,3 +362,45 @@ this commit as a decision in `docs/decisions.md`, not as a silent `git pull`.
 | Date | LeRobot version | Loss (GPU) | Loss (laptop) | Verdict |
 |---|---|---|---|---|
 | | | | | |
+
+## Project camera plugin: `lerobot_camera_uvc` (added 2026-09-13)
+
+**What:** `plugins/lerobot_camera_uvc` registers camera `type: opencv_uvc` = lerobot's `opencv` camera plus
+`exposure` / `gain` / `white_balance` fields, re-applied on every connect. It exists because the pinned
+lerobot's `OpenCVCameraConfig` has no exposure fields, and the wrist UVC camera's exposure must be a scene
+constant (D022 §2026-09-13 — `[柏宇決定]` option (c)).
+The same package also registers **`type: intelrealsense_pinned`** (added later on 2026-09-13): lerobot's RealSense camera
+with the same "`null` = force AUTO on connect" rule. Needed because lerobot's own `intelrealsense` leaves a `null` option
+*unchanged* and the D455 keeps its auto-white-balance state across processes (measured: `null` silently inherited a green 3500 K).
+
+**Install (laptop that records):** `uv pip install -e plugins/lerobot_camera_uvc` — also in
+`scripts/setup_laptop.ps1`. No lerobot source is modified; the gitignored `./lerobot` clone stays at the pinned commit.
+
+**How lerobot finds it:** `register_third_party_plugins()` (run by `lerobot-record` / `lerobot-teleoperate`)
+imports every *installed* distribution whose name starts with `lerobot_camera_`. Therefore:
+
+- 🔴 **The distribution name must stay `lerobot_camera_uvc` (underscores).** Verified 2026-09-13: setuptools keeps
+  it as-is in the metadata. A hyphenated name would not match the prefix → the plugin would silently not load.
+- **Not installed** → a config with `type: opencv_uvc` fails at parse time (unknown choice). Loud, not silent.
+- `tests/test_opencv_uvc_camera.py::test_plugin_is_discoverable_by_lerobot` checks the install.
+- Plain `uv run` does not remove it (inexact sync), same as the editable `./lerobot` install. A strict
+  `uv sync` would prune both — that is already true for lerobot today.
+
+## Project plugin: `lerobot_robot_config_record` (added 2026-09-13)
+
+**What:** every lerobot command that loads plugins (record / teleoperate / calibrate / replay / rollout /
+setup-motors) copies the YAML given by `--config_path` to `config_records/<robot id>/<stem>__<digest>.yaml`,
+the way `calibration/<id>.json` works. The copy carries a header (time, entrypoint, CLI overrides, ids, git commit +
+whether the config file had uncommitted changes); digest = sha256[:8] of the YAML text + CLI overrides.
+Same id + same content → nothing new; same id + different content → a second file and a
+`[config-record] WARNING`. Configs without `robot.id` / `teleop.id` (train, eval) are skipped; `--help` is skipped.
+
+**Why:** lerobot stores no camera exposure / port / config in the dataset (checked 2026-09-13), and
+`configs/*.yaml` are edited in place — this is where "which settings recorded these episodes" is recorded.
+`config_records/` is tracked in git, like `calibration/`.
+
+**Install (laptop that records):** `uv pip install -e plugins/lerobot_robot_config_record` — also in
+`scripts/setup_laptop.ps1`. Same discovery rules as `lerobot_camera_uvc` above: the distribution name must keep its
+underscores (`lerobot_robot_` prefix); the hook runs on import and never raises (a failure prints
+`[config-record] WARNING: could not record the config` and the command continues).
+Tests: `tests/test_config_record_plugin.py` (incl. the real `register_third_party_plugins()` discovery path).

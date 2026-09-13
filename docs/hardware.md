@@ -47,7 +47,7 @@ this is the first thing to check when debugging "did something change."
 |---|---|---|---|---|---|
 | **3rd-person ×2（現有）** | **Intel RealSense D435i ＋ D455** | | | ✅ **實驗室現存，且各自附短支架** `[Eric說]` 8/27 | 🔴 **有短支架 → 3D 列印支架的優先序大幅下降。** 先用現成的架起來凍結外參 |
 | 3rd-person（原規劃） | Logitech C920 / RealSense D415 | 1080p / 30fps | | 🟡 備選 | 原本以為需自製支架 |
-| **Wrist** | **USB UVC camera module（採購中）** | 720p/1080p | | ⏳ **ETA 2026-09-05–09-07** | **D022** |
+| **Wrist** | **Innomaker U20CAM-720P（USB UVC）** | **640×480 YUY2**（record 15 / teleop 30 fps）；848×480 不支援 | hub（與 follower 共用，`[柏宇說]` 9/13） | ✅ **2026-09-13 已上腕** | OpenCV **index 3 / DSHOW**，⚠️ index 非固定 ID。hub 上實測 30.2 fps（手臂未動）。🔴 lerobot 的 OpenCV 相機**無法用 config 固定曝光**，但相機本身**支援**手動曝光／增益／白平衡（9/13 DSHOW 實測；曝光 ≥ −4 會掉到 17 fps）。Amazon `B0CLRJZG8D`：720P、USB 2.0、**120° DFOV**。**D022 §2026-09-13** |
 | ~~Wrist~~ | ~~Intel RealSense D405~~ | | | ❌ **已否決** | **對手腕過重**，且需額外購置安裝工具。腕上重量會改變手臂動力學，而那會被烙進每一筆 demo（D022）|
 
 **🔴 過渡配置（D022）：手腕相機到貨前，用「兩台第三視角相機」開始跑初期試驗，錄製不被相機擋住。**

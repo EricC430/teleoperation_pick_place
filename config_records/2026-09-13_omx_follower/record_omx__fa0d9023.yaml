@@ -1,3 +1,11 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/record_omx.yaml
+# saved_at:      2026-09-13T19:07:27
+# entrypoint:    lerobot-record
+# cli overrides: (none)
+# ids:           robot=2026-09-13_omx_follower, teleop=2026-09-13_omx_leader
+# git:           4767a00 (config file has UNCOMMITTED changes)
+# digest:        fa0d9023  (sha256[:8] of the YAML below + the CLI overrides)
 teleop:
   type: omx_leader
   port: COM9
@@ -53,9 +61,9 @@ dataset:
   repo_id: EricC430/omx_pick_place_pilot   # replace with your real HF handle if you ever push
   # 🔴 2026-09-13：pilot_2 裡已有 1 集 D405-wrist（848×480）資料。UVC 資料不可混入（D022 重錄邊界），
   #    所以開新 root。pilot / pilot_2 原封保留，不刪。
-  root: ./.cache/lerobot/omx_pick_place_pilot_uvc   # explicit → independent of HF_HOME / HF_LEROBOT_HOME
+  root: ./.cache/lerobot/omx_pick_place_pilot_uvc_20_59   # explicit → independent of HF_HOME / HF_LEROBOT_HOME
   push_to_hub: false
-  num_episodes: 20
+  num_episodes: 40
   fps: 15                    # must match camera fps
   episode_time_s: 45
   reset_time_s: 120           # was 60 — pilot doesn't need a full minute to reposition

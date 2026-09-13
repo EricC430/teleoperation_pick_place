@@ -1,3 +1,11 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/record_omx.yaml
+# saved_at:      2026-09-13T18:05:58
+# entrypoint:    lerobot-record
+# cli overrides: (none)
+# ids:           robot=2026-09-13_omx_follower, teleop=2026-09-13_omx_leader
+# git:           fbc43fb (config file has UNCOMMITTED changes)
+# digest:        f8688634  (sha256[:8] of the YAML below + the CLI overrides)
 teleop:
   type: omx_leader
   port: COM9
@@ -58,7 +66,7 @@ dataset:
   num_episodes: 20
   fps: 15                    # must match camera fps
   episode_time_s: 45
-  reset_time_s: 120           # was 60 — pilot doesn't need a full minute to reposition
+  reset_time_s: 30           # was 60 — pilot doesn't need a full minute to reposition
   single_task: "Pick up the object and place it into the box"
   # 🔴 do NOT encode video inside the record loop.
   streaming_encoding: false

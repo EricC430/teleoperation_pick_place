@@ -1,3 +1,11 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/teleoperate_omx.yaml
+# saved_at:      2026-09-13T16:02:12
+# entrypoint:    lerobot-teleoperate
+# cli overrides: (none)
+# ids:           robot=2026-09-13_omx_follower, teleop=2026-09-13_omx_leader
+# git:           fbc43fb (config file committed)
+# digest:        15fd96d7  (sha256[:8] of the YAML below + the CLI overrides)
 teleop:
   type: omx_leader
   port: COM9
@@ -20,23 +28,13 @@ robot:
       height: 480
       fps: 30
       fourcc: YUY2
-      # 2026-09-13 [柏宇] tune_uvc_exposure.py `f` at the grasp close-up (curtains drawn + ceiling light + desk lamp):
-      # exposure/gain pinned from AUTO; white balance stays AUTO. -5 = 31.25 ms (< 1 frame at 30 fps).
-      exposure: -5
-      gain: 0
-      white_balance: null   # = AUTO. Fixed WB leaves a green cast on this camera, no temperature removes it (D022 2026-09-13)
     front-left:
-      type: intelrealsense_pinned  # plugin (D022 2026-09-13): null = AUTO, set explicitly on every connect
+      type: intelrealsense
       serial_number_or_name: "262822305610"
       width: 848        # 2026-09-13：1280×720 → 848×480，跟 record_omx.yaml 同框（取景檢查看到的 = 錄到的）
       height: 480       #             且送 rerun 的資料量是 720p 的 44%
-      fps: 15           # 2026-09-13: 30 -> 15, same as record_omx.yaml; fixed exposure (~40 ms) exceeds a 30 fps frame
+      fps: 30
       use_depth: false
-      # 2026-09-13 matched to AUTO (freeze does not hold on this D455; D022): brightness 0.0 %, B/R 4.2 % off.
-      # exposure is quantised (power_line_frequency=Auto); 400 is ~40 ms if the unit is 100 us ([AI推論]).
-      exposure: 400
-      gain: 70
-      white_balance: null   # = AUTO: fixed 3500 K looked green (D022 2026-09-13). exposure/gain were matched with WB 3500; re-check with freeze_realsense_exposure.py (--wb auto)
 
 # 2026-09-13：60 → 30。rerun 畫面延遲 ~4 秒的主因（[AI推論]）：teleop 迴圈每一圈都把兩張 raw 影像送給 rerun，
 # 60 Hz × (1280×720 + 640×480) ≈ 221 MB/s，viewer 消化不完開始排隊。相機本身只出 30 fps，

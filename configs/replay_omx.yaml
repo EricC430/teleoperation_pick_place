@@ -1,0 +1,16 @@
+# OMX 動作回放：把資料集某一集的 action 原樣送給 follower（開環，不看相機）。
+#   uv run lerobot-replay --config_path configs/replay_omx.yaml
+#   換集數：加 --dataset.episode=<n>（CLI 覆寫會記進 config_records/）
+# ⚠️ 啟動後第一幀 action 直接送出、沒有緩慢靠近 → 先把 follower 擺到接近錄製起始姿勢。
+# ⚠️ 結束時 disconnect 會關扭力，手臂會垂下 → 手扶著。
+# episode 編號 ≠ t 編號：對照表見 docs/decisions.md D022（t41 = episode 59）。
+robot:
+  type: omx_follower
+  port: COM8                     # 同 record_omx.yaml；Windows COM 編號可能變，開跑前確認
+  id: 2026-09-13_omx_follower    # 必須和錄製時同一份 calibration
+  calibration_dir: ./calibration
+
+dataset:
+  repo_id: EricC430/omx_pick_place_pilot_uvc_60   # 本地資料，只當名稱用，不會連 Hub
+  root: ./.cache/lerobot/omx_pick_place_pilot_uvc_60
+  episode: 0
