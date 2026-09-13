@@ -1095,8 +1095,10 @@ poolable. `pilot` / `pilot_2` are left untouched.
      `[產出物]` `config_records/2026-09-13_omx_follower/` holds three lerobot-record runs: 16:48 (wrist WB 3600 K, D455 3500 K),
      16:58 (wrist WB AUTO, D455 3500 K), 18:05 (final: both WB AUTO, D455 `intelrealsense_pinned`). `omx_pick_place_pilot_uvc` then
      held **one** episode (675 frames @ 15 fps) written 18:17, i.e. under the final config — no mixed settings in it. Frame check 1
-     of `verify_dataset.py` passed (675 = 675); before the full run the folder was gone (18:19). Who removed it: `[未確認]` —
-     not `verify_dataset.py` (it has no delete / write calls) and not lerobot-record (no rmtree of the dataset root).
+     of `verify_dataset.py` passed (675 = 675); before the full run the folder was gone (18:19) — not removed by
+     `verify_dataset.py` (no delete / write calls) nor lerobot-record (no rmtree of the dataset root).
+     `[柏宇說]` 「我復原了」 → restored (same 7 files, 18:17). **Full `verify_dataset.py`: all 3 checks pass** (675 = 675 frames,
+     both videos 675, no timestamp gaps). → **Step E passed on hardware 2026-09-13.**
      ⚠️ `verify_dataset.py` crashes on a cp950 console when printing ✅ — run it with `PYTHONIOENCODING=utf-8`.
    - `[柏宇說]` 2026-09-13: 「第三視角應該要看的到」 → start-pose visibility applies to the third-person camera only,
      not the wrist. `experiment_spec.md` §1-1 and `field_manual.md` §階段 B ⑥ unified accordingly.
