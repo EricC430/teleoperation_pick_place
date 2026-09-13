@@ -17,15 +17,15 @@ tell at a glance which entries still govern current state.
 |---|---|
 | 🔴 **Superseded — do not read as current state** | **D002** (platform: SO-ARM) → superseded by **D021** |
 | 🟡 **Open / proposed — not decided** | **D019** (action representation), **D020** (mobile base & XLeRobot — *2026-09-01: candidate list expanded (七 chassis options with pricing), still not scored against the 七判準 table*), **D027** (IK / traditional-method fallback when ACT plateaus — approved in principle, unscoped), **D028** (3-phase state machine wrapping ACT — approved in principle, execution gated on B2) |
-| ✅ **Resolved 2026-08-27** | **D025** → do it, but only after Phase B real data exists (complement to D007, not a reversal). **D021** → 甲: OMX to the end, SO-ARM is a spare. **D022** single-camera verified + 3-config recording plan; **2026-09-01 `[Eric決定]`: D405 is the interim wrist camera until the UVC module arrives OR Phase C is reached** — interim config = D405 wrist + D455 third-person; D405→UVC swap and Phase C are both re-record boundaries. **D024** → 60 per campaign, position-OOD cancelled, training positions seeded, closed-loop 30 is in-distribution, uniform sampling replaces the 3×3 grid. |
+| ✅ **Resolved 2026-08-27** | **D025** → do it, but only after Phase B real data exists (complement to D007, not a reversal). **D021** → 甲: OMX to the end, SO-ARM is a spare. **D022** single-camera verified + 3-config recording plan; **2026-09-01 `[Eric決定]`: D405 is the interim wrist camera until the UVC module arrives OR Phase C is reached** — interim config = D405 wrist + D455 third-person; D405→UVC swap and Phase C are both re-record boundaries. **2026-09-13: UVC module (Innomaker U20CAM-720P) is on the wrist → the D405 interim period has ended (end condition 1); "proves usable" still 🟡 pending an arm-on teleop run — see D022 §2026-09-13.** **D024** → 60 per campaign, position-OOD cancelled, training positions seeded, closed-loop 30 is in-distribution, uniform sampling replaces the 3×3 grid. |
 | 🔴 **D023 — status changed 2026-08-31** | Cable resolved **by RE-ROUTING the existing cable, not replacement** (`[Eric說]`; lab had no spare). **The 2026-08-27 conservative-workspace exemption is VOID** (a re-route is not a monotone relaxation); A7's original gate is back. **Tape measurement (FK failed → D026):** `r_outer` top-down ≈ **41 cm**, side-only ≈ 49, `r_inner` ≈ **22** (all + `d_offset` 5 cm, pan axis → chassis edge). Azimuth sector ≈ **135°** (`theta ∈ [−90°, +45°]`), edge = **arm body physically hits the third-person camera mount** if rotated past — a hard mechanical limit, not FOV, not the cable. **Scope: Phase-A pilot layout only; Phase B on the vehicle re-runs S1/S2 from scratch** (`[Eric說]`). Next: S2 `--dry-run` feasibility. See D023 §2026-08-31 points 5–6. **2026-08-31 (earlier):** the 33–43 cm figure disambiguated (grasp-approach band); `r_max` verdict logic dropped. |
 | ✅ **Resolved 2026-08-31** | **D026** → reach logger measures by FK from the `omx_f` URDF (placo, LeRobot-native); tape measure is the fallback. `placo` enters the pinned env. |
 | ⚪ **Descoped, not cancelled** | **D008** (tactile → Phase D, "if time allows") |
 | ✅ **In force** | D001, D003–D007, D009–D018, D021–D023 |
 | 🔴 **Cancelled** | **D009** — recovery-hypothesis experiment on public data. **Cancelled 2026-08-27**: only 1 of 50 public episodes contained a corrective motion, so the comparison arm cannot be populated. **D005 stands but is now an untested design choice.** |
 
-**Current platform: OMX-AI (D021). Current wrist-camera plan: USB UVC module, ETA 2026-09-05–07,
-with two third-person cameras as the interim configuration (D022).
+**Current platform: OMX-AI (D021). Current wrist camera (2026-09-13): Innomaker U20CAM-720P USB UVC module, OpenCV index 3 / DSHOW
++ D455 third-person (D022 §2026-09-13).
 Current hard block: the short arm cable gates A6 and all recording (A8+). A7 placement *design* is unblocked under D023's conservative-workspace exemption.**
 
 Anything in this repo written before 2026-08-24 that names SO-ARM as the platform predates D021.
@@ -949,6 +949,108 @@ D405 standing in for the future UVC module.
   which case re-open the D405-with-counterweight option or source a lighter depth camera.
 - **Cross-reference:** D004, D021, `docs/camera_mount.md`, `docs/hardware.md`,
   `analysis/teleop_offset_2026-08-31.csv`.
+
+### 🟡 2026-09-13 — UVC module is on the wrist: Innomaker U20CAM-720P replaces the D405
+
+**What happened (source-tagged):**
+
+- `[柏宇說]` 2026-09-13: "現在第一視角不是 d405 相機" — the wrist camera is no longer the D405;
+  confirmed the wrist feed is OpenCV index 3 ("是 opencv_3"). Wrist camera and follower arm share one
+  USB hub; the D455 is not on that hub.
+- `[產出物]` Windows PnP enumeration: **`Innomaker-U20CAM-720P`** (`USB\VID_0C45&PID_6367`) is present;
+  the D405 (`PID_0B5B`) is known to the OS but **not present**. librealsense enumerates only the D455.
+- `[AI推論]` that this Innomaker is the "officially specified UVC module" from the 2026-08-24 meeting —
+  not confirmed; the model name was not recorded anywhere in this repo before today.
+
+**Measured (2026-09-13, `[產出物]`, lerobot's own `OpenCVCamera` code path, DSHOW, index 3):**
+
+| Mode | Result |
+|---|---|
+| 640×480 YUY2 / MJPG | ✅ ~30 fps |
+| 848×480 | ❌ DSHOW snaps to 800 wide → lerobot refuses to open. **Cannot match the D455's 848×480.** |
+| 1280×720 MJPG | ✅ ~30 fps (YUY2 at 720p: only 10.7 fps — USB 2 bandwidth) |
+| 640×480 YUY2 on hub, 10 s | alone 30.2 fps · with D455 1280×720@30 running 28.7 fps · with D455 848×480@15 running 30.2 fps. Max inter-frame gap ≈ 50 ms, 0 read failures. **Arm was NOT moving during this test.** |
+
+**Config consequences (done):** `wrist` in `configs/teleoperate_omx.yaml` and `configs/record_omx.yaml`
+→ `type: opencv`, `index_or_path: 3`, `backend: DSHOW`, 640×480, `fourcc: YUY2`.
+`record_omx.yaml` `dataset.root` → `omx_pick_place_pilot_uvc` because `omx_pick_place_pilot_2` already
+holds 1 D405-wrist episode (wrist 848×480) — per the 2026-09-01 block, D405 and UVC data are not
+poolable. `pilot` / `pilot_2` are left untouched.
+
+**Open — do not read as decided:**
+
+1. 🟡 **"Proves usable" (end condition 1) is not yet met.** Camera-level checks pass; the real test is an
+   arm-on teleop/record run (mass on the wrist, cable routing through the D023 re-route, image framing).
+2. 🔴 **The wrist camera's exposure cannot currently be frozen through config.** `OpenCVCameraConfig`
+   in the pinned lerobot has no `exposure` / `gain` / `white_balance` fields (RealSense has them).
+   That breaks the `field_manual.md` §5-(0) procedure for the wrist camera, and UVC auto-exposure in dim
+   light can also lower the delivered frame rate. `[AI提議]` options, 🟡 待裁決:
+   (a) accept auto-exposure for the wrist and declare it in `experiment_spec.md` §3;
+   (b) set it once per session via the DSHOW driver dialog (`CAP_PROP_SETTINGS`) — manual, not
+   persisted by config, easy to forget;
+   (c) a small project-side wrapper that applies `CAP_PROP_EXPOSURE` etc. after connect — code outside
+   the gitignored lerobot clone.
+
+   **2026-09-13 later — feasibility of (b)/(c) tested `[產出物]`** (OpenCV DSHOW, index 3, 640×480 YUY2,
+   camera only): the Innomaker **accepts manual UVC controls and they take effect** —
+   exposure −8/−6/−4 (log2 s) → mean brightness 36 / 98 / 186; gain 0→50 → 101→188;
+   manual WB 3000 K / 6500 K → B/R 1.52 / 0.94. Restored to auto afterwards.
+   🔴 **Exposure −4 (≈62 ms) drops the camera to 17 fps** — exposure time must stay below the frame period
+   (≤ −5 ≈ 31 ms for 30 fps), and shorter still for motion blur on a moving wrist.
+   **Persistence — tested 2026-09-13 `[產出物]`:** a manual setting applied by one process (exposure −8,
+   WB 3000 K) **survives into a separate process that opens the camera exactly as lerobot does**
+   (`OpenCVCamera.connect()`): mean brightness 36.9 vs 114 on auto; props read back identical. Restored to auto
+   afterwards (124.7). ⚠️ Cuts both ways: a stale manual setting also carries over **silently**. Not tested:
+   survival across unplug / power cycle.
+   **(c) feasibility — `已查證` from source:** `register_third_party_plugins()` (called by both
+   `lerobot-record` and `lerobot-teleoperate`) imports any installed package named `lerobot_camera_*`;
+   `make_cameras_from_configs` falls through to `make_device_from_device_class` for unknown `type`s, and
+   `omx_follower` builds its cameras through it → a project package registering e.g. `type: opencv_uvc`
+   (OpenCVCameraConfig + exposure/gain/WB fields, applied on every connect) works without touching the
+   gitignored lerobot clone. Not built yet.
+   `[AI提議]` 🟡 待裁決: **(c)** — values live in `record_omx.yaml` next to the D455's, are re-applied on every
+   connect (no manual step to forget; persistence no longer matters), and a missing package fails loudly at
+   config parse instead of silently recording on auto. (b) is the same `cap.set` calls run by hand.
+   - ✅ **`[柏宇決定]` 2026-09-13: (c)** (「選c」; 「這是boyu決定」). Not yet reviewed by Eric.
+     ⚠️ Attribution note: this session's earlier `[Eric說]` tags were wrong — the speaker was 柏宇; corrected above.
+   - `[柏宇說]` 2026-09-13: 「光線可能會變我覺得」. `[AI推論]`: fixed exposure alone then does **not** make the image
+     a scene constant — the light itself must be controlled (blinds / lamps / fixed session time), or each lighting
+     condition becomes its own campaign. How to control it: 🟡 待裁決.
+   - `[柏宇說]` 2026-09-13: no desk lamp; the arm faces the window, curtains are drawn. → the uncontrolled part is
+     daylight leaking through the curtains (time of day / weather) `[AI推論]`. `[AI提議]` 🟡 待裁決, no purchase needed:
+     (1) curtains drawn + same room lights every session, written as a setup step; (2) record in a fixed time window;
+     (3) use `scripts/freeze_realsense_exposure.py` as a light meter before each session — the auto-exposure value
+     it reads tracks scene brightness; compare with the frozen baseline (e.g. within ~20 % = treat as unchanged).
+     Buy a lamp only if (3) shows large swings.
+   - `[柏宇說]` 2026-09-13: dorm ceiling light (大燈) on; **this lighting setup (curtains drawn + ceiling light, no lamp)
+     was decided by 柏宇 and Eric together** — as reported by 柏宇; no Eric quote / meeting note on file, so not tagged
+     `[Eric決定]` / `[團隊決議]`. → the lighting **configuration** is settled; still open: only (2)/(3) above (`[AI提議]`).
+   - `[柏宇說]` 2026-09-13: the D455 frame "應該無" curtain in view, but not sure → check in rerun next session.
+   - ✅ `[柏宇決定]` 2026-09-13 (later): **desk lamp ON is part of the recording lighting** (「目前有檯燈，把文件改成有檯燈」).
+     **Supersedes the "no lamp" configuration two bullets up.** Eric's agreement to the change: `[未確認]`.
+     Consequences `[AI推論]`: (i) the lamp is now a scene constant — which lamp, position, direction, brightness
+     setting must be recorded (`setup_env.md` Lighting) and kept fixed; (ii) a fixed, dominant lamp should also
+     shrink the relative effect of daylight leaking through the curtains; (iii) `phase_plan.md` **B4b**
+     ("室內照明＋檯燈" as a lighting VARIANT) is no longer distinct from the base condition → 🟡 B4b needs re-planning
+     (not edited here — plan-level decision).
+   - `[柏宇說]` 2026-09-13: 「第三視角應該要看的到」 → start-pose visibility applies to the third-person camera only,
+     not the wrist. `experiment_spec.md` §1-1 and `field_manual.md` §階段 B ⑥ unified accordingly.
+   - `[柏宇說]` 2026-09-13: arm connected but 「先不要測試因為環境目前不穩定」 → no hardware test was run for (c).
+   **(c) status:** built as `plugins/lerobot_camera_uvc` (`type: opencv_uvc`), installed editable, 13 hardware-free
+   unit tests pass (`tests/test_opencv_uvc_camera.py` — incl. parsing `record_omx.yaml` with the switch, and
+   lerobot's plugin discovery). **Live configs still say `type: opencv` on purpose**; switch only after a camera-on
+   check at the lab: (1) `type: opencv_uvc` with no values (= forced auto) connects and looks like before,
+   (2) with values, brightness changes as set and fps holds.
+   - `[柏宇說]` 2026-09-13: "D455 不是也是手動設置曝光嗎？如果是的話腕部就一起做就好了" → direction:
+     tune both cameras in the same session. **Premise correction `[已查證]`:** D455 is **also still on auto**
+     (`exposure/gain/white_balance: None` in both OMX configs) — §5-(0) has not been done for either camera.
+   - `[柏宇說]` 2026-09-13: current runs are tests, not formal recording → freezing is required before the
+     first formal campaign recording, not for teleop tests. **Which of (a)/(b)/(c) remains 🟡 待裁決.**
+3. ⚠️ **OpenCV index 3 is not a stable ID on Windows** (re-plug / reboot / other port can renumber). A
+   wrong index does not error — it silently records another camera (e.g. the laptop webcam, index 0).
+   Check `lerobot-find-cameras opencv` output images before every recording session.
+4. Wrist resolution (640×480) ≠ third-person (848×480). Per-camera shapes are independent feature
+   keys, so recording is unaffected; whether that matters for ACT is `[未確認]`.
 
 ---
 

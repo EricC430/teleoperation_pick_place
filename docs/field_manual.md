@@ -13,8 +13,8 @@
 - [ ] 手臂 leader / follower 各一，配對正確（OMX-AI / SO-101）
 - [ ] 電源供應器規格正確（12V）、已通電
 - [ ] USB hub 已接、裝置都被辨識到（COM port & USB Cameras）
-- [ ] 相機已被系統與 LeRobot 辨識到（過渡配置 = D405 腕 + D455 第三視角，D022 §2026-09-01）
-- [ ] 🔴 **相機傳輸線理線**：D405 的線**穿過手臂的鏤空/走線通道**拉出，用束線帶/走線夾做應變消除，**確保線材完全不進手臂運動範圍、不擋操作空間**。
+- [ ] 相機已被系統與 LeRobot 辨識到（現行配置 = **Innomaker UVC 腕（OpenCV index 3）+ D455 第三視角**，D022 §2026-09-13）。🔴 index 3 要用 `lerobot-find-cameras opencv` 的 `opencv_3.png` 確認拍到夾爪
+- [ ] 🔴 **相機傳輸線理線**：腕部相機（Innomaker，USB 2.0 線）的線**穿過手臂的鏤空/走線通道**拉出，用束線帶/走線夾做應變消除，**確保線材完全不進手臂運動範圍、不擋操作空間**。
       線卡進關節連桿會讓校正記到錯誤極限值 → 整台校正失效（`camera_mount.md` §5-3、D023 同類地雷）。裝好後全範圍 teleop 掃一遍確認不勾線。
 - [ ] 目標物體已備妥（鋁罐 ✅已購；紙杯／不透明寶特瓶待備；目標容器 ❌確認實驗室無，需自購，見 `docs/experiment_spec.md` §2）
 - [ ] 現場工具：
@@ -37,7 +37,7 @@ uv run lerobot-find-port
 [System.IO.Ports.SerialPort]::GetPortNames()
 ```
 預期看到：
-- `COM6`（Leader 手臂）、`COM5`（Follower 手臂，依實際插入 USB 序列埠而定）。
+- OMX：`COM9`（Leader）、`COM8`（Follower）—— **以 `configs/teleoperate_omx.yaml` / `record_omx.yaml` 的 `port:` 為準**（2026-09-13 現況）。插不同 USB 孔可能會變，變了就改 config。SO-101 設定檔（備援）仍是 `COM6` / `COM5`。
 
 如果沒看到：
 → 檢查 USB 線材、電源轉換板燈號、Windows 裝置管理員（`devmgmt.msc`）是否有未安裝驅動程式的裝置（如 CH340 / FTDI / CP210x）。
@@ -58,9 +58,9 @@ uv run lerobot-find-cameras opencv
 ```
 
 預期看到（以目前實驗室硬體為例）：
-- **RealSense D405**：Serial ID `260322271459`（USB 3.2 模式，過渡期配置為 `left_front`）
-- **RealSense D455**：Serial ID `262822305610`（USB 3.2 模式，過渡期配置為 `right_front`）
-- **OpenCV Cameras**：`OpenCV Camera @ 0`、`OpenCV Camera @ 2` 等
+- **RealSense D455**：Serial ID `262822305610`（USB 3.x）→ config key `front-left`（第三視角）
+- **OpenCV Cameras**（2026-09-13 實測，DSHOW）：`@ 0` = 筆電內建鏡頭、`@ 2` = D455 的 RGB（經 DSHOW 看到的同一台，**不要用這個 index 開**）、**`@ 3` = Innomaker 腕部相機** → config key `wrist`。🔴 **編號不是固定 ID**，插拔／重開機可能會變；以 `opencv_N.png` 哪張拍到夾爪為準。填錯**不會報錯**，會安靜地錄到別台
+- ~~RealSense D405（`260322271459`）~~：2026-09-13 起不再使用（D022）。沒接時 `lerobot-find-cameras realsense` 只列出 D455，屬正常
 - 拍攝的測試照片會自動存入 `outputs/captured_images/`（包含 `realsense_*.png` 與 `opencv_*.png`）。
 
 ---
@@ -112,6 +112,10 @@ export HF_LEROBOT_HOME="$PWD/.cache/lerobot"
 > 💡 **最佳設計（零覆蓋、資料與校正強綁定，見 `docs/decisions.md` D017）：**
 > 所有設定檔存放於 `configs/`。
 > 我們將「當天日期」直接寫入 YAML 的 `id` 欄位（例如 `id: 2026-08-14_leader` 與 `id: 2026-08-14_follower`），LeRobot 校正完成後會**自動生成帶日期的檔案**（如 `calibration/2026-08-14_leader.json`），免手動改名且永遠不被覆蓋。
+> **設定檔也一樣（2026-09-13 起）**：`lerobot-record` / `-teleoperate` / `-calibrate` / `-replay` / `-rollout` 一啟動，plugin `lerobot_robot_config_record`
+> 就把 `--config_path` 那份 YAML（連同指令列覆寫、git commit、有沒有未 commit 的修改）存到 **`config_records/<robot id>/<檔名>__<雜湊>.yaml`**。
+> 同 id、同內容 → 不重存；**同 id 但內容變了** → 另存一份，終端印 `[config-record] WARNING`（改的若是場景常數，依 D004 應換新 id）。
+> **曝光等相機設定就從這裡查** —— lerobot 資料集本身不記（`meta/info.json` 只有影片編碼資訊）。某集用哪份設定 = 看該集的 `record_ts` 日期對應的 id 資料夾。
 
 指令（使用 YAML 設定檔）：
 ```powershell
@@ -151,7 +155,7 @@ uv run lerobot-teleoperate --config_path configs/teleoperate.yaml
 # 或 OMX 雙臂
 uv run lerobot-teleoperate --config_path configs/teleoperate_omx.yaml
 ```
-（對應配置檔 `configs/teleoperate.yaml` / `configs/teleoperate_omx.yaml`，包含 Leader `COM6` 與 Follower `COM5`）
+（對應配置檔 `configs/teleoperate.yaml`（SO-101 備援，`COM6` / `COM5`）/ `configs/teleoperate_omx.yaml`（OMX：Leader `COM9`、Follower `COM8`，Innomaker 腕 + D455）。COM port 以 config 為準）
 
 確認項目：
 - Follower 是否即時且平滑地跟隨 Leader？
@@ -226,7 +230,7 @@ uv run python scripts/measure_teleop_offset.py --config-path configs/teleoperate
 
 - follower 已夾固定、相機架好並用膠帶標記位置角度、**校正在空曠處做完**（第 3 節；固定後不可重校）。
 - 🔴 **D023：傳輸線已改走線** → 保守工作區豁免作廢（改走線非單調放寬），這一節從「A7 設計」升級為**必做的 A6 量測 ＋ 逐點驗證**。
-- 相機設定檔對應**現在實體接的相機**：D405 在腕上 → 用含 `wrist` key 的檔（`configs/teleoperate_omx_two-third-pov-cams.yaml`）；已卸下回雙第三視角 → `configs/teleoperate_omx.yaml`。
+- 相機設定檔對應**現在實體接的相機**（2026-09-13 起）：Innomaker 在腕上 + D455 → **`configs/teleoperate_omx.yaml`**（含 `wrist` key）。`configs/teleoperate_omx_two-third-pov-cams.yaml` 是**舊的雙第三視角配置**（`front-right` 指向已不用的 D405、`COM6`/`COM5`、08-31 id），**不要用**。
 
 **2026-08-31 現場量到的（捲尺，FK 失敗退 D026；experiment_spec §3 正本）：**
 
@@ -248,14 +252,14 @@ uv run python scripts/reach_logger.py --dry-run
 
 # 正式跑（預設 --mode teleop：腳本自己跑 leader→follower 迴圈）
 uv run python scripts/reach_logger.py
-#   不想用 leader：--mode follower-only（整條手臂會癱，D405 若在腕上會下墜，先用手托住）
+#   不想用 leader：--mode follower-only（整條手臂會癱、會下墜，先用手托住）
 ```
 
 **這支腳本不會自己動手臂。** `--mode teleop`（預設）只是**把你手動扳的 leader 即時鏡射到 follower**（迴圈每輪 `follower.send_action(leader.get_action())`，`--fps 30`），按鍵時讀 follower 當下關節 → FK → 記一筆。leader 大部分關節可徒手扳（夾爪是彈簧扳機）。`--mode follower-only` 則連 leader 都不連、follower 關扭力徒手擺。
 
 **5-pose FK 驗證（進主迴圈前強制一次）**：畫面會逐一提示 `move the leader to [home / +J1 / +J2 / +J3 / gripper]`，按 Enter 後印 FK 預測的 EE (x, y)，再要你輸入捲尺量到的 `measured x cm` / `measured y cm`。
 
-- 🔴 **`--mode teleop` 下，驗證階段現在會持續把 leader 鏡射到 follower**（`_pump_until_enter`，2026-08-31 修）。舊版只在按鍵時 `read_ticks()`、不 servo → follower 被扭力鎖死、擺 leader 沒反應。若你的版本沒這行為 → 先 `git pull` 拿修正，或改跑 `--mode follower-only`（follower 關扭力徒手擺，⚠️ 整臂會軟、D405 在腕上會墜，先托住）。
+- 🔴 **`--mode teleop` 下，驗證階段現在會持續把 leader 鏡射到 follower**（`_pump_until_enter`，2026-08-31 修）。舊版只在按鍵時 `read_ticks()`、不 servo → follower 被扭力鎖死、擺 leader 沒反應。若你的版本沒這行為 → 先 `git pull` 拿修正，或改跑 `--mode follower-only`（follower 關扭力徒手擺，⚠️ 整臂會軟、會墜，先托住）。
 - **座標系（`reach_logger/fk.py`）**：原點在**底座**（桌面上正對底座旋轉中心那點）；`x` = **正前方**（全關節歸零時夾爪指的方向，零位 EE ≈ (31.3, 0, 21.1) cm）；`y` = **水平側向，⟂ x**，右手系 z 朝上 → **+y = 左、−y = 右**（站底座後方沿 +x 看）；`z` = 上（不進半徑／方位角）。`azimuth 0° = 正前、+90° = 左、−90° = 右`。
   → 量測：先看螢幕印的 FK 預測 (x, y)，轉 J1 一邊看預測 y 往 + 還是 −，捲尺符號照著配；不確定就記大小＋註明左右。
 - **在 `home` 那格直接按 Enter（x 留空）= 跳過整個驗證 → 走捲尺模式。**
@@ -330,10 +334,12 @@ uv run lerobot-teleoperate --config_path configs/teleoperate_omx.yaml
 
 #### B-2. rerun 怎麼讀關節值
 
-- 左側 entity tree：`observation.images.<cam>`（每台相機一路影像）、`observation.state`（follower 六軸）、`action`（leader 六軸）。實際字串以樹上為準。
-- 底部 Time-series：展開 `observation.state`，六條線 = `shoulder_pan / shoulder_lift / elbow_flex / wrist_flex / wrist_roll / gripper`。
+- 左側 entity tree：`observation.<cam>`（每台相機一路影像，`<cam>` = config `cameras:` 的鍵名）、`observation.<joint>.pos`（follower 每軸一路）、`action.<joint>.pos`（leader 每軸一路）。實際字串以樹上為準。
+  🔴 **不是 `observation.images.*` / `observation.state`** —— 那兩個是 **dataset 的 feature 名**（存進 parquet/mp4 用的），
+  rerun 記的是 `robot.get_observation()` 的原始鍵（`rerun_visualization.py` 只在前面補 `observation.` / `action.`）。
+- 底部 Time-series：六條線 = `shoulder_pan / shoulder_lift / elbow_flex / wrist_flex / wrist_roll / gripper`（各自一路 `.pos`）。
 - 值域：手臂軸 **−100 ~ +100**、夾爪 **0 ~ 100**。⚠️ follower 校正是出廠預設滿轉，**±100 ≠ 機械死點**。
-- （建議先跑一次）`uv run lerobot-find-joint-limits --robot.type=omx_follower --robot.port=COM5 --robot.id=2026-08-31_omx_follower --teleop.type=omx_leader --teleop.port=COM6 --teleop.id=2026-08-31_omx_leader --urdf_path=assets/omx_f/omx_f.urdf --target_frame_name=end_effector_link --teleop_time_s=60`
+- （建議先跑一次）`uv run lerobot-find-joint-limits --robot.type=omx_follower --robot.port=COM8 --robot.id=2026-09-13_omx_follower --teleop.type=omx_leader --teleop.port=COM9 --teleop.id=2026-09-13_omx_leader --urdf_path=assets/omx_f/omx_f.urdf --target_frame_name=end_effector_link --teleop_time_s=60`
   → 掃一遍全工作區，記下每軸實際到過的 min/max，當成 ③ 的行程邊界基準。
 
 #### B-3. 逐點程序（三份清單裡每一個 `placement_id`）
@@ -347,10 +353,10 @@ uv run lerobot-teleoperate --config_path configs/teleoperate_omx.yaml
 |---|---|---|
 | **① 構得到** | 夾爪能否實際移到該點正上方的下爪位 | 構不到 → 點在 `r_outer` 外或落在改走線受限的方位角。**多點如此 = S1 的 `r_outer` 量太大 → 回頭修 `reach_summary` 重跑 S2**，不要硬凹 |
 | **② 夾爪朝向** | 該點能否擺出「垂直／斜向下爪、夾爪軸對準物體」的姿態 | 不行（通常近 `r_outer` 只能側夾）→ 抓取幾何不可行，違反任務定義 → 該點作廢 |
-| **③ 關節餘裕 ⭐** | 讀 `observation.state`，看該姿態各軸離 B-2 記下的**實測行程邊界**多少（無實測值時退而看是否逼近 ±100 / 夾爪逼近 0 或 100） | 任一軸 ≥ 行程 90% → 危險：policy 推論時**一定會偶爾推過去** → 撞限位／馬達過熱／動作被截斷，且你會誤判成模型問題 → 該點作廢或縮 `r` |
+| **③ 關節餘裕 ⭐** | 讀 `observation.<joint>.pos` 各路，看該姿態各軸離 B-2 記下的**實測行程邊界**多少（無實測值時退而看是否逼近 ±100 / 夾爪逼近 0 或 100） | 任一軸 ≥ 行程 90% → 危險：policy 推論時**一定會偶爾推過去** → 撞限位／馬達過熱／動作被截斷，且你會誤判成模型問題 → 該點作廢或縮 `r` |
 | **④ 路徑無碰撞** | 從起始姿態 → 該點 → 目標區，**慢速**走一遍 | 撞到目標箱／相機腳架／線材／改走線後的線 → 重新配置場景，**回固定步驟** |
-| **⑤ 各相機可見** | rerun 每一路 `observation.images.*` 裡，該點物體都在框內 | 看不到 → 調相機角度，**但要維持可複現約束（P7）**；調完 ①–④ 不用重驗，**⑤⑥ 全部重驗** |
-| **⑥ 起始姿態可見** | 手臂回起始姿態時，該點物體仍在每一路相機框內 | 看不到 → 違反任務定義（`experiment_spec` §1-1）→ 該點作廢或改起始姿態。⚠️ 相機視野若比 A-1 量的 135°（撞擊界）還窄 → 用較窄者重跑 S2 |
+| **⑤ 各相機可見** | rerun 每一路 `observation.<cam>` 裡，該點物體都在框內 | 看不到 → 調相機角度，**但要維持可複現約束（P7）**；調完 ①–④ 不用重驗，**⑤⑥ 全部重驗** |
+| **⑥ 起始姿態可見** | 手臂回起始姿態時，該點物體仍在**第三視角**相機框內（腕部不要求，`[柏宇說]` 2026-09-13；`experiment_spec` §1-1） | 看不到 → 違反任務定義（`experiment_spec` §1-1）→ 該點作廢或改起始姿態。⚠️ 相機視野若比 A-1 量的 135°（撞擊界）還窄 → 用較窄者重跑 S2 |
 
 #### B-4. 記錄 → `docs/setup_env.md` 新一節「工作範圍驗證 2026-08-31」
 
@@ -382,13 +388,13 @@ uv run lerobot-teleoperate --config_path configs/teleoperate_omx.yaml
 
 指令（使用 YAML 設定檔）：
 ```powershell
-# SO-101 雙臂 + 雙 RealSense 相機
-uv run lerobot-record --config_path configs/record.yaml
-
-# 或 OMX 雙臂 + 雙 RealSense 相機
+# OMX（現行平台，D021）：Innomaker 腕部 + D455 第三視角
 uv run lerobot-record --config_path configs/record_omx.yaml
+
+# SO-101（備援，目前不用）：雙 RealSense（含已不用的 D405）
+uv run lerobot-record --config_path configs/record.yaml
 ```
-（對應配置檔 `configs/record.yaml` / `configs/record_omx.yaml`，包含 Leader `COM6`、Follower `COM5`、雙 RealSense 相機與 dataset 設定。**OMX 過渡配置：`wrist` = D405（SN 260322271459）、`front-left` = D455（SN 262822305610），D022 §2026-09-01**）
+（**OMX 配置（2026-09-13 起，`configs/record_omx.yaml`）：Leader `COM9`、Follower `COM8`；`wrist` = Innomaker U20CAM-720P（OpenCV index 3、DSHOW，⚠️ index 非固定，開錄前用 `lerobot-find-cameras opencv` 確認 `opencv_3.png` 拍到夾爪）、`front-left` = D455（SN 262822305610），D022 §2026-09-13**；dataset 寫進 `omx_pick_place_pilot_uvc`，D405 時期的 `pilot` / `pilot_2` 不混用）
 
 ### (0) 🔴 相機場景常數：錄製第一筆前一次調定、凍結
 
@@ -396,20 +402,101 @@ uv run lerobot-record --config_path configs/record_omx.yaml
 
 | 參數 | 在哪設 | 說明 |
 |---|---|---|
-| `exposure` / `gain` / `white_balance` | `configs/record_omx.yaml` 每台相機區塊 | `None` = 自動。**要設固定值**——自動曝光會讓「同一個場景在不同時間看起來不一樣」，擴大 domain gap（`camera_mount.md` §5-4）。🔴 **D405 在腕上近距離自動曝光會過曝（發白）**，一定要手動壓 |
+| `exposure` / `gain` / `white_balance` | `configs/record_omx.yaml` 每台相機區塊 | `None` = 自動。**要設固定值**——自動曝光會讓「同一個場景在不同時間看起來不一樣」，擴大 domain gap（`camera_mount.md` §5-4）。**兩台都在這裡設（`teleoperate_omx.yaml` 也要同值）**：D455 原生支援；腕部要先改成 plugin `type: opencv_uvc`（下方步驟 A） |
 | `width` / `height` / `fps` | 同上 | 解析度、幀率。RealSense RGB 原生檔位：6/15/30 fps |
 | 相機位置 / 角度 / 外參 | 實體 + 膠帶標記 | 拆裝後要對得回基準照 |
 | 相機數量 + feature key 順序 | `cameras:` 宣告順序 | D022；宣告順序 = 模型看到的張量順序，接錯不會報錯 |
 
-**調定曝光的步驟（下次 lab day，需手臂 + 相機在場）：**
+**現況（2026-09-13）：兩台都還是自動曝光**（config 裡 `exposure/gain/white_balance` 皆 `None`）。teleop 測試可以；**正式錄製的第一集之前兩台都要定**（上表規則）。
 
-1. 接好目標相機，起 teleop：`uv run lerobot-teleoperate --config_path configs/teleoperate_omx.yaml`（`display_data: true` → rerun）。
-2. 看 rerun 的 `observation.images.wrist` / `.front-left`。過曝（白到看不出細節）或欠曝（暗）都不行；顏色要中性、不偏藍/偏黃。
-3. 停 teleop，編輯 `configs/record_omx.yaml`，給 `wrist` 一組保守值（例：`exposure: 80` 微秒級往下調變暗、`gain: 16`、`white_balance: 4500` K 偏藍調高偏黃調低），重起 teleop 看效果、反覆逼近。**用 RealSense Viewer 找值更快**（關自動曝光、拉手動滑桿試、記下數字）。
-4. 兩台都調好 → 把最終數值填進 `configs/record_omx.yaml` **和** `docs/experiment_spec.md` §3（場景常數表），註明日期。
-5. 之後這個 campaign 不再碰。要改 = 新 campaign、重錄。
+**為什麼腕部要用 plugin：** lerobot 原生 `type: opencv` 沒有 `exposure` / `gain` / `white_balance` 欄位（`已查證`）。
+**`[柏宇決定]` 2026-09-13 採 (c)** —— 專案 plugin `type: opencv_uvc`（`plugins/lerobot_camera_uvc`，D022 §2026-09-13）補上這三個欄位，每次連線自動套用。
+**腕部曝光單位是 log2 秒**（−6 = 15.6 ms、−7 = 7.8 ms）。**−4（≈62 ms）會讓相機掉到 17 fps** → 要 ≤ −5；手腕在動，越短越不糊。
+**分工：** `scripts/tune_uvc_exposure.py` 只負責**找**數值（不改檔、結束時把相機恢復自動）；數值要**貼進 YAML** 才會在錄製時生效。
 
-⚠️ **現有 8 集 pilot 是自動曝光、D405 過曝** —— 改不了（烙進影片），但那是煙霧測試。正式 pilot 一定要先做這一步。
+#### 調曝光流程（兩台同一次做；需手臂 + 相機 + **正式錄製時的燈光**）
+
+⚠️ 2026-09-13：plugin 與工具**只做過無硬體測試** —— 下面 A、B 兩步同時也是它們第一次實機驗證。
+
+**0. 前置**
+- 燈光調成正式錄製的狀態並記下來：**窗簾全拉上**（手臂面向窗戶）＋ **宿舍大燈開啟** ＋ **檯燈開啟、放在標記位置、同一方向與亮度**（`[柏宇決定]` 2026-09-13，`docs/setup_env.md` Lighting）。仍會變的是窗簾透進的日光（時段／天氣），盡量在固定時段錄。
+  `[AI提議]` 🟡 待裁決：每次開錄前跑一次 C 步腳本當「測光表」，自動曝光讀數和定值那天比，差太多就記下或改天錄（見 D022 §2026-09-13）。
+- `uv run lerobot-find-cameras opencv` → `outputs/captured_images/opencv_3.png` 要拍到夾爪（index 3 沒變）。
+- 新機器才要：`uv pip install -e plugins/lerobot_camera_uvc`
+
+**A. 切到 plugin，先確認能連（不填數值）**
+1. `configs/teleoperate_omx.yaml` **和** `configs/record_omx.yaml` 的 `wrist` 區塊：`type: opencv` → `type: opencv_uvc`。
+   先**不填** `exposure` / `gain` / `white_balance`（= 強制自動，畫面應和之前一樣）。
+2. `uv run lerobot-teleoperate --config_path configs/teleoperate_omx.yaml` → 能連上、rerun 兩格畫面正常。
+   順便走一趟任務，記住**看得到物體**的姿態，尤其是**夾取特寫**。退出前 ⚠️ **先扶住手臂**（Ctrl-C 會卸力矩）。
+   連不上 → 兩份改回 `type: opencv`，把終端錯誤貼回來。
+
+**B. 找腕部數值（工具；手臂保持卸力、用手扳）**
+3. `uv run python scripts/tune_uvc_exposure.py --dry-run` → 應顯示 `index=3 backend=DSHOW 640x480@15 fourcc=YUY2`。
+4. `uv run python scripts/tune_uvc_exposure.py` → 開即時視窗：
+   - 用手把手臂扳到**夾取特寫**（物體佔滿畫面，最亮）。
+   - `a` 切手動曝光（從 −6 開始）→ `e` / `E` 調到**中央過曝 ≈ 0 %**。太暗用 `G` 補增益（盡量低，雜訊少）。
+   - `b` 切手動白平衡 → `w` / `W` 調到白色的東西看起來是白的。
+   - 扳到**接近姿態**看一眼：不要暗到看不清；`camera fps` 要 ≥ 15。
+   - `s` 存截圖（`outputs/exposure_tuning/`）當紀錄；`q` 結束 → **抄下終端印出的數值**（相機自動恢復成自動）。
+   - 兩人做較順：一人扶手臂、一人按鍵。
+
+**C. 找 D455 數值（自動曝光 → 凍結 → 讀值；不需要 RealSense Viewer）**
+5. 先關掉 teleop 和調曝光工具（同一台相機不要同時被兩個程式開）。
+   `uv run python scripts/freeze_realsense_exposure.py --dry-run` → 應顯示 `serial=262822305610 848x480@15`。
+   `uv run python scripts/freeze_realsense_exposure.py` → 把場景擺成**錄製時的樣子**（燈光、物體放好、手臂在接近姿態）→ 按 Enter →
+   腳本自動跑 3 輪「自動 5 秒 → 凍結 → 讀值」，並比對凍結前後的畫面亮度。
+   - 每輪都 `OK`、且沒有 `exposure changed between repeats` → 抄下印出的 median `exposure` / `gain` / `white_balance`。
+   - `MISMATCH` = 凍結在這台 D455 上沒守住 → 數值**不可信**；`exposure changed between repeats` = 場景或光線不穩 → 重來。
+   - 結束時自動恢復 AUTO（lerobot 對 RealSense **沒填的選項是「不改」**，不恢復下次會被默默沿用）。
+   - ⚠️ 腳本會印出 exposure 的範圍與說明；**單位未確認**。若曝光看起來很長（手臂一動第三視角會糊），改填較短值、再用 gain 補亮。
+   - 依據：lerobot `RealSenseCameraConfig` 說明「關自動曝光會把曝光凍結在當下值」（`已查證` 文字；D455 實際行為由上面亮度比對驗證）。
+   - 腳本失效時的後備：裝 Intel RealSense Viewer 手動找，或在 YAML `front-left` 填數字重開 teleop 反覆逼近。
+
+**D. 寫進 YAML（兩份都要）**
+6. `configs/record_omx.yaml` **和** `configs/teleoperate_omx.yaml`：
+   - `wrist`：貼上 B 步印出的 `exposure` / `gain` / `white_balance`
+   - `front-left`：填 C 步的 `exposure` / `gain` / `white_balance`
+   ⚠️ 只改一份 → teleop 看到的 ≠ 錄到的。
+
+**E. 驗證並凍結**
+7. 再跑一次 teleop 走完整趟任務：畫面亮度**不再跟著內容跳**、夾取特寫不過曝、終端無錯誤。
+8. `uv run lerobot-record --config_path configs/record_omx.yaml` 錄 1 集 → §6-(2) `lerobot-dataset-viz` 回放 → §6-(3) 幀數驗證。
+9. 數值 + 日期寫進 `docs/experiment_spec.md` §3（場景常數表）。之後這個 campaign 不再碰；要改 = 新 campaign、重錄。
+
+⚠️ **現有 8 集 pilot 是自動曝光、D405 過曝** —— 改不了（烙進影片），但那是煙霧測試（D405 時期資料，不與 UVC 資料混用）。正式 pilot 一定要先做這一步。
+
+### (0-a) 錄製時同時看兩路相機（rerun）
+
+`configs/record_omx.yaml` 的 **`display_data: true`**（2026-09-08 由 false 改回）→ `lerobot-record`
+會自己 `rr.spawn()` 開 rerun viewer，**`cameras:` 宣告幾台就開幾格畫面**，不用另外開視窗、不用加參數。
+畫面配置是 lerobot 自動產生的 blueprint（grid）：每台相機一個 2D view ＋ observation / action 兩個時序圖。
+
+| 項目 | 值 |
+|---|---|
+| entity path | `observation.wrist`、`observation.front-left`（**不是** `observation.images.*`，見 §B-2） |
+| 何時建立 | 第一幀 log 之後；rerun 視窗開起來到有畫面有 1–2 秒延遲，不是壞了 |
+| 前置 | `rerun-sdk`（`viz` extra）。**已查證 2026-09-08：env 內為 0.33.1** |
+
+🔻 **什麼時候要把它關回 `false`**（判準寫在 config 註解裡，別憑感覺）：
+① 終端出現 `Record loop is running slower (X Hz) than the target FPS`；
+② `TimeoutError: latest frame is too old ...ms`（§ `hardware.md` 2026-08-31 的餓死抓幀事故）。
+出現任一個就 `display_data: false` 重錄該集 —— **顯示畫面永遠不值得換掉一集資料**。
+
+**rerun 畫面延遲（2026-09-13 teleop 實測 ~4 秒，兩台相機同步延遲）**：迴圈每一圈都送 raw 影像給 viewer，
+舊設定 60 Hz × 1280×720 ≈ 221 MB/s，viewer 排隊（`[AI推論]`）。**能用的旋鈕只有兩個**：
+① 迴圈 `fps` 別高於相機 fps（相機只出 30，60 Hz 等於同圖送兩次）；② 相機解析度。
+現行 teleop = 30 Hz、D455 848×480、wrist 640×480。
+
+🔴 **`display_compressed_images` 一律 `false`。** 開了會**把控制迴圈卡死**（2026-09-13：乾淨重現 2/2、實機 1/1；
+raw 對照 40 s + 120 s 皆 0 次，證據詳見 `configs/teleoperate_omx.yaml` 註解）。
+（本節 2026-09-08 版「不要開壓縮」結論對、理由錯；同日稍早改成「建議開」是錯的，已撤回。）
+`display_ip`+`display_port` 兩者都設時 `lerobot_record.py` 會**強制**開壓縮（`已查證`）→ 也等於卡死風險，不要設。
+
+**🔴 症狀判讀：follower 突然不跟 ＋ rerun 沒畫面 ＋ 終端出現 `Sender has been blocked for over 5 seconds`**
+= rerun 把控制迴圈卡住了（**不是** hub / 手臂 / 線材）。`rr.log()` 在迴圈裡同步呼叫，viewer 不收資料它就不返回。
+處理：Ctrl-C → 確認 `display_compressed_images: false` → 仍發生就 `display_data: false`。
+⚠️ Ctrl-C 結束時 `disable_torque_on_disconnect: true` 會**卸力矩**，手臂會因重力下垂 —— 先用手扶住或讓它在低姿態。
 
 ### (1) 錄製時的鍵盤操作控制（Keyboard Controls）
 在錄製過程中，請保持終端機處於焦點狀態，使用以下按鍵控制每集流程：
@@ -467,13 +554,13 @@ uv run lerobot-replay --config_path configs/replay.yaml
 # repo_id 形式 + 本地 root（本專案 dataset 在 .cache/lerobot/，不在 HF cache）
 uv run lerobot-dataset-viz `
     --repo-id EricC430/omx_pick_place_pilot `
-    --root .cache/lerobot/omx_pick_place_pilot `
+    --root .cache/lerobot/omx_pick_place_pilot_uvc `   # 2026-09-13 起（UVC 腕部）；D405 時期的舊資料在 omx_pick_place_pilot / _2
     --episode-index 0
 ```
 * **`--episode-index` 是單數、必填 → 一次一集。** 8 集就 `0` 跑到 `7`（Rerun server 固定 :9876，重跑會換）。`--save <path>` 可存檔不開即時視窗。
 * **功能說明**：啟動 Rerun，時間軸同步播放多視角相機影片、6 軸 `observation.state` 曲線、`action` 曲線。
 * **檢驗目的**：
-  - **影像**：掉幀、黑畫面、**曝光過度**（🔴 D405 腕上自動曝光會過曝，正式錄前依 §5-(0) 調定）。
+  - **影像**：掉幀、黑畫面、**曝光過度**（D405 時期的 pilot 已知腕部過曝；現行 Innomaker 腕部同樣是自動曝光，正式錄前依 §5-(0) 調定）。
   - **數值連續性**：關節曲線平滑、無突波、時戳無中斷。
 * **`torchcodec` 的 `libtorchcodec_coreN.dll` 一整面 traceback 是無害的** → 自動 fallback `pyav`，跑完會顯示 `100%`。
 
@@ -484,7 +571,8 @@ uv run lerobot-dataset-viz `
 
 ```powershell
 uv run python scripts/verify_dataset.py <dataset_root>
-# 例：uv run python scripts/verify_dataset.py data/huggingface/lerobot/<HF_USER>/so101_pick_place
+# 現行 OMX：uv run python scripts/verify_dataset.py .cache/lerobot/omx_pick_place_pilot_uvc
+# （SO-101 舊例：uv run python scripts/verify_dataset.py data/huggingface/lerobot/<HF_USER>/so101_pick_place）
 ```
 
 **為什麼必須用腳本而不是肉眼：**
