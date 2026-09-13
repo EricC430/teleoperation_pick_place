@@ -21,6 +21,7 @@ tell at a glance which entries still govern current state.
 | 🔴 **D023 — status changed 2026-08-31** | Cable resolved **by RE-ROUTING the existing cable, not replacement** (`[Eric說]`; lab had no spare). **The 2026-08-27 conservative-workspace exemption is VOID** (a re-route is not a monotone relaxation); A7's original gate is back. **Tape measurement (FK failed → D026):** `r_outer` top-down ≈ **41 cm**, side-only ≈ 49, `r_inner` ≈ **22** (all + `d_offset` 5 cm, pan axis → chassis edge). Azimuth sector ≈ **135°** (`theta ∈ [−90°, +45°]`), edge = **arm body physically hits the third-person camera mount** if rotated past — a hard mechanical limit, not FOV, not the cable. **Scope: Phase-A pilot layout only; Phase B on the vehicle re-runs S1/S2 from scratch** (`[Eric說]`). Next: S2 `--dry-run` feasibility. See D023 §2026-08-31 points 5–6. **2026-08-31 (earlier):** the 33–43 cm figure disambiguated (grasp-approach band); `r_max` verdict logic dropped. |
 | ✅ **Resolved 2026-08-31** | **D026** → reach logger measures by FK from the `omx_f` URDF (placo, LeRobot-native); tape measure is the fallback. `placo` enters the pinned env. |
 | ⚪ **Descoped, not cancelled** | **D008** (tactile → Phase D, "if time allows") |
+| ✅ **Decided 2026-09-13** | **D029** → campA_136sym gets 18 hand-placed near-field points (r≈12.65–21.21cm); D023's `r_inner=22cm` reopened for the now-elevated base; 3 of the 18 knowingly violate `d_min` and are kept anyway (`[Eric決定]`) |
 | ✅ **In force** | D001, D003–D007, D009–D018, D021–D023 |
 | 🔴 **Cancelled** | **D009** — recovery-hypothesis experiment on public data. **Cancelled 2026-08-27**: only 1 of 50 public episodes contained a corrective motion, so the comparison arm cannot be populated. **D005 stands but is now an untested design choice.** |
 
@@ -1646,6 +1647,56 @@ D007 反對的是**用模擬取代實機**；這裡是**用實機錨定模擬**�
   (failure-mechanism taxonomy — phase-level pass/fail here is a different granularity from D015's
   per-episode `mechanism` tags; **relationship between the two not yet worked out**), D027,
   `docs/meeting/2026-09-01.md`.
+
+---
+
+## D029 — campA_136sym: 18 near-field points added by hand; D023's `r_inner=22cm` no longer holds for the elevated base
+
+- **Date:** 2026-09-13
+- **Decision:** Add 18 hand-placed points (train_051–060, eval-open_011–012, eval-close_031–036) to the
+  frozen `campA_136sym_20260908` placement set, at `r ≈ 12.65–21.21 cm` — inside the annulus the 2026-08-31
+  S2 sampling run (D023) deliberately excluded (`sector_used.r_inner = 22.0 cm`). Source CSVs
+  (`configs/placements/campA_136sym_20260908_20260908_{train,eval-open,eval-close}.csv`), `meta.json`,
+  the single-page mat PDF, and `docs/assets/placement_label_map_campA_136sym_20260908.csv` were all
+  regenerated together from `scripts/make_placement_mat.py` so there is one source of truth again — a
+  same-day hand-edit of the label-map CSV alone (adding the 18 rows with a corrupted header and blank
+  `x_mat_cm`/`y_mat_cm`) is what surfaced this and was superseded by the regeneration.
+- **Why:** `[Eric說]` (2026-09-13) — "是現場使用手臂演示發現可以伸到的區域（因為目前手臂基座有架高，近的地方也很好夾）" — the
+  arm base is now physically elevated compared to the 2026-08-31 tape-measurement configuration that
+  produced `r_inner ≈ 22 cm` (D023 §2026-08-31 point 5), and hands-on demonstration shows the near field
+  is reachable and easy to grasp at the new base height. **This is a live-demonstration finding, not a
+  re-run of the D026 FK/tape measurement protocol** — treat `r_inner` as open again for this geometry,
+  not as re-measured and re-frozen.
+- **🔴 Known exception accepted, not fixed:** re-checking pairwise separation across all 108 points
+  (`[AI推論]`, computed 2026-09-13 from the regenerated CSVs) found 3 pairs below the campaign's
+  `d_min = 2.0 cm` guarantee (D023/D024 §2026-08-31, "three lists, `eval-close` shared, `d_min` is a
+  global minimum"):
+
+  | pair | distance |
+  |---|---|
+  | `eval-close_031` ↔ `train_054` | 1.000 cm |
+  | `eval-close_036` ↔ `train_060` | 1.221 cm |
+  | `eval-close_032` ↔ `train_040` (one of the original 90) | 1.518 cm |
+
+  `[Eric決定]` (2026-09-13, asked directly, chose "全部 18 個照原樣加入，先不管這個限制"): keep all 18 points
+  as-is; do **not** nudge, drop, or otherwise enforce `d_min` against these 3 pairs. Recorded in
+  `meta.json` under `manual_additions.d_min_violations` / `d_min_violations_accepted`.
+- **Alternatives considered:** drop the 3 violating points (kept the other 15); nudge the 3 to ≥2cm
+  away from their nearest neighbour. Both offered, neither chosen.
+- **Accepted costs:** `eval-close_031/032/036` are not reliably "a different placement" from a training
+  point by this campaign's own distinguishability argument — any downstream analysis that assumes
+  `eval-close` is uniformly ≥2cm from `train` must special-case these 3 ids or exclude them.
+  `meta.json`'s `per_list`/`feasibility` (KS-test, nearest-neighbour stats) still describe only the
+  original 90-point stratified sample and were **not** recomputed against the full 108 — recomputing
+  those against a mixed stratified+hand-placed set would need the actual S2 methodology, not just arithmetic.
+- **Reverse if:** a future S1/D026-style re-measurement of the elevated-base geometry gives a different
+  `r_inner`, or the 3 flagged pairs turn out to matter for a specific analysis (e.g. a model conflates
+  those `eval-close` ids with the nearby `train` id) — at that point drop or re-place those 3 specifically
+  rather than the whole batch.
+- **Status:** ✅ decided (`[Eric決定]`) for this campaign; `r_inner` reopened for future campaigns pending
+  a real re-measurement.
+- **Cross-reference:** D023 (source of the superseded `r_inner=22cm`), D024 (`d_min` as a global minimum),
+  D026 (the FK/tape measurement protocol this finding did *not* go through).
 
 ---
 
