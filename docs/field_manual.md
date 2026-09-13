@@ -583,7 +583,7 @@ uv run lerobot-replay --config_path configs/replay_omx.yaml --dataset.episode=0
 ```powershell
 # repo_id 形式 + 本地 root（本專案 dataset 在 .cache/lerobot/，不在 HF cache）
 uv run lerobot-dataset-viz `
-    --repo-id EricC430/omx_pick_place_pilot `
+    --repo-id ericc430/omx_pick_place_pilot `
     --root .cache/lerobot/omx_pick_place_pilot_uvc `   # 2026-09-13 起（UVC 腕部）；D405 時期的舊資料在 omx_pick_place_pilot / _2
     --episode-index 0
 ```

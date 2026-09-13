@@ -11,6 +11,6 @@ robot:
   calibration_dir: ./calibration
 
 dataset:
-  repo_id: EricC430/omx_pick_place_pilot_uvc_60   # 本地資料，只當名稱用，不會連 Hub
+  repo_id: ericc430/omx_pick_place_pilot_uvc_60   # 與 Hub 同名（小寫）；有 root 就讀本地，不會連 Hub
   root: ./.cache/lerobot/omx_pick_place_pilot_uvc_60
   episode: 0
