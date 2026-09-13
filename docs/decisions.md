@@ -1120,6 +1120,13 @@ poolable. `pilot` / `pilot_2` are left untouched.
      was rotated into `file-000` (6626) + `file-001` (9340) by lerobot's video file size limit, and the script compares every
      mp4 against the dataset total. `[未確認]` the 675-frame episode restored at 18:17 is not in `uvc` (its ep 0 is 534 frames;
      folder re-created 18:33).
+     Replay: `configs/replay_omx.yaml`, episode 0 of `uvc_60` (`config_records/.../replay_omx__9d5b1bf8.yaml`, 20:24) —
+     `[柏宇說]` 「回放正常」.
+     **On the Hub (private):** `ericc430/omx_pick_place_pilot_uvc_60` (dataset), uploaded 2026-09-13 with `hf upload --private`
+     from the laptop (commit `edd9182`); all 9 local files present, sizes identical. ⚠️ The namespace is **lowercase `ericc430`** —
+     `EricC430/...` returns `403 ... rights to create a dataset under the namespace "EricC430"` even with a write token.
+     `record_omx.yaml` / `train_omx_pilot.yaml` still say `EricC430/omx_pick_place_pilot`: harmless while `push_to_hub: false`
+     and `root` is set, but it would 403 if push were turned on.
    - `[柏宇說]` 2026-09-13: 「第三視角應該要看的到」 → start-pose visibility applies to the third-person camera only,
      not the wrist. `experiment_spec.md` §1-1 and `field_manual.md` §階段 B ⑥ unified accordingly.
    - `[柏宇說]` 2026-09-13: arm connected but 「先不要測試因為環境目前不穩定」 → no hardware test was run for (c).
