@@ -98,6 +98,22 @@ def test_frame_stats():
     assert st["centre_clipped_pct"] == 100.0 and st["clipped_pct"] == 25.0
 
 
+def test_frame_stats_colour_balance():
+    f = np.zeros((10, 10, 3), np.uint8)
+    f[..., 0], f[..., 2] = 100, 50  # BGR: blue 100, red 50
+    assert tune.frame_stats(f)["b_over_r"] == pytest.approx(2.0)
+
+
+@pytest.mark.parametrize("m_fix, br_fix, ok", [(115.2, 0.97, True), (90.0, 0.99, False), (113.0, 0.75, False)])
+def test_freeze_check(m_fix, br_fix, ok):
+    # AUTO reference and the pinned result from the 2026-09-13 probe: 113.2 / 0.99 -> 115.2 / 0.97
+    assert tune.freeze_check(113.2, 0.99, m_fix, br_fix)[0] is ok
+
+
+def test_help_lists_the_freeze_key():
+    assert "f  FREEZE" in tune.KEY_HELP
+
+
 def test_yaml_snippet_is_pasteable():
     s = tune.yaml_snippet(C(exposure=-6, gain=10), "wrist")
     assert "type: opencv_uvc" in s and "exposure: -6" in s and "gain: 10" in s and "white_balance: null" in s
