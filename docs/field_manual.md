@@ -568,8 +568,12 @@ raw 對照 40 s + 120 s 皆 0 次，證據詳見 `configs/teleoperate_omx.yaml` 
 
 ### (1) 重播手臂動作 (`lerobot-replay`)
 ```powershell
-uv run lerobot-replay --config_path configs/replay.yaml
+# OMX（現行）：預設回放 omx_pick_place_pilot_uvc_60 的 episode 0
+uv run lerobot-replay --config_path configs/replay_omx.yaml --dataset.episode=0
+# SO-101 舊例：uv run lerobot-replay --config_path configs/replay.yaml
 ```
+* **OMX 注意（2026-09-13）**：只接 follower（COM8），leader 不用接。第一幀 action 會直接送出、不會緩慢靠近 → 先把 follower 擺到接近起始姿勢；
+  結束時會關扭力，手臂垂下 → 手扶著。回放是開環的：物體要擺回那一集的位置才夾得到。episode ↔ t 對照表在 `docs/decisions.md` D022。
 * **功能說明**：讀取剛錄好的某一集軌跡（如 `episode: 0`），直接將關節位置指令傳送給實體 Follower 機械臂，讓實體手臂在真實空間中**自動原樣重演**一遍動作。
 * **檢驗目的**：
   - 檢查真實馬達在執行軌跡時是否有機械卡頓、過衝、抖動或電機發熱失步。
