@@ -364,6 +364,9 @@ this commit as a decision in `docs/decisions.md`, not as a silent `git pull`.
 `exposure` / `gain` / `white_balance` fields, re-applied on every connect. It exists because the pinned
 lerobot's `OpenCVCameraConfig` has no exposure fields, and the wrist UVC camera's exposure must be a scene
 constant (D022 §2026-09-13 — `[柏宇決定]` option (c)).
+The same package also registers **`type: intelrealsense_pinned`** (added later on 2026-09-13): lerobot's RealSense camera
+with the same "`null` = force AUTO on connect" rule. Needed because lerobot's own `intelrealsense` leaves a `null` option
+*unchanged* and the D455 keeps its auto-white-balance state across processes (measured: `null` silently inherited a green 3500 K).
 
 **Install (laptop that records):** `uv pip install -e plugins/lerobot_camera_uvc` — also in
 `scripts/setup_laptop.ps1`. No lerobot source is modified; the gitignored `./lerobot` clone stays at the pinned commit.

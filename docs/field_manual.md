@@ -402,12 +402,12 @@ uv run lerobot-record --config_path configs/record.yaml
 
 | 參數 | 在哪設 | 說明 |
 |---|---|---|
-| `exposure` / `gain` / `white_balance` | `configs/record_omx.yaml` 每台相機區塊 | `None` = 自動。**要設固定值**——自動曝光會讓「同一個場景在不同時間看起來不一樣」，擴大 domain gap（`camera_mount.md` §5-4）。**兩台都在這裡設（`teleoperate_omx.yaml` 也要同值）**：D455 原生支援；腕部要先改成 plugin `type: opencv_uvc`（下方步驟 A） |
+| `exposure` / `gain` / `white_balance` | `configs/record_omx.yaml` 每台相機區塊 | `None` = 自動。**要設固定值**——自動曝光會讓「同一個場景在不同時間看起來不一樣」，擴大 domain gap（`camera_mount.md` §5-4）。**兩台都在這裡設（`teleoperate_omx.yaml` 也要同值）**：D455 用 plugin `type: intelrealsense_pinned`、腕部用 `type: opencv_uvc`（兩者 `null` = **強制自動**；lerobot 原生 `intelrealsense` 的 `null` 是「不改」，會沿用上一個程式留下的狀態） |
 | `width` / `height` / `fps` | 同上 | 解析度、幀率。RealSense RGB 原生檔位：6/15/30 fps |
 | 相機位置 / 角度 / 外參 | 實體 + 膠帶標記 | 拆裝後要對得回基準照 |
 | 相機數量 + feature key 順序 | `cameras:` 宣告順序 | D022；宣告順序 = 模型看到的張量順序，接錯不會報錯 |
 
-**現況（2026-09-13）：兩台都還是自動曝光**（config 裡 `exposure/gain/white_balance` 皆 `None`）。teleop 測試可以；**正式錄製的第一集之前兩台都要定**（上表規則）。
+**現況（2026-09-13）：兩台都已固定，待 E 步驗證。** 數值在兩份 YAML 的 `wrist:` / `front-left:` 區塊（正本 = YAML + `config_records/`，這裡不重抄）。**正式錄製的第一集之前要過 E 步**（上表規則）。
 
 **為什麼腕部要用 plugin：** lerobot 原生 `type: opencv` 沒有 `exposure` / `gain` / `white_balance` 欄位（`已查證`）。
 **`[柏宇決定]` 2026-09-13 採 (c)** —— 專案 plugin `type: opencv_uvc`（`plugins/lerobot_camera_uvc`，D022 §2026-09-13）補上這三個欄位，每次連線自動套用。
@@ -424,40 +424,66 @@ uv run lerobot-record --config_path configs/record.yaml
 - `uv run lerobot-find-cameras opencv` → `outputs/captured_images/opencv_3.png` 要拍到夾爪（index 3 沒變）。
 - 新機器才要：`uv pip install -e plugins/lerobot_camera_uvc`
 
-**A. 切到 plugin，先確認能連（不填數值）**
+**A. 切到 plugin，先確認能連（不填數值）** ✅ 2026-09-13 完成（teleop 可連、`config_records/` 已產生）
 1. `configs/teleoperate_omx.yaml` **和** `configs/record_omx.yaml` 的 `wrist` 區塊：`type: opencv` → `type: opencv_uvc`。
    先**不填** `exposure` / `gain` / `white_balance`（= 強制自動，畫面應和之前一樣）。
 2. `uv run lerobot-teleoperate --config_path configs/teleoperate_omx.yaml` → 能連上、rerun 兩格畫面正常。
    順便走一趟任務，記住**看得到物體**的姿態，尤其是**夾取特寫**。退出前 ⚠️ **先扶住手臂**（Ctrl-C 會卸力矩）。
    連不上 → 兩份改回 `type: opencv`，把終端錯誤貼回來。
 
-**B. 找腕部數值（工具；手臂保持卸力、用手扳）**
+**B. 找腕部數值（工具；手臂保持卸力、用手扳）** ✅ 2026-09-13 完成（`f`，已填入兩份 YAML；結果行是否為 `OK` 待柏宇確認；白平衡已改回自動 = `white_balance: null`）
 3. `uv run python scripts/tune_uvc_exposure.py --dry-run` → 應顯示 `index=3 backend=DSHOW 640x480@15 fourcc=YUY2`。
 4. `uv run python scripts/tune_uvc_exposure.py` → 開即時視窗：
-   - 用手把手臂扳到**夾取特寫**（物體佔滿畫面，最亮）。
-   - `a` 切手動曝光（從 −6 開始）→ `e` / `E` 調到**中央過曝 ≈ 0 %**。太暗用 `G` 補增益（盡量低，雜訊少）。
-   - `b` 切手動白平衡 → `w` / `W` 調到白色的東西看起來是白的。
+   - 用手把手臂扳到**夾取特寫**（物體佔滿畫面，最亮），**扶住不動**。
+   - **按 `f`**（`[柏宇決定]` 2026-09-13：凍結 AUTO 選的值，不手調）：工具先讓自動曝光穩定 → 關自動曝光（這台相機會停在自動選的值）
+     → 讀出曝光／增益、用 plugin 寫回、跟自動比對。**白平衡維持自動**：手動白平衡在這台相機會偏黃綠，任何色溫都修不掉（D022 §2026-09-13）。
+     **視窗會停約 10 秒**，進度印在終端。
+     結果行 `OK` 才能用；`MISMATCH` = 寫回的畫面跟自動差超過 10 %，不要用。
+   - 若印出 `WARNING: ... >= one frame at 30 fps`（曝光 ≥ −4，約 62 ms）→ `teleoperate_omx.yaml`（30 fps）會拒收；代表光線太暗，先處理燈光。
    - 扳到**接近姿態**看一眼：不要暗到看不清；`camera fps` 要 ≥ 15。
    - `s` 存截圖（`outputs/exposure_tuning/`）當紀錄；`q` 結束 → **抄下終端印出的數值**（相機自動恢復成自動）。
-   - 兩人做較順：一人扶手臂、一人按鍵。
+   - 手動鍵（`a` / `e` / `g` / `b` / `w`）保留給 `f` 失敗時用。DSHOW 曝光一格就是亮度 ×2，手調很難細，所以預設用 `f`。
 
-**C. 找 D455 數值（自動曝光 → 凍結 → 讀值；不需要 RealSense Viewer）**
+**C. 找 D455 數值（對 AUTO 比對；不需要 RealSense Viewer）** ✅ 2026-09-13 完成（數值已填入兩份 YAML；白平衡改自動後已重跑確認，`[柏宇說]`「跑完流程也認為正常」）
 5. 先關掉 teleop 和調曝光工具（同一台相機不要同時被兩個程式開）。
    `uv run python scripts/freeze_realsense_exposure.py --dry-run` → 應顯示 `serial=262822305610 848x480@15`。
-   `uv run python scripts/freeze_realsense_exposure.py` → 把場景擺成**錄製時的樣子**（燈光、物體放好、手臂在接近姿態）→ 按 Enter →
-   腳本自動跑 3 輪「自動 5 秒 → 凍結 → 讀值」，並比對凍結前後的畫面亮度。
-   - 每輪都 `OK`、且沒有 `exposure changed between repeats` → 抄下印出的 median `exposure` / `gain` / `white_balance`。
-   - `MISMATCH` = 凍結在這台 D455 上沒守住 → 數值**不可信**；`exposure changed between repeats` = 場景或光線不穩 → 重來。
+   `uv run python scripts/freeze_realsense_exposure.py` → 把場景擺成**錄製時的樣子**（燈光、物體放好、手臂在接近姿態）→ 按 Enter → **約 60 秒不要動**。
+   腳本流程：量 AUTO 的亮度與藍紅比 → 曝光分階掃描、取不超過 AUTO 的最亮一階 → 用增益補到 AUTO 的亮度 → 白平衡預設**維持自動**（`--wb match` 才掃色溫；固定白平衡在我們的燈下兩台都偏綠）→ 寫回比對（亮度、藍紅比、綠紅比都要在 10 % 內）→ 再量一次 AUTO 看場景有沒有變。
+   - `[5] ... -> OK` 且 `steady` → 抄下印出的 `exposure` / `gain` / `white_balance`。
+   - `MISMATCH` → 數值不能用；`SCENE CHANGED` → 過程中光線／場景變了，重來。
+   - 為什麼不是「凍結」：**這台 D455 關自動會跳回出廠預設值**（156 / 64 / 4600，亮度掉 37 %），而且這台筆電讀不到每幀 metadata（D022 §2026-09-13）。
+   - 曝光是**分階的**（防閃爍 `power_line_frequency` = Auto），只調曝光配不上 AUTO，要靠增益（0–128，可細調）補。
    - 結束時自動恢復 AUTO（lerobot 對 RealSense **沒填的選項是「不改」**，不恢復下次會被默默沿用）。
-   - ⚠️ 腳本會印出 exposure 的範圍與說明；**單位未確認**。若曝光看起來很長（手臂一動第三視角會糊），改填較短值、再用 gain 補亮。
-   - 依據：lerobot `RealSenseCameraConfig` 說明「關自動曝光會把曝光凍結在當下值」（`已查證` 文字；D455 實際行為由上面亮度比對驗證）。
    - 腳本失效時的後備：裝 Intel RealSense Viewer 手動找，或在 YAML `front-left` 填數字重開 teleop 反覆逼近。
 
 **D. 寫進 YAML（兩份都要）**
-6. `configs/record_omx.yaml` **和** `configs/teleoperate_omx.yaml`：
-   - `wrist`：貼上 B 步印出的 `exposure` / `gain` / `white_balance`
-   - `front-left`：填 C 步的 `exposure` / `gain` / `white_balance`
-   ⚠️ 只改一份 → teleop 看到的 ≠ 錄到的。
+6. `configs/record_omx.yaml` **和** `configs/teleoperate_omx.yaml`，三個值接在各區塊最後一行下面：
+   ```yaml
+       wrist:
+         type: opencv_uvc
+         index_or_path: 3
+         backend: DSHOW
+         width: 640
+         height: 480
+         fps: 15              # teleoperate_omx.yaml 是 30
+         fourcc: YUY2
+         exposure: <B 步印出的值>        # ← 加這三行
+         gain: <B 步印出的值>
+         white_balance: null           # 腕部維持自動（手動會偏綠；D022）
+       front-left:
+         type: intelrealsense_pinned   # plugin：null = 強制自動
+         serial_number_or_name: "262822305610"
+         width: 848
+         height: 480
+         fps: 15              # 兩份都是 15（D455 固定曝光約 40 ms，長於 30 fps 的一幀；2026-09-13）
+         use_depth: false
+         exposure: <C 步印出的值>        # ← 加這三行
+         gain: <C 步印出的值>
+         white_balance: null           # D455 也維持自動（固定會偏綠；D022）
+   ```
+   ⚠️ 只改一份 → teleop 看到的 ≠ 錄到的。填完用 teleop 跑一次即可確認 lerobot 讀得進去（寫錯會在讀 config 時直接報錯）。
+   ℹ️ 同一個 id 改了數值後再跑 teleop，終端會印 `[config-record] WARNING: id '...' already has a DIFFERENT ...`：
+   若舊版本**還沒錄過資料**（只拿來 teleop 測試）→ 正常，不用理；若舊版本**已經錄過資料** → 改的是場景常數，依 D004 應換新 id（新 campaign）。
 
 **E. 驗證並凍結**
 7. 再跑一次 teleop 走完整趟任務：畫面亮度**不再跟著內容跳**、夾取特寫不過曝、終端無錯誤。
@@ -560,7 +586,7 @@ uv run lerobot-dataset-viz `
 * **`--episode-index` 是單數、必填 → 一次一集。** 8 集就 `0` 跑到 `7`（Rerun server 固定 :9876，重跑會換）。`--save <path>` 可存檔不開即時視窗。
 * **功能說明**：啟動 Rerun，時間軸同步播放多視角相機影片、6 軸 `observation.state` 曲線、`action` 曲線。
 * **檢驗目的**：
-  - **影像**：掉幀、黑畫面、**曝光過度**（D405 時期的 pilot 已知腕部過曝；現行 Innomaker 腕部同樣是自動曝光，正式錄前依 §5-(0) 調定）。
+  - **影像**：掉幀、黑畫面、**曝光過度**（D405 時期的 pilot 已知腕部過曝、自動曝光；2026-09-13 起 Innomaker 腕部為固定曝光，數值見 YAML `wrist:` 區塊）。
   - **數值連續性**：關節曲線平滑、無突波、時戳無中斷。
 * **`torchcodec` 的 `libtorchcodec_coreN.dll` 一整面 traceback 是無害的** → 自動 fallback `pyav`，跑完會顯示 `100%`。
 

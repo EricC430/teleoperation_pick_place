@@ -1033,6 +1033,71 @@ poolable. `pilot` / `pilot_2` are left untouched.
      shrink the relative effect of daylight leaking through the curtains; (iii) `phase_plan.md` **B4b**
      ("室內照明＋檯燈" as a lighting VARIANT) is no longer distinct from the base condition → 🟡 B4b needs re-planning
      (not edited here — plan-level decision).
+   - `[產出物]` 2026-09-13 16:02 — **step A passed on hardware** (`[柏宇說]` 「A跑過了」): `lerobot-teleoperate` ran with wrist
+     `type: opencv_uvc` (no values = forced auto), and the config-record hook wrote
+     `config_records/2026-09-13_omx_follower/teleoperate_omx__15fd96d7.yaml` from the real entrypoint — closes the
+     "argv[0] form never observed" gap of `lerobot_robot_config_record`.
+   - `[柏宇說]` 2026-09-13: 「我手調畫面品質都不太好」 (manual tuning with `tune_uvc_exposure.py`). For reference, AUTO at the
+     grasp close-up measured mean 122.7, 0 % clipped (whole / centre), B/R 1.01 (`outputs/exposure_tuning/wrist_eNone_gNone_wbNone_160922.png`).
+     `[AI推論]` why manual is hard: DSHOW exposure steps are powers of two, so brightness can only be matched with gain (noise).
+   - ✅ `[柏宇決定]` 2026-09-13: **freeze the values AUTO picks at the grasp close-up** (option ②, 「用2」) instead of hand-tuning.
+     Feasibility depends on the device holding its auto-chosen exposure / WB when auto is switched off without writing a
+     value — DSHOW read-back under auto is stale (measured earlier), so it cannot simply be read.
+   - `[產出物]` 2026-09-13 feasibility probes (wrist camera only, arm still):
+     **exposure freezes** — auto-exposure off without writing a value kept brightness (123.0 → 125.2, 1.7 %), and the
+     read-back is then real (moved away to −13 → 0.1, wrote the read-back −5 / gain 0 → 115.2 vs AUTO 113.2, 1.8 %).
+     **White balance does NOT freeze** — AWB off jumps to the stored temperature (B/R 1.01 → 0.77, reads 4600), and the
+     WB read-back under auto is stale (read 6400 while the temperature matching AUTO was ~3600 K).
+     → WB is **matched**, not frozen: sweep manual temperatures, keep the one whose B/R is closest to AUTO's
+     (0.99 → 3600 K, B/R 0.97). Implemented as the `f` key of `scripts/tune_uvc_exposure.py`.
+   - `[產出物]` 2026-09-13 **D455: the freeze does NOT hold.** `scripts/freeze_realsense_exposure.py` (柏宇's run, scene set as
+     for recording): auto-exposure off → brightness 116 → 73 (−37 %, 3/3 cycles, self-check `MISMATCH`), and the read-back
+     was exactly the sensor defaults (exposure 156 = reported default, gain 64, WB 4600) — the D455 jumps to its stored
+     manual values, contrary to lerobot's RealSenseCameraConfig docstring ("freezes exposure at its current value").
+     Per-frame metadata (`actual_exposure` / `gain_level` / `white_balance`) is **not supported** on this laptop (all None).
+     → D455 values must be **matched by search** against AUTO, like the wrist WB. A first bisection mis-converged
+     (443 → +42 % brightness; `[AI推論]` settle time too short); WB matching worked (3500 K, B/R within 1.3 %).
+   - `[產出物]` 2026-09-13 **D455 matched**: with a longer settle, exposure proved **quantised in coarse steps** (320/385/440 → 104,
+     452/486/640 → 155 at gain 64; `power_line_frequency` = Auto, i.e. anti-flicker — `[AI推論]` that this causes the steps).
+     AUTO (≈115–118) sits between two steps, so exposure alone cannot match; **gain is fine-grained (0..128)** and closes it:
+     **exposure 400 / gain 70 / WB 3500 K → brightness 0.0 %, B/R 4.2 % from AUTO**. AUTO itself read 126.9 after the run
+     (10.9 % drift) and 114–127 across runs → the reference moves; these values sit inside that band.
+     Written into both YAMLs' `front-left`; `teleoperate_omx.yaml` D455 fps 30 → 15 (same as record; 400 ≈ 40 ms if the unit
+     is 100 µs `[AI推論]`, longer than a 30 fps frame). `scripts/freeze_realsense_exposure.py` rewritten to this match procedure.
+   - `[柏宇說]` 2026-09-13: 「第一視角的畫面的顏色怪怪的」 → `[產出物]` same pose, seconds apart: YAML values (−5 / 0 / 3600 K) gave
+     B/R 0.82, G/R 1.01 (visibly yellow-green) vs full AUTO B/R 0.95, G/R 0.92. **Exposure fixed + WB AUTO matched full AUTO
+     (B/R 0.94, G/R 0.92)** — the cast comes from manual WB. A 2800–6400 K sweep never reaches AUTO's G/R at its B/R (best
+     3200 K: B/R 0.94 but G/R 1.07): colour temperature is one axis (blue↔amber) and cannot remove the green; per-channel WB
+     (`WHITE_BALANCE_BLUE_U` / `RED_V`) is unsupported on this camera; hue rotates every colour, not a tint fix.
+     → **wrist: exposure / gain fixed, `white_balance: null` (AUTO)** in both YAMLs; the `f` key now pins exposure / gain only.
+     **Accepted cost (vs D004):** wrist colour balance still follows scene content (auto WB), brightness does not. The earlier
+     "WB matched by sweep" bullet above is superseded for the wrist.
+   - `[產出物]` 2026-09-13 **D455 colour check** (same method): YAML 400 / 70 / 3500 K vs full AUTO → brightness 7.7 %, B/R 4.5 %,
+     G/R 5.1 % (all within 10 %, no visible cast reported); exposure/gain fixed + WB AUTO → B/R 3.3 %, G/R 0.4 %.
+     → `[AI提議]` **D455 keeps the fully fixed values** (fully constant per D004); switch its WB to AUTO only if its colour looks
+     off in rerun. `scripts/freeze_realsense_exposure.py` now also requires G/R within 10 % (B/R alone missed the wrist cast).
+   - `[柏宇說]` 2026-09-13: 「第三視角d455看起來也有偏綠的問題」 → the D455 bullet above is superseded: D455 white balance → AUTO too.
+     `[產出物]` **but `white_balance: null` is NOT safe on the D455 in plain lerobot**: lerobot leaves an omitted RealSense option
+     *unchanged*, and the D455 keeps its AWB state across processes — after a process left AWB off at 3500 K, lerobot's
+     RealSenseCamera opened with `white_balance=None` read AWB=0 / WB 3500 (G/R 1.19, visibly green); after AWB on → AWB=1 (G/R 0.98).
+     → needs a camera type that sets AUTO explicitly when a value is None (same semantics as `opencv_uvc`).
+   - **Done (2026-09-13):** `type: intelrealsense_pinned` added to `plugins/lerobot_camera_uvc` (overrides
+     `_configure_sensor_options`, which lerobot runs after the pipeline starts and before the read thread; exposure and gain
+     must be set together). Both YAMLs' `front-left` → `intelrealsense_pinned`, exposure 400 / gain 70, **white_balance null
+     (AUTO)**. Both cameras now: exposure/gain fixed, WB AUTO — accepted cost vs D004: colour balance follows scene content.
+     400 / 70 were matched with WB fixed at 3500 K → re-check with `freeze_realsense_exposure.py` (now `--wb auto` by default).
+   - `[柏宇說]` 2026-09-13: after both cameras went to WB AUTO, wrist still looked green → `[產出物]` on the lerobot path the camera
+     reports AUTO_WB=1 and near-white pixels are neutral (G/R 1.01, G/B 0.99); `[柏宇說]` then 「現在這樣是正常的」 → **colour accepted
+     as is** (exposure/gain fixed, WB AUTO on both cameras). Fallback if a real cast shows up later (`[AI提議]`, not built): fixed
+     camera WB + a fixed per-channel software gain calibrated once on white paper, applied in the plugin (constant per D004).
+   - `[柏宇說]` 2026-09-13: 「已經確認畫面正常，跑完流程也認為正常」 (D455 re-check with `--wb auto` and the record flow) → values stay
+     wrist −5 / 0 / WB AUTO, D455 400 / 70 / WB AUTO.
+     `[產出物]` `config_records/2026-09-13_omx_follower/` holds three lerobot-record runs: 16:48 (wrist WB 3600 K, D455 3500 K),
+     16:58 (wrist WB AUTO, D455 3500 K), 18:05 (final: both WB AUTO, D455 `intelrealsense_pinned`). `omx_pick_place_pilot_uvc` then
+     held **one** episode (675 frames @ 15 fps) written 18:17, i.e. under the final config — no mixed settings in it. Frame check 1
+     of `verify_dataset.py` passed (675 = 675); before the full run the folder was gone (18:19). Who removed it: `[未確認]` —
+     not `verify_dataset.py` (it has no delete / write calls) and not lerobot-record (no rmtree of the dataset root).
+     ⚠️ `verify_dataset.py` crashes on a cp950 console when printing ✅ — run it with `PYTHONIOENCODING=utf-8`.
    - `[柏宇說]` 2026-09-13: 「第三視角應該要看的到」 → start-pose visibility applies to the third-person camera only,
      not the wrist. `experiment_spec.md` §1-1 and `field_manual.md` §階段 B ⑥ unified accordingly.
    - `[柏宇說]` 2026-09-13: arm connected but 「先不要測試因為環境目前不穩定」 → no hardware test was run for (c).
