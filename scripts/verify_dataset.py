@@ -26,7 +26,9 @@ LeRobot 的資料集有一個「錄製當下不會報錯、訓練到那一段才
 檢查三件事
 ----------
 1. info.json 宣稱的總幀數  ==  各 episode parquet 行數總和
-2. 每個 episode 的影片實際幀數  ==  該 episode 的 parquet 行數
+2. 每支影片的實際幀數  ==  存在這支影片裡的那些 episode 的 parquet 行數加總
+   （v3 的資料檔與影片檔各自分檔、檔名都叫 file-NNN，不能用檔名配對 → 從 meta/episodes 查每集在哪支影片。
+    2026-09-13 合併資料集時，舊的檔名配對把 front-left file-001 整支跳過沒檢查，另一支誤報 ❌。）
 3. timestamp 欄位有沒有異常間隔（掉幀的直接證據）
 
 退出碼：0 = 全部通過，1 = 有問題（可接進 CI 或錄製腳本尾端）
@@ -42,6 +44,7 @@ LeRobot 的 dataset 目錄結構在 v2.0 / v3.0 之間有變動。
 import json
 import subprocess
 import sys
+from collections import Counter
 from pathlib import Path
 
 
@@ -80,6 +83,59 @@ def read_parquet_rows(path: Path) -> int | None:
     except Exception as e:  # noqa: BLE001
         print(f"  ⚠️  讀不到 {path.name}：{e}")
         return None
+
+
+def check_videos_by_episode_meta(root: Path, parquets: list[Path], videos: list[Path]) -> bool | None:
+    """v3：用 meta/episodes 的 videos/<key>/chunk_index、file_index 找出每支影片裝了哪幾集，
+    期望幀數 = 那幾集在 data parquet 的實際行數加總（以資料為準，不信 meta 的 length）。
+    回傳 None 表示沒有 meta/episodes（舊結構），交給檔名配對。"""
+    ep_files = sorted(root.glob("meta/episodes/**/*.parquet"))
+    if not ep_files:
+        return None
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    eps = pa.concat_tables([pq.read_table(p) for p in ep_files]).to_pydict()
+    video_keys = sorted(
+        {c.split("/")[1] for c in eps if c.startswith("videos/") and c.endswith("/file_index")}
+    )
+    if not video_keys:
+        return None
+
+    rows_per_ep = Counter()
+    for p in parquets:
+        rows_per_ep.update(pq.read_table(p, columns=["episode_index"]).column("episode_index").to_pylist())
+
+    expected: dict[Path, int] = {}
+    n_eps: Counter = Counter()
+    for key in video_keys:
+        for ep, c, f in zip(
+            eps["episode_index"], eps[f"videos/{key}/chunk_index"], eps[f"videos/{key}/file_index"]
+        ):
+            path = root / "videos" / key / f"chunk-{c:03d}" / f"file-{f:03d}.mp4"
+            expected[path] = expected.get(path, 0) + rows_per_ep[ep]
+            n_eps[path] += 1
+
+    ok = True
+    for path in sorted(expected):
+        rel = path.relative_to(root / "videos").as_posix()
+        if not path.exists():
+            print(f"  ❌ {rel}: meta/episodes 指向這支影片，但檔案不存在")
+            ok = False
+            continue
+        n = count_video_frames(path)
+        if n is None:
+            ok = False
+            continue
+        if n != expected[path]:
+            print(f"  ❌ {rel}: 影片 {n} 幀 ≠ 其中 {n_eps[path]} 集的 parquet {expected[path]} 行")
+            ok = False
+        else:
+            print(f"  ✅ {rel}: {n}（{n_eps[path]} 集）")
+    for v in videos:
+        if v not in expected:
+            print(f"  ⚠️  {v.relative_to(root).as_posix()}: 沒有任何 episode 指向它（多餘檔案？）")
+    return ok
 
 
 def check_timestamps(path: Path, fps: float) -> list[str]:
@@ -149,10 +205,13 @@ def main(root: Path) -> int:
     print("\n" + "─" * 60)
     print("檢查 2：每支影片實際幀數 vs 對應 parquet 行數")
     videos = sorted(root.glob("videos/**/*.mp4")) or sorted(root.glob("**/*.mp4"))
+    v3_ok = check_videos_by_episode_meta(root, parquets, videos) if videos else None
     if not videos:
         print("  ⚠️  找不到 mp4（可能未用影片編碼儲存）—— 跳過")
+    elif v3_ok is not None:
+        ok = ok and v3_ok
     else:
-        # 以檔名中的 episode 編號配對
+        # 舊結構（每集一支影片）：以檔名中的 episode 編號配對
         def ep_key(p: Path) -> str:
             stem = p.stem
             return stem.split("_")[-1] if "_" in stem else stem
