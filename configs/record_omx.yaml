@@ -17,20 +17,30 @@ robot:
       #    每個 lab day 開錄前跑 `uv run lerobot-find-cameras opencv`，
       #    確認 outputs/captured_images/opencv_3.png 拍到的是夾爪。
       #    🔴 index 錯了「不會報錯」—— 會安靜地錄到筆電鏡頭（index 0）之類的別台相機。
-      type: opencv_uvc  # 2026-09-13 step A (field_manual §5-(0)): plugin; no exposure/gain/white_balance yet = forced AUTO. Revert on trouble: type: opencv
+      type: opencv_uvc  # plugin (D022 §2026-09-13). Revert on trouble: type: opencv (and drop the 3 values below)
       index_or_path: 3
       backend: DSHOW    # index 3 是在 DSHOW 下列舉到的；ANY 在 Windows 可能改選 MSMF，編號不同
       width: 640        # 848×480 不支援：DSHOW 吸附成 800 寬 → lerobot 拒絕開啟（2026-09-13 實測）
       height: 480
       fps: 15           # 相機實際仍送 30 fps；lerobot 只驗 CAP_PROP_FPS，錄製迴圈取最新幀
       fourcc: YUY2      # 640×480 非壓縮就能跑 30 fps，省掉 MJPG 解碼的 CPU
+      # 2026-09-13 [柏宇] tune_uvc_exposure.py `f` at the grasp close-up (curtains drawn + ceiling light + desk lamp):
+      # exposure/gain pinned from AUTO; white balance stays AUTO. -5 = 31.25 ms (< 1 frame at 30 fps).
+      exposure: -5
+      gain: 0
+      white_balance: null   # = AUTO. Fixed WB leaves a green cast on this camera, no temperature removes it (D022 2026-09-13)
     front-left:
-      type: intelrealsense
+      type: intelrealsense_pinned  # plugin (D022 2026-09-13): null = AUTO, set explicitly on every connect
       serial_number_or_name: "262822305610"
       width: 848        # was 1280 — the 720p stream was the main CPU hog
       height: 480        # was 720
       fps: 15
       use_depth: false
+      # 2026-09-13 matched to AUTO (freeze does not hold on this D455; D022): brightness 0.0 %, B/R 4.2 % off.
+      # exposure is quantised (power_line_frequency=Auto); 400 is ~40 ms if the unit is 100 us ([AI推論]).
+      exposure: 400
+      gain: 70
+      white_balance: null   # = AUTO: fixed 3500 K looked green (D022 2026-09-13). exposure/gain were matched with WB 3500; re-check with freeze_realsense_exposure.py (--wb auto)
 
 dataset:
   # pilot data (D022 / D024 campaign_A_pilot_2cam) — recorded local-only (push_to_hub: false below
@@ -48,7 +58,7 @@ dataset:
   num_episodes: 20
   fps: 15                    # must match camera fps
   episode_time_s: 45
-  reset_time_s: 30           # was 60 — pilot doesn't need a full minute to reposition
+  reset_time_s: 120           # was 60 — pilot doesn't need a full minute to reposition
   single_task: "Pick up the object and place it into the box"
   # 🔴 do NOT encode video inside the record loop.
   streaming_encoding: false
