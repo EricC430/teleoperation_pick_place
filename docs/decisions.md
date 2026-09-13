@@ -1100,6 +1100,26 @@ poolable. `pilot` / `pilot_2` are left untouched.
      `[柏宇說]` 「我復原了」 → restored (same 7 files, 18:17). **Full `verify_dataset.py`: all 3 checks pass** (675 = 675 frames,
      both videos 675, no timestamp gaps). → **Step E passed on hardware 2026-09-13.**
      ⚠️ `verify_dataset.py` crashes on a cp950 console when printing ✅ — run it with `PYTHONIOENCODING=utf-8`.
+   - `[產出物]` 2026-09-13 **pilot run t1–t60, merged into `omx_pick_place_pilot_uvc_60`** (60 episodes, 15966 frames).
+     Three lerobot-record runs, configs identical except `root` / `num_episodes` (`config_records/2026-09-13_omx_follower/`
+     `80445927` → `uvc` 20 eps, `fa0d9023` → `uvc_20_59` 39 eps, `23529c29` → `uvc_40` 1 ep). `[柏宇說]` t41 was not
+     recorded in the `uvc_20_59` run and was re-recorded alone into `uvc_40`. `[柏宇決定]` merge in folder order
+     (t41 goes last, no re-encode) rather than splitting `uvc_20_59` to restore t order (split re-encodes the video).
+     **Episode ↔ t mapping:**
+
+     | merged episode | t | source folder | source episode |
+     |---|---|---|---|
+     | 0–19 | t1–t20 | `omx_pick_place_pilot_uvc` | 0–19 |
+     | 20–39 | t21–t40 | `omx_pick_place_pilot_uvc_20_59` | 0–19 |
+     | 40–58 | t42–t60 | `omx_pick_place_pilot_uvc_20_59` | 20–38 |
+     | 59 | t41 | `omx_pick_place_pilot_uvc_40` | 0 |
+
+     Copy of the table in `.cache/lerobot/omx_pick_place_pilot_uvc_60/對照表.md` (not in git). Source folders kept.
+     Verified: action / state / frame_index identical per episode; boundary frames (ep 0, 19, 20, 40, 58, 59, first + last)
+     pixel-identical on both cameras. ⚠️ `verify_dataset.py` check 2 reports ❌ on the merged set — **false alarm**: front-left
+     was rotated into `file-000` (6626) + `file-001` (9340) by lerobot's video file size limit, and the script compares every
+     mp4 against the dataset total. `[未確認]` the 675-frame episode restored at 18:17 is not in `uvc` (its ep 0 is 534 frames;
+     folder re-created 18:33).
    - `[柏宇說]` 2026-09-13: 「第三視角應該要看的到」 → start-pose visibility applies to the third-person camera only,
      not the wrist. `experiment_spec.md` §1-1 and `field_manual.md` §階段 B ⑥ unified accordingly.
    - `[柏宇說]` 2026-09-13: arm connected but 「先不要測試因為環境目前不穩定」 → no hardware test was run for (c).
