@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Placement Viewer</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f7f8;
+    --panel: #ffffff;
+    --border: #d8d8dc;
+    --text: #1c1c1e;
+    --muted: #6b6b70;
+    --accent: #c0392b;
+    --train: #2b6cb0;
+    --eopen: #d97706;
+    --eclose: #2f855a;
+    --grid-fine: #e6e6ea;
+    --grid-bold: #b7b7bf;
+    --sector: #9aa5b1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181a;
+      --panel: #222327;
+      --border: #3a3b40;
+      --text: #ececec;
+      --muted: #9a9aa2;
+      --accent: #ff6b5b;
+      --train: #6fa8dc;
+      --eopen: #f0ad4e;
+      --eclose: #6fcf97;
+      --grid-fine: #2b2c30;
+      --grid-bold: #45464d;
+      --sector: #565861;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { max-width: 100%; overflow-x: hidden; }
+  body {
+    margin: 0;
+    padding: 16px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+    font-size: 14px;
+  }
+  h1 { font-size: 16px; margin: 0 0 12px; }
+  .layout {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .controls { flex: 1 1 280px; min-width: 0; max-width: 340px; display: flex; flex-direction: column; gap: 12px; }
+  .plotwrap { flex: 3 1 500px; min-width: 0; max-width: 100%; }
+  .plotwrap svg { width: 100%; max-width: 100%; height: auto; display: block; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  input[type=text], input[type=number], select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  .row2 { display: flex; gap: 6px; }
+  .row2 > select { flex: 1 1 55%; }
+  .row2 > input[type=number] { flex: 1 1 30%; }
+  .row2 > button { flex: 0 0 auto; }
+  .field { margin-bottom: 2px; }
+  .splits { display: flex; gap: 12px; margin-top: 4px; }
+  .splits label { display: flex; align-items: center; gap: 4px; color: var(--text); font-size: 13px; }
+  .nav { display: flex; gap: 8px; align-items: center; justify-content: center; }
+  button {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button:hover { background: var(--grid-fine); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  #dropzone {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+  #dropzone.drag { border-color: var(--accent); color: var(--text); }
+  .info-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .info-table td { padding: 3px 4px; border-bottom: 1px solid var(--border); }
+  .info-table td:first-child { color: var(--muted); width: 40%; }
+  .idx { font-size: 13px; color: var(--muted); text-align: center; }
+  .bignext { text-align: center; padding: 10px 10px 14px; }
+  .bignext-caption { font-size: 11.5px; color: var(--muted); margin-bottom: 2px; }
+  .bignext-label { font-size: 56px; font-weight: 800; line-height: 1; color: var(--accent); letter-spacing: 1px; }
+  #log { font-size: 11.5px; color: var(--muted); max-height: 90px; overflow-y: auto; white-space: pre-wrap; }
+  .err { color: var(--accent); font-size: 12px; margin-top: 2px; min-height: 14px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+
+<h1>Placement Viewer — configs/placements/</h1>
+
+<div class="layout">
+  <div class="panel controls">
+    <div>
+      <label>載入 configs/placements/ 資料夾(不是 docs/assets/)</label>
+      <input type="file" id="fileInput" multiple accept=".csv,.json">
+      <div id="dropzone">或把 configs/placements/ 資料夾(或裡面的檔案)拖曳到這裡</div>
+      <div id="log"></div>
+    </div>
+
+    <div class="field">
+      <label for="matSelect">mat</label>
+      <select id="matSelect">
+        <option value="">(尚未載入任何 mat)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>split</label>
+      <div class="splits">
+        <label><input type="checkbox" id="sTrain" checked> train</label>
+        <label><input type="checkbox" id="sEopen" checked> eval-open</label>
+        <label><input type="checkbox" id="sEclose" checked> eval-close</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>placement label(類別選、編號填)</label>
+      <div class="row2">
+        <select id="labelCategory">
+          <option value="train">t — train</option>
+          <option value="eval-open">o — eval-open</option>
+          <option value="eval-close">c — eval-close</option>
+        </select>
+        <input type="number" id="labelNumber" inputmode="numeric" min="1" step="1" placeholder="編號">
+        <button id="labelGoBtn">跳到</button>
+      </div>
+      <div class="err" id="labelErr"></div>
+    </div>
+
+    <div class="nav">
+      <button id="prevBtn">◀ 上一個</button>
+      <button id="nextBtn">下一個 ▶</button>
+    </div>
+    <div class="idx" id="idxLabel">0 / 0</div>
+
+    <div class="panel bignext">
+      <div class="bignext-caption">現在放這個點(對照紙墊上的手寫標籤)</div>
+      <div class="bignext-label" id="bigShortLabel">—</div>
+    </div>
+
+    <div class="panel" style="padding:8px 10px;">
+      <table class="info-table" id="infoTable">
+        <tr><td>placement_id</td><td id="infoId">—</td></tr>
+        <tr><td>short label</td><td id="infoShort">—</td></tr>
+        <tr><td>split</td><td id="infoSplit">—</td></tr>
+        <tr><td>r_cm</td><td id="infoR">—</td></tr>
+        <tr><td>theta_deg</td><td id="infoTheta">—</td></tr>
+        <tr><td>x_cm</td><td id="infoX">—</td></tr>
+        <tr><td>y_cm</td><td id="infoY">—</td></tr>
+      </table>
+    </div>
+
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--train)"></span>train</span>
+      <span><span class="swatch" style="background:var(--eopen)"></span>eval-open</span>
+      <span><span class="swatch" style="background:var(--eclose)"></span>eval-close</span>
+      <span><span class="swatch" style="background:var(--accent)"></span>目前點</span>
+    </div>
+  </div>
+
+  <div class="panel plotwrap">
+    <svg id="plot" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const SPLITS = ["train", "eval-open", "eval-close"];
+  const SPLIT_COLOR = { "train": "var(--train)", "eval-open": "var(--eopen)", "eval-close": "var(--eclose)" };
+  const PX_PER_CM = 10;
+  const PREFIX_TO_LETTER = { "train": "t", "eval-open": "o", "eval-close": "c" };
+
+  // "train_007" -> "t7"; mirrors placement_mat/labels.py short_label()
+  function shortLabel(placementId) {
+    const m = /_(\d+)$/.exec(placementId);
+    if (!m) return placementId;
+    const prefix = placementId.slice(0, m.index);
+    const letter = PREFIX_TO_LETTER[prefix];
+    if (!letter) return placementId;
+    return letter + String(parseInt(m[1], 10));
+  }
+
+  // mats[matName] = { points: [{id, split, r, theta, x, y}], meta: {...}|null }
+  const mats = {};
+  let currentMat = null;
+  let visiblePoints = [];
+  let currentIndex = 0;
+
+  const $ = (id) => document.getElementById(id);
+  const fileInput = $("fileInput");
+  const dropzone = $("dropzone");
+  const logEl = $("log");
+  const matSelect = $("matSelect");
+  const labelCategory = $("labelCategory");
+  const labelNumber = $("labelNumber");
+  const labelGoBtn = $("labelGoBtn");
+  const labelErr = $("labelErr");
+  const sTrain = $("sTrain"), sEopen = $("sEopen"), sEclose = $("sEclose");
+  const prevBtn = $("prevBtn"), nextBtn = $("nextBtn");
+  const idxLabel = $("idxLabel");
+  const svg = $("plot");
+
+  function log(msg) {
+    logEl.textContent += msg + "\n";
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // --- filename parsing -------------------------------------------------
+  // "campA_136sym_20260908_20260908_train.csv" -> {mat:"campA_136sym", suffix:"train", ext:"csv"}
+  // "campaign_A_pilot_2cam_20260831_meta.json"  -> {mat:"campaign_A_pilot_2cam", suffix:"meta", ext:"json"}
+  function parseFilename(filename) {
+    const dot = filename.lastIndexOf(".");
+    if (dot < 0) return null;
+    const ext = filename.slice(dot + 1).toLowerCase();
+    const stem = filename.slice(0, dot);
+    const tokens = stem.split("_");
+    if (tokens.length < 2) return null;
+    const suffix = tokens[tokens.length - 1];
+    let rest = tokens.slice(0, -1);
+    while (rest.length && /^\d{8}$/.test(rest[rest.length - 1])) {
+      rest = rest.slice(0, -1);
+    }
+    const mat = rest.join("_");
+    if (!mat) return null;
+    return { mat, suffix, ext };
+  }
+
+  function ensureMat(name) {
+    if (!mats[name]) mats[name] = { points: [], meta: null };
+    return mats[name];
+  }
+
+  function parseCsv(text) {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    if (lines.length < 2) return [];
+    const header = lines[0].split(",").map((h) => h.trim());
+    const idx = {
+      id: header.indexOf("placement_id"),
+      r: header.indexOf("r_cm"),
+      theta: header.indexOf("theta_deg"),
+      x: header.indexOf("x_cm"),
+      y: header.indexOf("y_cm"),
+    };
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",");
+      if (cols.length < header.length) continue;
+      rows.push({
+        id: cols[idx.id].trim(),
+        r: parseFloat(cols[idx.r]),
+        theta: parseFloat(cols[idx.theta]),
+        x: parseFloat(cols[idx.x]),
+        y: parseFloat(cols[idx.y]),
+      });
+    }
+    return rows;
+  }
+
+  function naturalCompare(a, b) {
+    const re = /(\d+)|(\D+)/g;
+    const ax = a.match(re) || [];
+    const bx = b.match(re) || [];
+    const n = Math.max(ax.length, bx.length);
+    for (let i = 0; i < n; i++) {
+      const as = ax[i] ?? "", bs = bx[i] ?? "";
+      const an = /^\d+$/.test(as), bn = /^\d+$/.test(bs);
+      if (an && bn) {
+        const d = parseInt(as, 10) - parseInt(bs, 10);
+        if (d) return d;
+      } else if (as !== bs) {
+        return as < bs ? -1 : 1;
+      }
+    }
+    return 0;
+  }
+
+  // train, then eval-open, then eval-close (collection order), each block by natural id
+  function pointOrder(a, b) {
+    const d = SPLITS.indexOf(a.split) - SPLITS.indexOf(b.split);
+    return d !== 0 ? d : naturalCompare(a.id, b.id);
+  }
+
+  function handleFiles(fileList) {
+    const files = Array.from(fileList);
+    let loaded = 0;
+    let pending = files.length;
+    if (!pending) return;
+    files.forEach((file) => {
+      const parsed = parseFilename(file.name);
+      const reader = new FileReader();
+      reader.onload = () => {
+        pending--;
+        try {
+          if (!parsed) {
+            log("略過(檔名格式不符): " + file.name);
+          } else if (parsed.ext === "csv" && SPLITS.includes(parsed.suffix)) {
+            const rows = parseCsv(reader.result);
+            const m = ensureMat(parsed.mat);
+            rows.forEach((r) => m.points.push({ ...r, split: parsed.suffix }));
+            log(`載入 ${file.name} -> mat=${parsed.mat} split=${parsed.suffix} (${rows.length} 點)`);
+            loaded++;
+          } else if (parsed.ext === "json" && parsed.suffix === "meta") {
+            const m = ensureMat(parsed.mat);
+            m.meta = JSON.parse(reader.result);
+            log(`載入 ${file.name} -> mat=${parsed.mat} meta`);
+            loaded++;
+          } else {
+            log("略過(非 train/eval-open/eval-close/meta): " + file.name);
+          }
+        } catch (err) {
+          log(`讀取失敗: ${file.name} (${err.message})`);
+        }
+        if (pending === 0) onFilesDone(loaded);
+      };
+      reader.onerror = () => {
+        pending--;
+        log("讀取失敗: " + file.name);
+        if (pending === 0) onFilesDone(loaded);
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  function onFilesDone(loadedCount) {
+    if (!Object.keys(mats).length) {
+      log("沒有辨識出任何 mat。請選 configs/placements/ 資料夾裡的檔案(例如 campA_136sym_20260908_20260908_train.csv),不是 docs/assets/。");
+    }
+    refreshMatList();
+    if (!currentMat && Object.keys(mats).length) {
+      const first = Object.keys(mats).sort()[0];
+      selectMat(first);
+    } else if (currentMat) {
+      selectMat(currentMat);
+    }
+  }
+
+  function refreshMatList() {
+    matSelect.innerHTML = "";
+    Object.keys(mats).sort().forEach((name) => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      matSelect.appendChild(opt);
+    });
+  }
+
+  function selectMat(name) {
+    if (!mats[name]) return;
+    currentMat = name;
+    matSelect.value = name;
+    currentIndex = 0;
+    refreshVisiblePoints();
+  }
+
+  function activeSplits() {
+    const s = [];
+    if (sTrain.checked) s.push("train");
+    if (sEopen.checked) s.push("eval-open");
+    if (sEclose.checked) s.push("eval-close");
+    return s;
+  }
+
+  function refreshVisiblePoints() {
+    if (!currentMat) { visiblePoints = []; render(); return; }
+    const splits = activeSplits();
+    visiblePoints = mats[currentMat].points
+      .filter((p) => splits.includes(p.split))
+      .sort(pointOrder);
+    if (currentIndex >= visiblePoints.length) currentIndex = Math.max(0, visiblePoints.length - 1);
+    render();
+  }
+
+  // accepts either the short mat label (t7) or the full placement_id (train_007)
+  function matchesQuery(p, query) {
+    const q = query.toLowerCase();
+    return p.id.toLowerCase() === q || shortLabel(p.id).toLowerCase() === q;
+  }
+
+  function jumpToLabel(query) {
+    if (!query) return;
+    const i = visiblePoints.findIndex((p) => matchesQuery(p, query));
+    if (i >= 0) {
+      currentIndex = i;
+      labelErr.textContent = "";
+      render();
+      return;
+    }
+    // maybe it exists in the current mat but its split is filtered out
+    const all = currentMat ? mats[currentMat].points : [];
+    const hit = all.find((p) => matchesQuery(p, query));
+    if (hit) {
+      if (hit.split === "train") sTrain.checked = true;
+      if (hit.split === "eval-open") sEopen.checked = true;
+      if (hit.split === "eval-close") sEclose.checked = true;
+      refreshVisiblePoints();
+      const j = visiblePoints.findIndex((p) => matchesQuery(p, query));
+      currentIndex = Math.max(j, 0);
+      labelErr.textContent = "";
+      render();
+      return;
+    }
+    labelErr.textContent = "目前 mat 找不到 label: " + query;
+  }
+
+  function jumpFromCategoryNumber() {
+    const n = parseInt(labelNumber.value, 10);
+    if (!n || n < 1) { labelErr.textContent = "請輸入編號(正整數)"; return; }
+    jumpToLabel(PREFIX_TO_LETTER[labelCategory.value] + n);
+  }
+
+  function step(delta) {
+    if (!visiblePoints.length) return;
+    currentIndex = (currentIndex + delta + visiblePoints.length) % visiblePoints.length;
+    render();
+  }
+
+  // --- geometry / drawing -------------------------------------------------
+  function sectorBBox(rMax, thetaMin, thetaMax) {
+    const angles = [thetaMin, thetaMax];
+    [-180, -90, 0, 90, 180].forEach((a) => { if (a > thetaMin && a < thetaMax) angles.push(a); });
+    const xs = [0], ys = [0];
+    angles.forEach((a) => {
+      const rad = (a * Math.PI) / 180;
+      xs.push(rMax * Math.cos(rad));
+      ys.push(rMax * Math.sin(rad));
+    });
+    return { xMin: Math.min(...xs), xMax: Math.max(...xs), yMin: Math.min(...ys), yMax: Math.max(...ys) };
+  }
+
+  function computeGeometry() {
+    let rMax = 40, rInner = 0, thetaMin = -90, thetaMax = 90, calibrated = true;
+    if (currentMat && mats[currentMat].meta && mats[currentMat].meta.sector_used) {
+      const s = mats[currentMat].meta.sector_used;
+      rMax = s.r_outer; rInner = s.r_inner || 0;
+      thetaMin = s.theta_min; thetaMax = s.theta_max;
+    } else if (currentMat) {
+      mats[currentMat].points.forEach((p) => { if (p.r > rMax) rMax = p.r; });
+    }
+    let bb = sectorBBox(rMax, thetaMin, thetaMax);
+    (currentMat ? mats[currentMat].points : []).forEach((p) => {
+      bb.xMin = Math.min(bb.xMin, p.x); bb.xMax = Math.max(bb.xMax, p.x);
+      bb.yMin = Math.min(bb.yMin, p.y); bb.yMax = Math.max(bb.yMax, p.y);
+    });
+    const padX = Math.max(2, (bb.xMax - bb.xMin) * 0.08);
+    const padY = Math.max(2, (bb.yMax - bb.yMin) * 0.08);
+    return {
+      rMax, rInner, thetaMin, thetaMax,
+      xMin: bb.xMin - padX, xMax: bb.xMax + padX,
+      yMin: bb.yMin - padY, yMax: bb.yMax + padY,
+    };
+  }
+
+  function frange(a, b, step) {
+    const out = [];
+    let v = Math.ceil(a / step) * step;
+    while (v <= b + 1e-9) { out.push(Math.round(v * 1e6) / 1e6); v += step; }
+    return out;
+  }
+
+  const NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function render() {
+    svg.innerHTML = "";
+    const g = computeGeometry();
+    // The sector is usually taller (angular spread) than it is deep (radial
+    // reach), which renders as a tall portrait shape. Auto-swap which data
+    // axis maps to screen-width vs screen-height so the drawing always comes
+    // out landscape (wider than tall) — robot base at the bottom, reach
+    // going up, lateral spread going left-right.
+    const dataW = g.xMax - g.xMin, dataH = g.yMax - g.yMin;
+    const rotate = dataH > dataW;
+    const W = (rotate ? dataH : dataW) * PX_PER_CM;
+    const H = (rotate ? dataW : dataH) * PX_PER_CM;
+    function proj(x, y) {
+      return rotate
+        ? [(g.yMax - y) * PX_PER_CM, (g.xMax - x) * PX_PER_CM]
+        : [(x - g.xMin) * PX_PER_CM, (g.yMax - y) * PX_PER_CM];
+    }
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+    function gridLine(fromXY, toXY, color, width, dash) {
+      const [x1, y1] = proj(fromXY[0], fromXY[1]);
+      const [x2, y2] = proj(toXY[0], toXY[1]);
+      const attrs = { x1, y1, x2, y2, stroke: color, "stroke-width": width };
+      if (dash) attrs["stroke-dasharray"] = dash;
+      svg.appendChild(el("line", attrs));
+    }
+
+    // cartesian grid
+    frange(g.xMin, g.xMax, 1).forEach((x) => gridLine([x, g.yMin], [x, g.yMax], "var(--grid-fine)", 0.5));
+    frange(g.yMin, g.yMax, 1).forEach((y) => gridLine([g.xMin, y], [g.xMax, y], "var(--grid-fine)", 0.5));
+    frange(g.xMin, g.xMax, 5).forEach((x) => {
+      gridLine([x, g.yMin], [x, g.yMax], "var(--grid-bold)", 0.8);
+      const [lx, ly] = proj(x, g.yMin);
+      const t = el("text", { x: lx + 2, y: ly - 4, fill: "var(--muted)", "font-size": 6 });
+      t.textContent = "x=" + x; svg.appendChild(t);
+    });
+    frange(g.yMin, g.yMax, 5).forEach((y) => {
+      gridLine([g.xMin, y], [g.xMax, y], "var(--grid-bold)", 0.8);
+      const [lx, ly] = proj(g.xMin, y);
+      const t = el("text", { x: lx + 2, y: ly - 2, fill: "var(--muted)", "font-size": 6 });
+      t.textContent = "y=" + y; svg.appendChild(t);
+    });
+
+    // polar rings (sampled polyline within sector)
+    const step = 1; // degrees
+    function ringPolyline(r) {
+      const pts = [];
+      for (let a = g.thetaMin; a <= g.thetaMax + 1e-6; a += step) {
+        const rad = (a * Math.PI) / 180;
+        pts.push(proj(r * Math.cos(rad), r * Math.sin(rad)).join(","));
+      }
+      return pts.join(" ");
+    }
+    for (let r = 5; r <= g.rMax + 1e-6; r += 5) {
+      svg.appendChild(el("polyline", { points: ringPolyline(r), fill: "none", stroke: "var(--sector)", "stroke-width": 0.6 }));
+    }
+    if (g.rInner > 0) {
+      svg.appendChild(el("polyline", { points: ringPolyline(g.rInner), fill: "none", stroke: "var(--sector)", "stroke-width": 1, "stroke-dasharray": "3,2" }));
+    }
+    // rays every 15deg + sector boundaries
+    const rays = new Set(frange(g.thetaMin, g.thetaMax, 15));
+    rays.add(g.thetaMin); rays.add(g.thetaMax);
+    rays.forEach((a) => {
+      const rad = (a * Math.PI) / 180;
+      const isZero = Math.abs(a) < 1e-6;
+      const [ox, oy] = proj(0, 0);
+      const [ex, ey] = proj(g.rMax * Math.cos(rad), g.rMax * Math.sin(rad));
+      svg.appendChild(el("line", {
+        x1: ox, y1: oy, x2: ex, y2: ey,
+        stroke: isZero ? "var(--text)" : "var(--sector)", "stroke-width": isZero ? 1.2 : 0.6,
+      }));
+      const t = el("text", { x: ex + 2, y: ey, fill: "var(--muted)", "font-size": 6 });
+      t.textContent = Math.round(a) + "°"; svg.appendChild(t);
+    });
+
+    // origin
+    gridLine([-1, 0], [1, 0], "var(--text)", 1.2);
+    gridLine([0, -1], [0, 1], "var(--text)", 1.2);
+    const [oxl, oyl] = proj(0, 0);
+    const originLabel = el("text", { x: oxl + 3, y: oyl - 3, fill: "var(--muted)", "font-size": 6.5 });
+    originLabel.textContent = "(0,0) 底座旋轉軸";
+    svg.appendChild(originLabel);
+
+    // points — every point gets its short (mat-handwritten) label so the
+    // screen can be cross-checked against the paper mat, not just the current one
+    const current = visiblePoints[currentIndex];
+    visiblePoints.forEach((p, i) => {
+      const isCurrent = i === currentIndex;
+      const [cx, cy] = proj(p.x, p.y);
+      if (isCurrent) {
+        gridLine([p.x, g.yMin], [p.x, p.y], "var(--accent)", 0.7, "3,2");
+        gridLine([g.xMin, p.y], [p.x, p.y], "var(--accent)", 0.7, "3,2");
+      }
+      const c = el("circle", {
+        cx, cy, r: isCurrent ? 5 : 2.6,
+        fill: isCurrent ? "var(--accent)" : SPLIT_COLOR[p.split],
+        opacity: isCurrent ? 1 : 0.55,
+        stroke: isCurrent ? "var(--text)" : "none",
+        "stroke-width": isCurrent ? 1 : 0,
+      });
+      svg.appendChild(c);
+      const t = el("text", {
+        x: cx + (isCurrent ? 7 : 3), y: cy - (isCurrent ? 7 : 3),
+        fill: isCurrent ? "var(--text)" : "var(--muted)",
+        "font-size": isCurrent ? 8 : 4.5,
+        "font-weight": isCurrent ? "bold" : "normal",
+        opacity: isCurrent ? 1 : 0.7,
+      });
+      t.textContent = shortLabel(p.id);
+      svg.appendChild(t);
+    });
+
+    // info panel + label field
+    idxLabel.textContent = visiblePoints.length ? `${currentIndex + 1} / ${visiblePoints.length}` : "0 / 0";
+    $("bigShortLabel").textContent = current ? shortLabel(current.id) : "—";
+    $("infoId").textContent = current ? current.id : "—";
+    $("infoShort").textContent = current ? shortLabel(current.id) : "—";
+    $("infoSplit").textContent = current ? current.split : "—";
+    $("infoR").textContent = current ? current.r.toFixed(2) : "—";
+    $("infoTheta").textContent = current ? current.theta.toFixed(2) : "—";
+    $("infoX").textContent = current ? current.x.toFixed(2) : "—";
+    $("infoY").textContent = current ? current.y.toFixed(2) : "—";
+    if (current) {
+      const m = /_(\d+)$/.exec(current.id);
+      labelCategory.value = current.split;
+      labelNumber.value = m ? String(parseInt(m[1], 10)) : "";
+    }
+    prevBtn.disabled = nextBtn.disabled = visiblePoints.length === 0;
+  }
+
+  // --- wiring --------------------------------------------------------
+  fileInput.addEventListener("change", (e) => handleFiles(e.target.files));
+  ["dragenter", "dragover"].forEach((ev) =>
+    dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add("drag"); })
+  );
+  ["dragleave", "drop"].forEach((ev) =>
+    dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.remove("drag"); })
+  );
+  // dropping a whole folder needs the webkitGetAsEntry directory-walk API;
+  // plain dt.files only sees top-level files (and skips folders silently)
+  function readEntries(reader) {
+    return new Promise((resolve) => {
+      let all = [];
+      (function next() {
+        reader.readEntries((batch) => {
+          if (!batch.length) { resolve(all); return; }
+          all = all.concat(batch);
+          next();
+        });
+      })();
+    });
+  }
+  async function collectEntry(entry, out) {
+    if (entry.isFile) {
+      out.push(await new Promise((resolve) => entry.file(resolve)));
+    } else if (entry.isDirectory) {
+      for (const e of await readEntries(entry.createReader())) await collectEntry(e, out);
+    }
+  }
+  async function filesFromDrop(dataTransfer) {
+    if (dataTransfer.items && dataTransfer.items.length && dataTransfer.items[0].webkitGetAsEntry) {
+      const out = [];
+      for (const item of Array.from(dataTransfer.items)) {
+        const entry = item.webkitGetAsEntry && item.webkitGetAsEntry();
+        if (entry) await collectEntry(entry, out);
+      }
+      return out;
+    }
+    return Array.from(dataTransfer.files);
+  }
+  dropzone.addEventListener("drop", async (e) => {
+    const files = await filesFromDrop(e.dataTransfer);
+    if (files.length) handleFiles(files);
+    else log("拖曳的項目裡沒有讀到檔案(這個瀏覽器可能不支援拖資料夾,改用「Choose Files」多選)");
+  });
+
+  matSelect.addEventListener("change", () => selectMat(matSelect.value));
+
+  [sTrain, sEopen, sEclose].forEach((cb) => cb.addEventListener("change", refreshVisiblePoints));
+
+  labelGoBtn.addEventListener("click", jumpFromCategoryNumber);
+  labelNumber.addEventListener("keydown", (e) => { if (e.key === "Enter") jumpFromCategoryNumber(); });
+
+  prevBtn.addEventListener("click", () => step(-1));
+  nextBtn.addEventListener("click", () => step(1));
+  document.addEventListener("keydown", (e) => {
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "select" || tag === "textarea") return;
+    if (e.key === "ArrowRight") step(1);
+    if (e.key === "ArrowLeft") step(-1);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
