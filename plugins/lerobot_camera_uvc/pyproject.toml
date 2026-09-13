@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# Must stay "lerobot_camera_uvc" (underscores): lerobot's register_third_party_plugins() matches installed
+# distribution names against the "lerobot_camera_" prefix and then imports that exact name.
+name = "lerobot_camera_uvc"
+version = "0.1.0"
+description = "LeRobot camera plugin: OpenCV/DirectShow UVC camera with fixed exposure, gain and white balance (D022)."
+requires-python = ">=3.12"
+# lerobot is deliberately NOT declared: it is installed editable from ./lerobot at a pinned commit
+# (docs/environment.md) and must never be re-resolved from PyPI through this package.
+dependencies = []
+
+[tool.setuptools]
+packages = ["lerobot_camera_uvc"]
