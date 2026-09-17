@@ -1,0 +1,55 @@
+# Real-robot deployment for the Phase B1 ACT checkpoint (configs/train_omx_phase_b1.yaml).
+# Run on the LAPTOP (not the 4090 box) against the physical OMX follower arm.
+# See docs/field_manual.md §8 for the HF Hub push/pull steps this depends on.
+#
+#   uv run lerobot-rollout --config_path configs/rollout_omx_phase_b1.yaml
+#
+# robot/cameras block copied verbatim from the CURRENT configs/record_omx.yaml (2026-09-13:
+# COM8/COM9, opencv_uvc wrist (Innomaker, D022), intelrealsense_pinned front-left) -- NOT from
+# the old rollout_omx_pilot.yaml, which still has COM5 and an intelrealsense (D405) wrist that
+# no longer exists on this arm. Rollout must observe the same distribution training data was
+# collected under, so this has to track record_omx.yaml, not drift from it.
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-09-13_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: opencv_uvc
+      index_or_path: 3
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 15
+      fourcc: YUY2
+      exposure: -5
+      gain: 0
+      white_balance: null   # AUTO -- fixed WB leaves a green cast on this camera (D022 2026-09-13)
+    front-left:
+      type: intelrealsense_pinned
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+      exposure: 400
+      gain: 70
+      white_balance: null   # AUTO (D022 2026-09-13)
+
+policy:
+  path: ericc430/act_omx_b1_uvc60  # pushed 2026-09-13 (20000 steps, train/loss 0.1006) -- pulled from
+  # HF Hub on first rollout run, cached after (uses the laptop's own hf auth login, see §8-(1))
+
+strategy:
+  type: base  # fully autonomous, no dataset -- sentry/highlight/dagger need --dataset
+
+inference:
+  type: sync
+
+fps: 15                 # must match the cameras / the fps the policy was trained at
+duration: 20             # seconds -- SHORT on purpose for the first real-hardware run; raise once verified
+task: "Pick up the object and place it into the box"
+display_data: true       # watch joints/cameras live via rerun during the first run
+return_to_initial_position: true

@@ -1,0 +1,32 @@
+dataset:
+  repo_id: ericc430/omx_pick_place_pilot_60_plastic_bottle
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_60_plastic_bottle
+  # 60 episodes, 25087 frames, fps 15, 2 cameras (wrist + front-left) -- verified meta/info.json.
+  # This is phase_plan.md's B4a (object swap: opaque plastic bottle, indoor lighting, desktop).
+  # Same pattern as configs/train_omx_phase_b1.yaml: no separate eval-open dataset exists yet
+  # for this campaign (checked `hf repos list`, nothing matching "plastic" besides this one) --
+  # train on the full 60, eval_split=0.0. If/when a plastic-bottle eval-open set gets recorded,
+  # use it the same way omx_pick_place_open_loop_eval was used for the uvc_60/B1 run.
+  eval_split: 0.0
+
+policy:
+  type: act
+  push_to_hub: false
+
+output_dir: /workspace/data/train/phase_b4a_plastic_bottle
+job_name: act_omx_b4a_plastic_bottle
+# 40,000 steps @ batch 32 ~= 51 epochs over 25,087 frames. Picked to match the step count where
+# the B1/uvc_60 ACT run (same policy, same architecture) still had a reasonable train-loss vs
+# open-loop-MAE relationship before returns started clearly diminishing (see the 20k/40k/100k
+# comparison history in configs/train_omx_phase_b1.yaml) -- a reasoned starting point for a new
+# campaign, not re-derived from this dataset's own data (there's no prior run on this dataset
+# to anchor against yet).
+steps: 40000
+batch_size: 32
+eval_steps: 0
+log_freq: 50
+save_freq: 20000
+
+wandb:
+  enable: true
+  project: teleoperation_pick_place

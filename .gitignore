@@ -36,3 +36,7 @@ outputs/
 
 # Isaac Sim build artefacts live in ~/isaaclab_volume, never here
 sim/__pycache__/
+
+# Crash dumps -- a container/process leaves these at repo root sometimes, ~10GB, never useful.
+core
+core.*
