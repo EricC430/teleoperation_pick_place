@@ -1,0 +1,75 @@
+{
+  "code_git_commit": "a2c10dd",
+  "counts": {
+    "eval-close": 36,
+    "eval-open": 12,
+    "train": 60
+  },
+  "d_min_cm": 2.0,
+  "feasibility": {
+    "n_hex": 339.9,
+    "n_rsa": 187.0,
+    "verdict": "ok"
+  },
+  "generated": "2026-09-08T08:33:43.513118+00:00",
+  "global_min_separation_cm": 1.0,
+  "global_min_separation_cm_original_90pt_sample": 2.005,
+  "manual_additions": {
+    "date": "2026-09-13",
+    "source": "[Eric說] field-tested reachability with the real arm -- base is now elevated, near-field down to r~12.65cm is reachable and easy to grasp; supersedes the D023 r_inner=22cm assumption for the current (elevated-base) geometry",
+    "count": 18,
+    "per_list": { "train": 10, "eval-open": 2, "eval-close": 6 },
+    "ids": {
+      "train": ["train_051", "train_052", "train_053", "train_054", "train_055", "train_056", "train_057", "train_058", "train_059", "train_060"],
+      "eval-open": ["eval-open_011", "eval-open_012"],
+      "eval-close": ["eval-close_031", "eval-close_032", "eval-close_033", "eval-close_034", "eval-close_035", "eval-close_036"]
+    },
+    "r_range_cm": [12.65, 21.21],
+    "note": "hand-placed, not drawn from the S2 stratified sampler -- outside the original sector_used annulus (r_inner=22.0). Not covered by per_list/feasibility below, which describe only the original 90-point stratified sample.",
+    "d_min_violations": [
+      { "a": "eval-close_031", "b": "train_054", "d_cm": 1.0 },
+      { "a": "eval-close_036", "b": "train_060", "d_cm": 1.221 },
+      { "a": "eval-close_032", "b": "train_040", "d_cm": 1.518 }
+    ],
+    "d_min_violations_accepted": "[Eric決定] 2026-09-13 -- keep all 18 points as-is; do not enforce d_min>=2cm against these 3 pairs"
+  },
+  "margin_cm": 2.0,
+  "per_list_note": "describes only the original 90-point S2 stratified sample (train_001-050, eval-open_001-010, eval-close_001-030); see manual_additions for the 18 points added 2026-09-13",
+  "per_list": {
+    "eval-close": {
+      "n": 30,
+      "nearest_neighbour_cm": {
+        "mean": 2.789,
+        "median": 2.538,
+        "min": 2.021
+      },
+      "r2_uniform_ks_p": 0.9864
+    },
+    "eval-open": {
+      "n": 10,
+      "nearest_neighbour_cm": {
+        "mean": 2.721,
+        "median": 2.495,
+        "min": 2.005
+      },
+      "r2_uniform_ks_p": 0.5249
+    },
+    "train": {
+      "n": 50,
+      "nearest_neighbour_cm": {
+        "mean": 2.823,
+        "median": 2.765,
+        "min": 2.005
+      },
+      "r2_uniform_ks_p": 0.8809
+    }
+  },
+  "sampling_source": "manual",
+  "sector_used": {
+    "r_inner": 22.0,
+    "r_outer": 39.0,
+    "theta_max": 65.06175489676501,
+    "theta_min": -65.06175489676501
+  },
+  "seed": 20260908
+}

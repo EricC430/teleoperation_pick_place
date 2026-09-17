@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 """Open-loop action prediction evaluation for LeRobot policies on recorded datasets.
 
-Evaluates a trained policy (e.g. ACT) against ground-truth actions on held-out episodes
-without requiring a robot or simulator. Computes per-joint L1 MAE and MSE, and generates
-visual comparison trajectory plots (Ground Truth vs ACT Prediction).
+Evaluates a trained policy (any registered type -- ACT, Diffusion, etc.) against
+ground-truth actions on held-out episodes without requiring a robot or simulator.
+Computes per-joint L1 MAE and MSE, and generates visual comparison trajectory plots
+(Ground Truth vs Policy Prediction).
 """
 
 import argparse
+import json
 import logging
 from pathlib import Path
 import torch
@@ -17,8 +19,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
-from lerobot.policies.act.modeling_act import ACTPolicy
-from lerobot.policies.factory import make_pre_post_processors
+from lerobot.policies.factory import get_policy_class, make_pre_post_processors
 
 
 def parse_args():
@@ -42,6 +43,13 @@ def parse_args():
         default=None,
         dest="dataset_root",
         help="Explicit root directory of the dataset.",
+    )
+    parser.add_argument(
+        "--policy_type",
+        type=str,
+        default=None,
+        help="Registered policy type ('act', 'diffusion', ...). Default: auto-detect from "
+        "the checkpoint's own config.json 'type' field.",
     )
     parser.add_argument(
         "--episodes",
@@ -70,7 +78,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def plot_episode_trajectories(ep_idx, joint_names, gt_actions, pred_actions, overall_mae, mae_per_joint, save_dir, fps=15.0):
+def plot_episode_trajectories(ep_idx, joint_names, gt_actions, pred_actions, overall_mae, mae_per_joint, save_dir, fps=15.0, dataset_label="Open-Loop Evaluation", pred_label="Policy Prediction"):
     """Plot 6-joint trajectory comparison (Ground Truth vs Policy Prediction) and save to file."""
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -85,7 +93,7 @@ def plot_episode_trajectories(ep_idx, joint_names, gt_actions, pred_actions, ove
     for j_idx in range(num_joints):
         ax = axes[j_idx]
         ax.plot(time_steps, gt_actions[:, j_idx], label="Ground Truth (Human)", color="#1f77b4", linewidth=2.2)
-        ax.plot(time_steps, pred_actions[:, j_idx], label="ACT Prediction", color="#d62728", linestyle="--", linewidth=2.0)
+        ax.plot(time_steps, pred_actions[:, j_idx], label=pred_label, color="#d62728", linestyle="--", linewidth=2.0)
 
         j_name = joint_names[j_idx] if j_idx < len(joint_names) else f"joint_{j_idx}"
         ax.set_title(f"{j_name} (MAE: {mae_per_joint[j_idx]:.2f}°)", fontsize=12, fontweight="bold")
@@ -97,7 +105,7 @@ def plot_episode_trajectories(ep_idx, joint_names, gt_actions, pred_actions, ove
         ax.legend(loc="upper right", fontsize=9)
 
     plt.suptitle(
-        f"Phase A Open-Loop Evaluation — Episode {ep_idx} (Overall MAE: {overall_mae:.2f}°)\n"
+        f"{dataset_label} — Episode {ep_idx} (Overall MAE: {overall_mae:.2f}°)\n"
         f"Total frames: {len(gt_actions)} ({len(gt_actions)/fps:.1f}s at {fps} fps)",
         fontsize=14,
         fontweight="bold",
@@ -131,8 +139,16 @@ def main():
         else:
             save_plot_dir = checkpoint_path.parent / "eval_plots"
 
-    logging.info(f"Loading policy from {checkpoint_path} on {args.device}...")
-    policy = ACTPolicy.from_pretrained(str(checkpoint_path))
+    if args.policy_type:
+        policy_type = args.policy_type
+    else:
+        with open(checkpoint_path / "config.json") as f:
+            policy_type = json.load(f)["type"]
+        logging.info(f"Auto-detected policy_type='{policy_type}' from {checkpoint_path}/config.json")
+
+    policy_cls = get_policy_class(policy_type)
+    logging.info(f"Loading {policy_cls.__name__} from {checkpoint_path} on {args.device}...")
+    policy = policy_cls.from_pretrained(str(checkpoint_path))
     policy.eval()
     policy.to(args.device)
 
@@ -233,6 +249,8 @@ def main():
                 mae_per_joint=mae_per_joint,
                 save_dir=save_plot_dir,
                 fps=fps,
+                dataset_label=f"{args.dataset_repo_id} Open-Loop Evaluation",
+                pred_label=f"{policy_type.upper()} Prediction",
             )
             saved_plots.append(plot_file)
 

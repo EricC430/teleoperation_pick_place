@@ -490,8 +490,11 @@ v1 只寫「V2 需採購、有交期風險」，**完全沒寫拿到之後要做
 
 ### R9｜⭐ Distribution shift 與 compounding error（v2 新增）
 
-**這兩項不因「不走模擬」而消失。** NVIDIA 文件的四類 gap（Sensing／Actuation／Physics／Modeling）
-確實是 sim→real 專屬，我們消掉了；**但「What Makes Transfer Hard」的另外兩條完全保留：**
+**這兩項不因「主線走實機」而消失。** NVIDIA 文件的四類 gap（Sensing／Actuation／Physics／Modeling）
+是 sim→real 專屬——**主線的實機蒐集不會遇到它們**；
+🔴 **但 2026-09-03（D029）起模擬線已解除封鎖，那條線上這四類 gap 會回來，要分開記帳**：
+主線的數字不受影響，模擬線的數字要自己承擔 sim2real gap。
+**而「What Makes Transfer Hard」的另外兩條，兩條線都完全保留：**
 
 | | 我們有沒有 |
 |---|---|

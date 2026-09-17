@@ -1,0 +1,55 @@
+dataset:
+  # 🔴 NOT the same dataset as configs/train_omx_phase_b1.yaml (the ACT run). DiffusionConfig's
+  # validate_features() hard-requires every observation.images.* key to have the SAME shape
+  # (checked 2026-09-15 by smoke-testing against the real 2-camera dataset first -- it raised
+  # `observation.images.front-left does not match observation.images.wrist`, confirmed this is
+  # a real constraint, not something `resize_shape` papers over: resize_shape only feeds a
+  # torchvision.transforms.Resize used later in modeling_diffusion.py's forward pass; the shape
+  # check runs on the RAW declared dataset feature shapes before that ever applies).
+  # Fix: derived a front-left-only dataset via the official `lerobot-edit-dataset
+  # --operation.type remove_feature --operation.feature_names=[observation.images.wrist]`
+  # tool (doesn't touch the original omx_pick_place_pilot_uvc_60). Picked front-left
+  # (third-person) over wrist because ACT's own per-joint error breakdown (see
+  # docs/pipeline_validation.md-adjacent eval logs, 20k/40k/100k) shows shoulder_lift /
+  # elbow_flex -- proximal, whole-arm-pose joints -- as consistently the worst two, and a
+  # third-person view should disambiguate whole-arm pose better than the wrist close-up.
+  # Consequence: this diffusion run sees strictly less visual information than the ACT run
+  # (1 camera vs 2) -- not an apples-to-apples architecture comparison, a real caveat for
+  # the eventual hardware bake-off, not just a training-time footnote.
+  repo_id: ericc430/omx_pick_place_pilot_uvc_60_frontleft_only
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_uvc_60_frontleft_only
+  eval_split: 0.0
+
+policy:
+  type: diffusion
+  push_to_hub: false
+
+# 🔴 EMA is OFF by default in lerobot (`ema.enable: false`) but the framework's own docstring
+# (lerobot/configs/default.py) says it's "standard practice for diffusion-style policies
+# (Chi et al. 2023, Diffusion Policy, section V.D): the reference implementation enables it
+# in every config and evaluates the EMA weights." Turning it on here to match that, at the
+# cost of a second full copy of the parameters in memory (headroom: ACT used 15.6/24 GB).
+ema:
+  enable: true
+
+output_dir: /workspace/data/train/phase_b1_diffusion
+job_name: diffusion_omx_b1_uvc60
+# 40,000 steps @ batch 32 ~= 80 epochs over the 60-episode/15,966-frame dataset -- picked to
+# match the ACT run's 40k-step midpoint (roughly where ACT's open-loop MAE gains started
+# diminishing relative to train-loss gains), so the eventual real-hardware bake-off isn't
+# comparing a well-trained ACT against a badly under- or over-trained diffusion policy by
+# accident. This is a first-cut target, not tuned -- diffusion policy also differs from ACT
+# in a way that matters here: it has a real LR schedule (`scheduler_name: cosine`,
+# `scheduler_warmup_steps: 500`, tied to this `steps` value), unlike ACT's constant 1e-5 --
+# so unlike ACT, extending this run later via --resume + a larger --steps does NOT cleanly
+# extend the same schedule; a better second run would start fresh with a bigger target,
+# not resume this one, if 40k turns out to be too little.
+steps: 40000
+batch_size: 32  # unverified for diffusion's memory footprint -- confirm via smoke run, not carried over from ACT by assumption
+eval_steps: 0
+log_freq: 50
+save_freq: 20000
+
+wandb:
+  enable: true
+  project: teleoperation_pick_place

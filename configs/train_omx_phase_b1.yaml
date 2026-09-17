@@ -1,0 +1,41 @@
+dataset:
+  repo_id: ericc430/omx_pick_place_pilot_uvc_60
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_uvc_60
+  # 60 episodes total (verified meta/info.json: total_episodes=60, total_frames=15966,
+  # avg 266 frames/ep @ fps 15). [Eric說 2026-09-13]: all 60 are TRAIN-position (t) demos --
+  # none of them are the frozen eval-open (o1-o12) placements from
+  # docs/assets/placement_label_map_campA_136sym_20260908.csv (D030: 60/12/36 after the
+  # 18-point near-field expansion). -> eval_split=0.0: train on the full 60, no in-training
+  # open-loop holdout. The real open-loop check runs separately against
+  # ericc430/omx_pick_place_open_loop_eval (12 episodes) via scripts/eval_open_loop.py.
+  eval_split: 0.0
+
+policy:
+  type: act
+  push_to_hub: false
+
+output_dir: /workspace/data/train/phase_b1_uvc60
+job_name: act_omx_b1_uvc60
+# History: ran to 20000 first (~1h45m), then resumed (--resume=true, --steps=40000) to 40000
+# (+1h45m). 12-episode open-loop eval at both: mean MAE 6.46° (20k) -> 6.34° (40k) -- train
+# loss dropped ~30% (0.096->0.067) in that stretch but open-loop MAE barely moved and was
+# mixed per-episode (3 episodes worse, 3 better, 6 flat) -- an early-overfitting signal, not
+# a clean win. shoulder_lift / elbow_flex are consistently the worst two joints at both
+# checkpoints, unmoved by the extra steps -- looks structural (camera/data), not undertraining.
+# [Eric決定] 2026-09-14: push to 100000 anyway (LeRobot's own default). Resume the same way:
+#   lerobot-train --config_path=<output_dir>/checkpoints/last/pretrained_model/train_config.json \
+#     --resume=true --steps=100000
+# `--config_path` must point at the CHECKPOINT's own train_config.json for resume (not this
+# file) -- lerobot loads the full run config from there and only CLI `--*` flags override it.
+# This yaml documents the current target/rationale; it is not what `--config_path` resolves
+# to when resuming. ~60000 more steps @ ~3.2 step/s (measured, both runs so far) ~= 5.2h more.
+steps: 100000
+batch_size: 32
+# eval_steps must be 0 when eval_split=0.0 -- lerobot/configs/train.py raises otherwise.
+eval_steps: 0
+log_freq: 50
+save_freq: 20000
+
+wandb:
+  enable: true
+  project: teleoperation_pick_place

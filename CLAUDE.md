@@ -75,6 +75,12 @@
 - 斷言「Isaac Sim 沒有 SO-ARM 資產」→ 錯，有 `Robots/RobotStudio/so100.usd`
 - 「更正」時只讀了 983 行網頁的 711–900 行就下結論（RobotStudio 在第 969 行）
 - 落點分析用「錄取率」（base rate）冒充「條件機率」，被 Eric 當場指出方法錯誤
+- 🔴 **2026-09-03：斷言「沒有現成 OMX 模擬資產、要自己匯入」→ 錯。**
+  `~/isaaclab_volume/assets/wildbot_with_omxaiarm.usd` 從 8/28 就在硬碟上，
+  `open_manipulator_description` 也早已 clone。**只查了外部 repo，沒查自己的機器。**
+  → **規則追加：談「有沒有某個資產／某份程式」時，先 `find` 本機，再查網路。**
+  同理，`omx_f` 的 joint limits 一度被寫成「URDF 沒有就沒辦法」——
+  **原廠規格頁一直查得到**（`decisions.md` D025 §2026-09-03）。
 
 **規則：引用前先讀完；讀不完就明說讀了多少。標示 `已查證` / `推論` / `未確認`。**
 

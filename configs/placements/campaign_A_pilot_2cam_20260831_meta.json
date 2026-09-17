@@ -1,0 +1,54 @@
+{
+  "code_git_commit": "e0f6731",
+  "counts": {
+    "eval-close": 30,
+    "eval-open": 10,
+    "train": 50
+  },
+  "d_min_cm": 2.0,
+  "feasibility": {
+    "n_hex": 337.3,
+    "n_rsa": 185.5,
+    "verdict": "ok"
+  },
+  "generated": "2026-08-31T07:13:09.837564+00:00",
+  "global_min_separation_cm": 2.001,
+  "margin_cm": 2.0,
+  "per_list": {
+    "eval-close": {
+      "n": 30,
+      "nearest_neighbour_cm": {
+        "mean": 2.43,
+        "median": 2.349,
+        "min": 2.002
+      },
+      "r2_uniform_ks_p": 0.9864
+    },
+    "eval-open": {
+      "n": 10,
+      "nearest_neighbour_cm": {
+        "mean": 2.167,
+        "median": 2.093,
+        "min": 2.001
+      },
+      "r2_uniform_ks_p": 0.2342
+    },
+    "train": {
+      "n": 50,
+      "nearest_neighbour_cm": {
+        "mean": 2.717,
+        "median": 2.62,
+        "min": 2.001
+      },
+      "r2_uniform_ks_p": 0.9719
+    }
+  },
+  "sampling_source": "manual",
+  "sector_used": {
+    "r_inner": 22.0,
+    "r_outer": 39.0,
+    "theta_max": 42.06175489676501,
+    "theta_min": -87.06175489676501
+  },
+  "seed": 20260831
+}
