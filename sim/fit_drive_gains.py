@@ -1,4 +1,17 @@
-"""S5 gap 1 -- score (not yet: calibrate) the provisional drive gains against a real trajectory.
+"""Score (not yet: calibrate) the provisional drive gains against a real recorded trajectory.
+
+🔴 SCOPE CHANGED 2026-09-18, read this before assuming what this is for. This was written as S5
+gap 1, on the premise that S5's replay pipeline drives the sim arm with PD position control and
+therefore needs gains/torque that reproduce the real arm's dynamics. `[Eric說 2026-09-18]` pointed
+out that premise was wrong -- a replay does not need to re-derive an arm trajectory that is
+already recorded in `observation.state`. S5's arm is now a kinematic replay
+(`write_joint_position_to_sim`), where gains and effort limits do not affect the rendered pose at
+all (`docs/specs/S5_sim_replay_augmentation.md` §4, `[Eric決定 2026-09-18]`).
+
+**So this script now serves S4, not S5** -- live teleop-in-sim has no pre-recorded outcome to copy,
+so there the simulated arm genuinely must track live leader commands under its own control loop,
+and these gains are load-bearing. Everything below still works and the measurements still stand;
+only the spec it answers to changed.
 
 Context: `sim/README.md` "the provisional drive gains cannot hold the arm's own weight" -- holding
 the all-zero pose for 1s drifts 19-35 deg. `omx_constants.stiffness/damping` is
