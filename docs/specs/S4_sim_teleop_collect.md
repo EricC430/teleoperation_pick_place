@@ -256,18 +256,14 @@ LeRobotDataset.add_frame(...) → save_episode()
 2. **時間基準。** leader 讀取速度由序列埠決定，模擬步進由 solver 決定。
    → **以 dataset fps 為主時鐘**，記錄每一幀的實際 `dt`，收工印出 dt 分佈（不是只印平均值）。
    → 這與 D006 的 jitter 是同一類問題，用同一個方法驗。
-3. **feature key 與順序。** 🔴 **必須與實機 campaign 一致。2026-09-03 更正——以實際錄出來的
-   dataset 為準，不是以文件為準：**
+3. **feature key 與順序。** 🔴 **必須與實機 campaign 一致：**
 
    ```
-   1. observation.images.wrist          # D405 手腕相機
-   2. observation.images.front-left     # D455 第三視角
+   1. observation.images.wrist          # Innomaker U20CAM-720P 手腕相機，640×480
+   2. observation.images.front-left     # D455 第三視角，848×480
    ```
 
-   **證據：`data/huggingface/lerobot/EricC430/omx_pick_place_pilot/meta/info.json` 的 `features`
-   鍵序（2026-09-03 讀）**，與 `configs/record_omx.yaml` 的 `cameras:` 宣告順序一致。
-   ⚠️ **舊寫法 `left_front` / `right_front` 是「手腕相機不可用時的退路」**（兩台第三視角，
-   D022 先驗期方案），**不是現行組態**。`experiment_spec.md` §3／§4-1 已同步更正。
+   **證據：`configs/record_omx.yaml` 的 `cameras:` 宣告順序**，與 `experiment_spec.md` §3／§4-1 一致。
    **不一致的話，這份資料連「拿來比較」都做不到。**
 4. **資料集不得與實機資料混用。** D025 執行前提第 2 條。
    → `repo_id` 一律加 `sim_` 前綴，`meta` 裡明記模擬器名稱與版本。
@@ -290,13 +286,17 @@ LeRobotDataset.add_frame(...) → save_episode()
 #### 具體協定（四層，由便宜到貴）
 
 **T1 — 內參用讀的，不要用調的。**
-D405／D455 的內參直接從裝置讀（`pyrealsense2` 的 `get_intrinsics()`，或 `rs-enumerate-devices -c`），
+front-left（D455）的內參直接從裝置讀（`pyrealsense2` 的 `get_intrinsics()`，或 `rs-enumerate-devices -c`），
 拿 fx/fy/cx/cy 換算成 Isaac Sim camera 的 `focal_length` / `horizontal_aperture` / 解析度。
+wrist（Innomaker U20CAM-720P）是一般 UVC 鏡頭，沒有出廠內參可讀，改用棋盤格校正一次解出內參＋畸變。
+兩者都已腳本化：`sim/calib_intrinsics_realsense.py`（front-left）、`sim/calib_intrinsics_checkerboard.py`（wrist）。
 ⚠️ **不要用「目測 FOV 差不多」**。內參錯了，後面每一層都白做。
 
 **T2 — 外參用標記量，不要用捲尺量。**
-把 ArUco／棋盤格貼在座標墊的已知點上（S3 的墊子本來就有座標系），
+把 ArUco 貼在座標墊的已知點上（S3 的墊子本來就有座標系），
 真實相機拍一張 → 解出相機相對墊子的 pose → **那組數字就是模擬相機的外參**。
+腳本化：`sim/calib_gen_targets.py`（產生標記）、`sim/calib_extrinsics_aruco.py`（解外參，wrist 相機
+另串 `reach_logger.fk` 算 link5 姿態，因為 wrist camera 掛在 link5、不是世界座標）。
 ⚠️ 這一步順便解決了 `experiment_spec.md` §3 那三個還是空白的欄位（相機 x/y/z、俯角）。
 
 **T3 — 用重投影誤差當驗收數字，不是用肉眼。**
@@ -311,8 +311,8 @@ D405／D455 的內參直接從裝置讀（`pyrealsense2` 的 `get_intrinsics()`�
 
 #### ⚠️ 現在還做不到 T2/T3 的原因
 
-`experiment_spec.md` §3 的桌面高度、相機 x/y/z、俯角、光照 lux **目前全是空白**，
-9/3 的 D405 曝光值也還沒回填。**在那張表凍結之前，模擬場景的幾何無從對齊。**
+`experiment_spec.md` §3 的桌面高度、相機 x/y/z、俯角、光照 lux **目前全是空白**。
+**在那張表凍結之前，模擬場景的幾何無從對齊。**
 
 **→ 第一版的做法：明確接受「幾何未對齊」，在 dataset 的 `meta` 裡記下這件事，
 先驗 §4 的管線通不通（那不需要幾何對齊）。等 §3 凍結後再重建場景並跑 T1–T4。

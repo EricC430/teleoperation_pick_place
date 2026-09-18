@@ -21,7 +21,6 @@
       - **螺絲起子**（✅已帶，手臂底座／夾爪鎖固）
       - **捲尺**（✅已帶，量測與 FK 實體比對）
       - **極座標定位墊**（✅已帶，紙張已備，供 S1 量工作範圍、後續放置配置點物體共用；見 `docs/specs/S1_reach_logger.md`、`docs/decisions.md` D023）
-      - **C 形夾、M3 螺絲、墊片、平鐵片**（✅已帶，固定底座與 D405 比對）
 
 ---
 
@@ -50,7 +49,7 @@ uv run lerobot-find-port
 # 1. 查詢所有相機（推薦：同時列出 OpenCV 與 RealSense 裝置）
 uv run lerobot-find-cameras
 
-# 2. 僅查詢 RealSense 系列相機（如 D405 / D455 / D435）
+# 2. 僅查詢 RealSense 系列相機（如 D455 / D435）
 uv run lerobot-find-cameras realsense
 
 # 3. 僅查詢一般 USB/OpenCV 視訊鏡頭
@@ -60,7 +59,7 @@ uv run lerobot-find-cameras opencv
 預期看到（以目前實驗室硬體為例）：
 - **RealSense D455**：Serial ID `262822305610`（USB 3.x）→ config key `front-left`（第三視角）
 - **OpenCV Cameras**（2026-09-13 實測，DSHOW）：`@ 0` = 筆電內建鏡頭、`@ 2` = D455 的 RGB（經 DSHOW 看到的同一台，**不要用這個 index 開**）、**`@ 3` = Innomaker 腕部相機** → config key `wrist`。🔴 **編號不是固定 ID**，插拔／重開機可能會變；以 `opencv_N.png` 哪張拍到夾爪為準。填錯**不會報錯**，會安靜地錄到別台
-- ~~RealSense D405（`260322271459`）~~：2026-09-13 起不再使用（D022）。沒接時 `lerobot-find-cameras realsense` 只列出 D455，屬正常
+- `lerobot-find-cameras realsense` 只列出 D455（1 台）屬正常——腕部相機不是 RealSense
 - 拍攝的測試照片會自動存入 `outputs/captured_images/`（包含 `realsense_*.png` 與 `opencv_*.png`）。
 
 ---
@@ -230,7 +229,7 @@ uv run python scripts/measure_teleop_offset.py --config-path configs/teleoperate
 
 - follower 已夾固定、相機架好並用膠帶標記位置角度、**校正在空曠處做完**（第 3 節；固定後不可重校）。
 - 🔴 **D023：傳輸線已改走線** → 保守工作區豁免作廢（改走線非單調放寬），這一節從「A7 設計」升級為**必做的 A6 量測 ＋ 逐點驗證**。
-- 相機設定檔對應**現在實體接的相機**（2026-09-13 起）：Innomaker 在腕上 + D455 → **`configs/teleoperate_omx.yaml`**（含 `wrist` key）。`configs/teleoperate_omx_two-third-pov-cams.yaml` 是**舊的雙第三視角配置**（`front-right` 指向已不用的 D405、`COM6`/`COM5`、08-31 id），**不要用**。
+- 相機設定檔對應**現在實體接的相機**：Innomaker 在腕上 + D455 → **`configs/teleoperate_omx.yaml`**（含 `wrist` key）。**不要用** `configs/teleoperate_omx_two-third-pov-cams.yaml`（埠號 `COM6`/`COM5`，非現行 `COM9`/`COM8`）。
 
 **2026-08-31 現場量到的（捲尺，FK 失敗退 D026；experiment_spec §3 正本）：**
 
@@ -391,10 +390,10 @@ uv run lerobot-teleoperate --config_path configs/teleoperate_omx.yaml
 # OMX（現行平台，D021）：Innomaker 腕部 + D455 第三視角
 uv run lerobot-record --config_path configs/record_omx.yaml
 
-# SO-101（備援，目前不用）：雙 RealSense（含已不用的 D405）
+# SO-101（備援，目前不用）
 uv run lerobot-record --config_path configs/record.yaml
 ```
-（**OMX 配置（2026-09-13 起，`configs/record_omx.yaml`）：Leader `COM9`、Follower `COM8`；`wrist` = Innomaker U20CAM-720P（OpenCV index 3、DSHOW，⚠️ index 非固定，開錄前用 `lerobot-find-cameras opencv` 確認 `opencv_3.png` 拍到夾爪）、`front-left` = D455（SN 262822305610），D022 §2026-09-13**；dataset 寫進 `omx_pick_place_pilot_uvc`，D405 時期的 `pilot` / `pilot_2` 不混用）
+（**OMX 配置（`configs/record_omx.yaml`）：Leader `COM9`、Follower `COM8`；`wrist` = Innomaker U20CAM-720P（OpenCV index 3、DSHOW，⚠️ index 非固定，開錄前用 `lerobot-find-cameras opencv` 確認 `opencv_3.png` 拍到夾爪）、`front-left` = D455（SN 262822305610）**；dataset 寫進 `omx_pick_place_pilot_uvc`。`pilot` / `pilot_2`（無 `_uvc` 後綴）是不同 dataset root，不可混用）
 
 ### (0) 🔴 相機場景常數：錄製第一筆前一次調定、凍結
 
@@ -490,7 +489,7 @@ uv run lerobot-record --config_path configs/record.yaml
 8. `uv run lerobot-record --config_path configs/record_omx.yaml` 錄 1 集 → §6-(2) `lerobot-dataset-viz` 回放 → §6-(3) 幀數驗證。
 9. 數值 + 日期寫進 `docs/experiment_spec.md` §3（場景常數表）。之後這個 campaign 不再碰；要改 = 新 campaign、重錄。
 
-⚠️ **現有 8 集 pilot 是自動曝光、D405 過曝** —— 改不了（烙進影片），但那是煙霧測試（D405 時期資料，不與 UVC 資料混用）。正式 pilot 一定要先做這一步。
+⚠️ **現有 8 集 pilot 是自動曝光、腕部過曝** —— 改不了（烙進影片），但那是煙霧測試，不與 UVC 資料混用。正式 pilot 一定要先做這一步。
 
 ### (0-a) 錄製時同時看兩路相機（rerun）
 
@@ -584,13 +583,13 @@ uv run lerobot-replay --config_path configs/replay_omx.yaml --dataset.episode=0
 # repo_id 形式 + 本地 root（本專案 dataset 在 .cache/lerobot/，不在 HF cache）
 uv run lerobot-dataset-viz `
     --repo-id EricC430/omx_pick_place_pilot `
-    --root .cache/lerobot/omx_pick_place_pilot_uvc `   # 2026-09-13 起（UVC 腕部）；D405 時期的舊資料在 omx_pick_place_pilot / _2
+    --root .cache/lerobot/omx_pick_place_pilot_uvc `   # UVC 腕部。`omx_pick_place_pilot` / `_2`（無 `_uvc` 後綴）是不同 root，不可混用
     --episode-index 0
 ```
 * **`--episode-index` 是單數、必填 → 一次一集。** 8 集就 `0` 跑到 `7`（Rerun server 固定 :9876，重跑會換）。`--save <path>` 可存檔不開即時視窗。
 * **功能說明**：啟動 Rerun，時間軸同步播放多視角相機影片、6 軸 `observation.state` 曲線、`action` 曲線。
 * **檢驗目的**：
-  - **影像**：掉幀、黑畫面、**曝光過度**（D405 時期的 pilot 已知腕部過曝、自動曝光；2026-09-13 起 Innomaker 腕部為固定曝光，數值見 YAML `wrist:` 區塊）。
+  - **影像**：掉幀、黑畫面、**曝光過度**（`pilot` / `pilot_2` 已知腕部過曝、自動曝光，不使用；Innomaker 腕部固定曝光，數值見 YAML `wrist:` 區塊）。
   - **數值連續性**：關節曲線平滑、無突波、時戳無中斷。
 * **`torchcodec` 的 `libtorchcodec_coreN.dll` 一整面 traceback 是無害的** → 自動 fallback `pyav`，跑完會顯示 `100%`。
 

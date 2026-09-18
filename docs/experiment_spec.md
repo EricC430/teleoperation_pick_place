@@ -150,14 +150,14 @@
 | 手臂基座位置（相對桌緣） | ___ cm, ___ cm | |
 | **外部相機位置**（x, y, z） | | |
 | **外部相機角度**（俯角） | ___ ° | |
-| 手腕相機安裝方式 | ⏳ UVC 模組 ETA 2026-09-05–07（D022）。先驗期**沒有**手腕相機 | |
+| 手腕相機安裝方式 | Innomaker U20CAM-720P，已裝上腕部（link5）。精確安裝位置／角度 ___（待 T2 量測，見 `docs/specs/S4_sim_teleop_collect.md` §5-5） | |
 | 光源類型與位置 | | |
 | 光照強度 | ___ lux（手機 app 可測） | |
 | 背景 | 材質／顏色 | |
 | 物體起始區範圍 | 見下方工作區三數字 | |
 | 目標區位置 | | |
-| 🔴 **相機數量** | **2 台：D405（手腕）＋ D455（第三視角 front-left）**。⚠️ 退路組態＝兩台第三視角（D435i＋D455，D022 先驗期方案） | |
-| 🔴 **相機 feature key 與順序** | 🔴 **2026-09-03 更正，以實際錄出來的 dataset 為準：****1. `observation.images.wrist`（D405 手腕）　2. `observation.images.front-left`（D455 第三視角）**<br>證據：`data/huggingface/lerobot/EricC430/omx_pick_place_pilot/meta/info.json` 的 `features` 鍵序，與 `configs/record_omx.yaml` 的 `cameras:` 宣告順序一致<br>⚠️ **退路（僅在手腕相機不可用時啟用）：** 兩台第三視角 **1. `left_front`　2. `right_front`**（D022 先驗期方案）。**這是 fallback，不是現行組態**<br>⚠️ **「left／right」＝從操作者座位面向手臂的視角**，不是手臂自身座標——**架設當天要拍一張含兩台相機的合照存證**，否則三個月後沒人分得出來<br>⚠️ **順序＝`configs/record.yaml` 的 `cameras:` 宣告順序**（已查證，見下）。凍結後訓練與推論必須一致 | |
+| 🔴 **相機數量** | **2 台：Innomaker U20CAM-720P（手腕）＋ D455（第三視角 front-left）** | |
+| 🔴 **相機 feature key 與順序** | **1. `observation.images.wrist`（Innomaker U20CAM-720P 手腕，640×480）　2. `observation.images.front-left`（D455 第三視角，848×480）**<br>證據：`configs/record_omx.yaml` 的 `cameras:` 宣告順序<br>⚠️ **順序＝`configs/record_omx.yaml` 的 `cameras:` 宣告順序**。凍結後訓練與推論必須一致 | |
 | 🔴 **工作區 r_outer**（top-down 可夾） | **≈ 41 cm**（捲尺 36 cm ＋ `d_offset` 5 cm；FK 驗證失敗退捲尺，D026）。`d_offset` = pan 軸→底盤最底端 ≈ 5 cm（`[Eric說]` 2026-08-31），量值皆已加回。暫定 30 已作廢 | 2026-08-31 |
 | 🔴 **工作區 r_inner** | **≈ 22 cm**（捲尺 17 ＋ 5）。暫定 20 已作廢 | 2026-08-31 |
 | 🔴 **有效方位角扇區** | **≈ 135° 寬（2026-08-31 `[Eric說]`）**：左 +45° 掃過正前到右側水平（≈ −90°），即 `theta ∈ [−90°, +45°]`（正前 = 0°，+ = 左）。<br>🔴 **邊界成因 = 第三視角相機的「架設位置」擋路 —— 手臂轉過去會實體撞到相機/支架，不是相機視野、也不是傳輸線**。這是硬機械限制（同碰撞類），不是「看不到就別放」。改走線後線材未在任務區造成方位角限制（D023 §2026-08-31 的疑問就此回答）。<br>⚠️ 綁定「現在的相機架設位置」——相機一移，扇區要重量。0° 基準實體線待標 | 2026-08-31 |
@@ -173,9 +173,6 @@
 > LeRobot issue [#1763](https://github.com/huggingface/lerobot/issues/1763) 有使用者實測：
 > 順序一致時結果較好，順序改變時變差。
 > **→ feature key 的順序在收資料當下就要凍結，之後永不更動。寫在上表，不要只留在腦子裡。**
->
-> ⚠️ **先驗期兩台第三視角是「同類視角」，內容上不易區分**，比 wrist + third-person 更依賴順序。
-> 這不代表過渡計畫是錯的，代表它是一個**有假說的實驗條件**，不是理所當然沒事的權宜之計。
 
 ---
 
@@ -189,7 +186,7 @@
 |---|---|---|
 | `action` | `float32 [6]` | 關節動作指令（預設 joint position 絕對角） |
 | `observation.state` | `float32 [6]` | 當前關節角度狀態 |
-| `observation.images.wrist` | `video 480×848×3` | 🔴 **順序第 1 位。** D405 手腕相機 |
+| `observation.images.wrist` | `video 480×640×3` | 🔴 **順序第 1 位。** Innomaker U20CAM-720P 手腕相機 |
 | `observation.images.front-left` | `video 480×848×3` | 🔴 **順序第 2 位。** D455 第三視角 |
 | `timestamp` | `float32` | 錄製時間戳記（秒） |
 | `frame_index` | `int64` | 回合內幀索引（0..N-1） |
