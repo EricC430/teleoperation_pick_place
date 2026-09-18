@@ -148,16 +148,33 @@ one probably does need an actuator entry.
    — consistent with SIGN=+1 being correct, not a coincidence of picking the "wrong" combo that
    happened to need less torque.
 
-   **Still open, and it's a judgment call, not an engineering one:** `--effort-scale 10` is
-   deliberately unrealistic — 5.2 N·m on a motor rated for 0.52 N·m is not a calibration, it is
-   trading physical accuracy for visual tracking. Whether that trade is acceptable depends on what
-   S5's replay data is *for* (§1: visual variety for training, not a sim2real dynamics claim — so
-   maybe fine, if `meta` says so explicitly) versus any use that implies the simulated dynamics
-   resemble the real arm's (not fine without knowing why the real motor's own rated torque isn't
-   enough, and by how much). The five-pose test (S4 §5-1) is still the only clean way to fully rule
-   out a residual sign problem hiding under the effort-limit effect — two independent pieces of
-   evidence now point to SIGN=+1, but neither is the isolated single-joint measurement that test
-   would give. Full detail: `docs/specs/S5_sim_replay_augmentation.md` §2's 2026-09-18 update.
+   **🔴 That framing was wrong, and Eric said so the same day.** The writeup above ended by asking
+   whether trading real motor torque (5.2 N·m on a motor rated for 0.52 N·m) for tracking fidelity
+   was acceptable for S5's purposes. `[Eric說 2026-09-18]`: *"即使以錄製的軌跡放到模擬環境，馬達的
+   規格仍然要真實才能產生對應的物理畫面吧"* — correct, and it invalidates the question rather than
+   answering it. The real mistake was upstream: driving the replay with PD position control at all,
+   which forces the sim to *re-derive* an arm trajectory that is already recorded, frame by frame,
+   in `observation.state`. **S5's arm is now a kinematic replay**
+   (`Articulation.write_joint_position_to_sim`, not `set_joint_position_target`) —
+   `[Eric決定 2026-09-18]`, see `docs/specs/S5_sim_replay_augmentation.md` §4. Gains and effort
+   limits do not participate in the rendered arm pose there at all, so the trade-off question
+   disappears rather than being resolved.
+
+   **Where this work still lives:** gap 1 remains a hard dependency for **S4** (live teleop-in-sim
+   has no already-recorded outcome to copy — the sim really does have to control the arm in real
+   time), so `fit_drive_gains.py` and the numbers above are not discarded, just re-homed.
+
+   **✅ The SIGN half is now settled for `shoulder_lift`, without a lab day.** Once the arm became
+   a kinematic replay, checking the sign stopped needing hardware: pose the sim at the recorded
+   `observation.state` and put the render beside the real recorded video at the same timestamp
+   (`render_state_replay.py` + `scripts/compare_sim_real_frames.py`). At episode 0 frame 226, where
+   the real arm is reaching down to the cup, SIGN=+1 renders the arm extended forward at table
+   height (matches) and the `--sign-override shoulder_lift=-1` **control** renders it pointing
+   nearly straight up (grossly wrong). The control is what makes this evidence rather than a
+   vibe — it shows the test can discriminate. Agrees with both earlier independent arguments.
+   The other five joints show no mismatch across six frames but have **no control run of their
+   own**; weakest for `wrist_roll` (subtle visual effect) and `gripper` (amplitude already known
+   wrong, gap 2 residual). See `joint_mapping.py`'s docstring for the per-joint evidence level.
 2. ✅ **The mimic gearing sign is CLOSED — `gearing=1.0` (the default) is correct.** Run 2026-09-18
    with `verify_mimic_gearing.py` (both `--no-render` numbers and a camera render):
 
