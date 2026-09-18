@@ -58,14 +58,21 @@ def _rotation(axis: str, angle_rad: float) -> np.ndarray:
     return r
 
 
-def ee_transform(joint_rad: Sequence[float]) -> np.ndarray:
-    """4x4 homogeneous transform of end_effector_link in the arm base frame."""
+def link5_transform(joint_rad: Sequence[float]) -> np.ndarray:
+    """4x4 homogeneous transform of link5 (the wrist-camera mount, see scene_constants.py
+    CAM_WRIST_PARENT_LINK) in the arm base frame — i.e. after joint5 (wrist_roll), before the
+    fixed end-effector offset."""
     if len(joint_rad) != N_JOINTS:
         raise ValueError(f"expected {N_JOINTS} joint angles, got {len(joint_rad)}")
     t = np.eye(4)
     for (origin, axis), q in zip(_CHAIN, joint_rad):
         t = t @ _translation(origin) @ _rotation(axis, q)
-    return t @ _translation(_EE_ORIGIN)
+    return t
+
+
+def ee_transform(joint_rad: Sequence[float]) -> np.ndarray:
+    """4x4 homogeneous transform of end_effector_link in the arm base frame."""
+    return link5_transform(joint_rad) @ _translation(_EE_ORIGIN)
 
 
 def ee_position_m(joint_rad: Sequence[float]) -> tuple[float, float, float]:
