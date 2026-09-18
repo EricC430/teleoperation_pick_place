@@ -142,8 +142,8 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
     cam_wrist: CameraCfg = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/" + S.CAM_WRIST_PARENT_LINK + "/WristCam",
         update_period=1.0 / S.CAM_FPS,
-        width=S.CAM_WIDTH,
-        height=S.CAM_HEIGHT,
+        width=S.CAM_WIDTH_WRIST,
+        height=S.CAM_HEIGHT_WRIST,
         data_types=["rgb"],
         spawn=_pinhole(S.HFOV_WRIST_DEG, S.CLIP_WRIST),
         offset=CameraCfg.OffsetCfg(
@@ -154,8 +154,8 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
     cam_front_left: CameraCfg = CameraCfg(
         prim_path="{ENV_REGEX_NS}/FrontLeftCam",
         update_period=1.0 / S.CAM_FPS,
-        width=S.CAM_WIDTH,
-        height=S.CAM_HEIGHT,
+        width=S.CAM_WIDTH_FRONT_LEFT,
+        height=S.CAM_HEIGHT_FRONT_LEFT,
         data_types=["rgb"],
         spawn=_pinhole(S.HFOV_FRONT_LEFT_DEG, S.CLIP_FRONT_LEFT),
         # pose is set by look-at after the scene is built (see preview_scene.py)

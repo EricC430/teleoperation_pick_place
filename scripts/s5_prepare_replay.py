@@ -241,8 +241,8 @@ def main():
     )
     (out / "real_tracking.json").write_text(json.dumps(
         {"dataset": str(root), "fps": fps, "episodes": sorted(int(e) for e in np.unique(ep)),
-         "mapping": {"BODY_SIGN": JM.BODY_SIGN.tolist(), "BODY_ZERO_DEG": JM.BODY_ZERO_DEG.tolist(),
-                     "GRIPPER_SIGN": JM.GRIPPER_SIGN, "GRIPPER_ZERO_DEG": JM.GRIPPER_ZERO_DEG, "status": "未確認"},
+         "mapping": {"SIGN": dict(JM.SIGN), "BODY_ZERO_DEG": JM.BODY_ZERO_DEG.tolist(),
+                     "GRIPPER_ZERO_DEG": JM.GRIPPER_ZERO_DEG, "status": "未確認"},
          "joints": track}, indent=2, ensure_ascii=False), encoding="utf-8")
     with open(out / "grasp_segments.csv", "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=list(segs[0].keys()))

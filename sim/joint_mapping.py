@@ -1,7 +1,17 @@
 """LeRobot `.pos` units <-> URDF joint radians, for the OMX-F. Pure numpy — runs on the host AND in
 the isaac-lab container, so the two sides cannot disagree about units.
 
-Used by S5 (`scripts/s5_prepare_replay.py`, `sim/fit_drive_gains.py`) and meant to be reused by S4.
+Used by S5 (`scripts/s5_prepare_replay.py`, `sim/fit_drive_gains*.py`, `sim/verify_grasp_attach.py`)
+and meant to be reused by S4. Two call styles, one conversion underneath:
+  * array:  `lerobot_to_urdf_rad(pos)` / `urdf_rad_to_lerobot(q)`   — (..., 6) numpy
+  * row:    `row_to_sim_rad(row)` / `sim_rad_to_row(rad)`            — one 6-float list
+
+🔴 2026-09-18 merge correction: a parallel version of this file (main 33d7e08) read the recorded
+`.pos` values as DEGREES, reasoning from `stats.json` ranges (-66..+41 "fits a joint's travel").
+That range fits -100..100 just as well, so it did not tell the two apart; the code does (below).
+Degrees-as-is under-reads body angles ~1.8x (1 unit = 4095/200 ticks = 1.8 deg) and puts the
+gripper on the wrong zero and scale. Anything computed with that version — the S5 gap-1 "5 combos
+on uvc_60 ep 0" and verify_grasp_attach's ep 0 run — needs a rerun before its numbers mean anything.
 
 What is VERIFIED here and what is NOT
 -------------------------------------
@@ -16,7 +26,7 @@ What is VERIFIED here and what is NOT
     conversion below a constant. `check_calibration()` refuses anything else.
   * XL330/XL430 position resolution is 4096 ticks per revolution.
 
-`[未確認]` the URDF side — BODY_SIGN, BODY_ZERO_DEG, GRIPPER_SIGN, GRIPPER_ZERO_DEG:
+`[未確認]` the URDF side — SIGN (per joint), BODY_ZERO_DEG, GRIPPER_ZERO_DEG:
   whether raw tick 2048 is the URDF's zero, and whether +tick is +URDF-angle, is NOT read off any
   spec. The defaults (+1, 0) are the simplest guess. They are settled by the S4 §5-1 five-pose
   comparison (home / J1 only / J2 only / J3 only / gripper), not by this file. Everything downstream
@@ -38,15 +48,32 @@ TICKS_PER_REV = 4096
 RANGE_MIN, RANGE_MAX = 0, 4095
 CENTER_TICK = 2048
 
-# [未確認] — see the module docstring. Order follows LEROBOT_NAMES[:5].
-BODY_SIGN = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
+# The dataset's `action`/`observation.state` column order, under the name S4/S5 sim scripts use.
+DATASET_JOINT_ORDER = LEROBOT_NAMES
+
+# [未確認] — see the module docstring. The ONE sign knob: flip an entry to -1.0 once the five-pose
+# test decides it. `fit_drive_gains.py --sign-override` mutates this dict for a single run.
+SIGN: dict[str, float] = {name: 1.0 for name in LEROBOT_NAMES}
+# Order follows LEROBOT_NAMES[:5].
 BODY_ZERO_DEG = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
 # [未確認] Real uvc_60 data: open ~59, closed on a paper cup ~47-50 (gripper.pos units). With the
 # defaults below that is +32 deg open / -11 deg closed, and the USD limits gripper_joint_1 to
 # 0..100 deg — so at least one of these two numbers is probably wrong. The mimic check prints the
 # finger gap per angle; pick the offset that makes "59 = open" land on an open gap.
-GRIPPER_SIGN = 1.0
 GRIPPER_ZERO_DEG = 0.0
+
+try:  # sim/ is on the path for every caller; fail loudly if omx_constants reorders its joints
+    import omx_constants as _K
+except ImportError:
+    _K = None
+if _K is not None:
+    assert tuple(j.lerobot_name for j in _K.JOINTS) == LEROBOT_NAMES, (
+        "omx_constants.JOINTS order no longer matches the dataset's action/observation.state column "
+        "order -- fix joint_mapping.py before trusting anything built on it.")
+
+
+def _body_sign() -> np.ndarray:
+    return np.array([SIGN[n] for n in LEROBOT_NAMES[:5]])
 
 
 def check_calibration(path: str | Path) -> list[str]:
@@ -78,9 +105,9 @@ def lerobot_to_urdf_rad(pos: np.ndarray) -> np.ndarray:
     pos = np.asarray(pos, dtype=np.float64)
     out = np.empty_like(pos)
     body_deg = _raw_to_motor_deg(_norm_to_raw(pos[..., :5], -100.0, 100.0))
-    out[..., :5] = np.radians(BODY_SIGN * body_deg + BODY_ZERO_DEG)
+    out[..., :5] = np.radians(_body_sign() * body_deg + BODY_ZERO_DEG)
     grip_deg = _raw_to_motor_deg(_norm_to_raw(pos[..., 5], 0.0, 100.0))
-    out[..., 5] = math.radians(1.0) * (GRIPPER_SIGN * grip_deg + GRIPPER_ZERO_DEG)
+    out[..., 5] = math.radians(1.0) * (SIGN["gripper"] * grip_deg + GRIPPER_ZERO_DEG)
     return out
 
 
@@ -88,13 +115,27 @@ def urdf_rad_to_lerobot(q: np.ndarray) -> np.ndarray:
     """Inverse of `lerobot_to_urdf_rad` (no tick quantisation, no clamping)."""
     q = np.asarray(q, dtype=np.float64)
     out = np.empty_like(q)
-    body_deg = (np.degrees(q[..., :5]) - BODY_ZERO_DEG) / BODY_SIGN
+    body_deg = (np.degrees(q[..., :5]) - BODY_ZERO_DEG) / _body_sign()
     raw = body_deg * TICKS_PER_REV / 360.0 + CENTER_TICK
     out[..., :5] = (raw - RANGE_MIN) / (RANGE_MAX - RANGE_MIN) * 200.0 - 100.0
-    grip_deg = (np.degrees(q[..., 5]) - GRIPPER_ZERO_DEG) / GRIPPER_SIGN
+    grip_deg = (np.degrees(q[..., 5]) - GRIPPER_ZERO_DEG) / SIGN["gripper"]
     raw = grip_deg * TICKS_PER_REV / 360.0 + CENTER_TICK
     out[..., 5] = (raw - RANGE_MIN) / (RANGE_MAX - RANGE_MIN) * 100.0
     return out
+
+
+def row_to_sim_rad(row: "list[float] | tuple[float, ...]") -> list[float]:
+    """One dataset row (6 LeRobot `.pos` values, DATASET_JOINT_ORDER) -> sim joint radians, same order."""
+    if len(row) != 6:
+        raise ValueError(f"expected 6 values in {DATASET_JOINT_ORDER}, got {len(row)}")
+    return lerobot_to_urdf_rad(np.asarray(row, dtype=np.float64)).tolist()
+
+
+def sim_rad_to_row(rad: "list[float] | tuple[float, ...]") -> list[float]:
+    """Inverse of `row_to_sim_rad` -- sim joint radians -> LeRobot `.pos` units (not degrees)."""
+    if len(rad) != 6:
+        raise ValueError(f"expected 6 values in {DATASET_JOINT_ORDER}, got {len(rad)}")
+    return urdf_rad_to_lerobot(np.asarray(rad, dtype=np.float64)).tolist()
 
 
 if __name__ == "__main__":
@@ -109,4 +150,7 @@ if __name__ == "__main__":
     print("lerobot .pos         ->", probe.tolist())
     print("urdf deg             ->", np.degrees(q).tolist())
     print("round-trip max error ->", float(np.abs(back - probe).max()))
-    print("🔴 BODY_SIGN / BODY_ZERO_DEG / GRIPPER_SIGN / GRIPPER_ZERO_DEG are [未確認] — S4 §5-1 settles them.")
+    row = [-7.8, -30.9, 20.2, -17.6, -0.9, 55.8]
+    row_back = sim_rad_to_row(row_to_sim_rad(row))
+    print("row API round-trip   ->", max(abs(a - b) for a, b in zip(row, row_back)))
+    print("🔴 SIGN / BODY_ZERO_DEG / GRIPPER_ZERO_DEG are [未確認] — S4 §5-1 settles them.")

@@ -9,9 +9,16 @@ The script spec is `docs/specs/S4_sim_teleop_collect.md`.
 | File | Runs where | What it does |
 |---|---|---|
 | `omx_constants.py` | anywhere (pure python) | **Single source of truth**: joint limits, actuator specs, drive gains, payload. Run it directly to print the table. |
+| `joint_mapping.py` | anywhere (numpy) | Real recording (LeRobot `.pos`: body −100..100, gripper 0..100 — **not degrees**, corrected 2026-09-18) ↔ sim joint (radians) conversion, shared by S4/S5. `SIGN` is `[未確認]` per joint — see its docstring. Run it directly for a self-test. |
 | `convert_omx_urdf.py` | inside `isaac-lab` | URDF → USD, then patches everything the URDF gets wrong. Prints every `original -> new`. |
 | `audit_usd.py` | inside `isaac-lab` | Read-only audit of any robot USD against the constants. Exit 0 = matches. |
-| `run_in_container.sh` | host | Copies `sim/*.py` into `~/isaaclab_volume/omx_sim/` and runs one of them in the container. |
+| `fit_drive_gains.py` | inside `isaac-lab` | S5 gap 1: replays one real episode's `action` and scores it against `observation.state` for one drive-gain scale combo (plus `--sign-override` for testing a candidate joint sign). Run 2026-09-18 against uvc_60 episode 0, 5 combos — see "Two gaps that are NOT closed" §1 below for the actual numbers. Not yet closed. |
+| `fit_drive_gains_grid.py` | inside `isaac-lab` | Same gap as above, other design (2026-09-18 merge): the whole stiffness × damping grid as parallel envs in one scene, input `traj.npz` from `scripts/s5_prepare_replay.py`. Never run yet. |
+| `grasp_attach.py` | inside `isaac-lab` (imported, not run directly) | S5 gap 3: `ScriptedGraspAttach` — kinematic object attach/detach, triggered off the real recorded gripper channel. `[AI提議]`, not `[Eric決定]` — see module docstring. |
+| `verify_grasp_attach.py` | inside `isaac-lab` | Smoke test for `grasp_attach.py`. Run 2026-09-18 against uvc_60 episode 0: state machine fires correctly (attach/detach at frame 226/382, and again 401/464 — a real second regrasp in the raw gripper trace, not a bug). Tests the mechanism only, not real-world grasp success — see script docstring. |
+| `inspect_mimic_axis.py` | inside `isaac-lab` (no `--enable_cameras` needed) | Read-only: prints the actual `RevoluteJoint.axis` and `PhysxMimicJointAPI` attributes for the gripper joints. Runs in seconds — use this before reaching for `verify_mimic_gearing.py` to check a hypothesis about the USD's own contents. |
+| `verify_mimic_gearing.py` | inside `isaac-lab` | S5 gap 2: commands `gripper_joint_1` to two poses, reads back `gripper_joint_2`, renders a close-up (or `--no-render` for a fast numbers-only check). Run 2026-09-18, closed the gap — see "Two gaps" §2 below. |
+| `run_in_container.sh` | host | Copies `sim/*.py` into `~/isaaclab_volume/omx_sim/` and runs one of them in the container. **Does not copy dataset parquet files** — `fit_drive_gains.py`/`verify_grasp_attach.py` need that copied in separately, see their docstrings. |
 
 ## Usage
 
@@ -43,7 +50,7 @@ purpose**. It is a build artefact: the reproducible things are this directory an
 | drive stiffness | 🔴 0.41 / 1.38 / 4.58 / 3.39 / 0.27 / 0.03 — no relation to the motors | derived from stall torque |
 | drive damping | 🔴 **0.0 on every joint** — an undamped position drive | 5 % of stiffness |
 | collision approximation | 🔴 14 × `convexHull` (arm) + 8 × `convexDecomposition` | 8 × `convexDecomposition`, no hulls |
-| mimic on `gripper_joint_2` | ✅ present | ✅ present (re-applied in post-processing) |
+| mimic on `gripper_joint_2` | ✅ present | ✅ present, **but see "Two gaps" §2 below — "present" alone did not mean "correct"** |
 | articulation roots | ⚠️ **two** — `/World/car/...` and `/World/omx_f/...` | one |
 | total mass | 54.24 kg (car included) | **0.5588 kg** ↔ ROBOTIS quotes 560 g |
 
@@ -107,17 +114,95 @@ constraint. Isaac Lab's warning is generic (it does not know about the mimic rel
 be ignored for this joint specifically — but if a NEW joint ever shows up in this warning, that
 one probably does need an actuator entry.
 
-## Two gaps that are NOT closed
+## One gap closed, one still not, plus a new one it exposed
 
-1. 🔴 **Drive gains are provisional.** `stiffness = stall_torque / 5°`, `damping = 0.05 × stiffness`
-   is dimensionally honest and reproducible, but it is not a calibration. Closing this needs a fit
-   against real recorded trajectories (D029). Until then, do not claim the simulated arm's dynamics
-   resemble the real one's.
-2. 🔴 **The mimic gearing sign is unverified.** The URDF says `multiplier="-1"`; the USD is written
-   with `gearing=1.0`, reproducing what Isaac Sim's own GUI importer produced from this same URDF.
-   URDF's mimic tag and PhysX's mimic constraint do not share a sign convention, so neither value can
-   be trusted from the spec alone. **The gripper open/close row of the 5-pose test (S4 §5-1) settles
-   it** — `--mimic-gearing` is a flag for exactly that reason.
+1. 🔴 **Drive gains are provisional, and now there's a real number attached.** `fit_drive_gains.py`
+   (S5 gap 1) replayed uvc_60 episode 0 (534 frames) open-loop against 5 gain/sign combos in the
+   `isaac-lab` container, 2026-09-18:
+
+   > 🔴 **Void — rerun.** These runs read `.pos` as degrees; it is normalised −100..100 / 0..100
+   > (`joint_mapping.py` docstring, 2026-09-18 merge correction). Body angles were ~1.8× too small.
+
+   | run | stiffness×/damping×/effort× | `shoulder_lift` p50/p95/max (deg) | `elbow_flex` p50/p95/max (deg) |
+   |---|---|---|---|
+   | baseline | 1× / 1× / 1× | 103.9 / 151.4 / 151.6 | 23.9 / 61.9 / 73.6 |
+   | | 20× / 20× / 1× (ratio-preserved) | 103.9 / 151.4 / 151.6 | 23.4 / 62.3 / 74.4 |
+   | `--sign-override shoulder_lift=-1` | 1× / 1× / 1× | 73.6 / 127.2 / 127.4 | 24.9 / 62.8 / 92.6 |
+   | **`--effort-scale 10`** | 4× / 4× / **10×** | **6.4 / 9.8 / 26.8** | **8.0 / 9.2 / 13.0** |
+
+   The other four joints all track to p50 < 2.1° regardless of scale. **The real finding, found in
+   this order:** (1) a 20× stiffness range with the damping ratio held fixed does not move the
+   error at all, which rules out "just needs a bigger gain" — but that sweep only ever touched
+   `stiffness`/`damping`, never `effort_limit` (capped at the real motor's rated stall torque,
+   `omx_scene_cfg.py`); (2) `omx_constants.py`'s own gain law is "full torque at 5° of lag", so any
+   real dynamic segment with more than ~5° of lag is *already* commanding the torque ceiling at 1×
+   stiffness — scaling stiffness further changes nothing because the ceiling, not the gain below
+   it, is what's binding; (3) the new `--effort-scale` flag confirms this directly: raising the
+   ceiling 10× (to ~5.2 N·m on a 0.52 N·m motor) collapsed `shoulder_lift`'s p50 from 104° to 6.4°
+   and `elbow_flex`'s from 24° to 8.0°, **with SIGN left at the default +1**. That also makes the
+   `--sign-override` row above look like a confound, not a real fix — independently confirmed by
+   working out `shoulder_lift`'s physical direction from `reach_logger/fk.py` (URDF geometry,
+   itself checked against real tape measurements in S1): positive angle numerically lowers the
+   elbow, negative raises it, and the real episode's `shoulder_lift` reading goes +37°→-6° exactly
+   across the grasp-then-lift transition (frame ~226, matching gap 3's own detected attach frame)
+   — consistent with SIGN=+1 being correct, not a coincidence of picking the "wrong" combo that
+   happened to need less torque.
+
+   **Still open, and it's a judgment call, not an engineering one:** `--effort-scale 10` is
+   deliberately unrealistic — 5.2 N·m on a motor rated for 0.52 N·m is not a calibration, it is
+   trading physical accuracy for visual tracking. Whether that trade is acceptable depends on what
+   S5's replay data is *for* (§1: visual variety for training, not a sim2real dynamics claim — so
+   maybe fine, if `meta` says so explicitly) versus any use that implies the simulated dynamics
+   resemble the real arm's (not fine without knowing why the real motor's own rated torque isn't
+   enough, and by how much). The five-pose test (S4 §5-1) is still the only clean way to fully rule
+   out a residual sign problem hiding under the effort-limit effect — two independent pieces of
+   evidence now point to SIGN=+1, but neither is the isolated single-joint measurement that test
+   would give. Full detail: `docs/specs/S5_sim_replay_augmentation.md` §2's 2026-09-18 update.
+2. ✅ **The mimic gearing sign is CLOSED — `gearing=1.0` (the default) is correct.** Run 2026-09-18
+   with `verify_mimic_gearing.py` (both `--no-render` numbers and a camera render):
+
+   ```
+   gearing=+1.0 -> gripper_joint_1 +89.9deg, gripper_joint_2 ~ -45deg  (mirrored -- correct)
+   gearing=-1.0 -> gripper_joint_1 +89.9deg, gripper_joint_2 ~ +47deg  (same-direction -- wrong)
+   ```
+
+   Renders confirm it visually: at `gearing=-1.0`'s value one finger swings out and the other stays
+   put; at `+1.0` both fingers open symmetrically. **But the sign was never actually the blocker** —
+   both signs initially showed `gripper_joint_2` moving <0.15° while `gripper_joint_1` swept 90°, and
+   two real bugs in `convert_omx_urdf.py` had to be fixed before either sign produced real motion:
+
+   - `referenceJointAxis` was `"rotX"`; `inspect_mimic_axis.py` showed both gripper joints'
+     `RevoluteJoint.axis` is actually `Z` (matches the URDF's `<axis xyz="0 0 1"/>`). Tracking a
+     reference axis the master joint doesn't rotate about made the reference quantity ~constant
+     regardless of gearing. Fixed to `"rotZ"`.
+   - `gripper_joint_2` was given `gripper_joint_1`'s own (nonzero) drive stiffness/damping "so the
+     pair is consistent" — but the URDF converter turns that into an actual USD-level PD position
+     drive targeting the joint's initial pose (0 rad). That drive (comparatively stiff) fought the
+     mimic constraint (`naturalFrequency=25`, `dampingRatio=0.005` — soft, carried over unchanged
+     from the 8/28 GUI import) and mostly won. **This was the dominant cause**, not the axis. Fixed
+     by zeroing `gripper_joint_2`'s own stiffness/damping — it is now genuinely undriven, governed
+     only by the mimic constraint, matching what the "Non-fatal" note below already assumed was true.
+
+   ⚠️ **New gap this exposed, not yet closed:** even fixed, `gripper_joint_2`'s swing is only ~50% of
+   `gripper_joint_1`'s (ratio ≈ -0.5, stable across 90 vs 300 settle steps — not a convergence delay).
+   Likely the same never-calibrated `naturalFrequency`/`dampingRatio` pair, or an unpatched limit/force
+   on `gripper_joint_2` itself (it isn't in `K.JOINTS`, so the `convert_omx_urdf.py` limit-patching loop
+   skips it). Means a sim replay's gripper currently opens/closes at roughly half the real recorded
+   amplitude. Scope: closer to gap 1 (gain calibration) than gap 2 (direction) — tracked separately.
+   Full detail: `docs/specs/S5_sim_replay_augmentation.md` §2's 2026-09-18 update.
+
+## 🔴 `simulation_app.close()` does not reliably end the process
+
+Observed 2026-09-18 across multiple scripts (`fit_drive_gains.py`, `verify_grasp_attach.py`, and
+independently, on a different machine, `verify_mimic_gearing.py` — every one of its four runs had
+to be `kill -9`'d): the script finishes its work, writes its output file, calls
+`simulation_app.close()` — and the `/isaac-sim/kit/python/bin/python3` process keeps running and
+burning CPU anyway (one instance sat at 3.5 CPU-hours after its output was already on disk).
+**Happens with `--no-render` too** — no camera/RTX involvement required to trigger it, so it isn't
+specific to the RTX shutdown path. This is environment behaviour, not a bug in any one script. **When running
+anything in `sim/` inside the container: poll for the output file's existence
+(`docker exec isaac-lab test -f <path>`), don't wait for the shell command to return — then
+`docker exec isaac-lab pkill -9 -f <script.py>` once the output is there.**
 
 ## Units trap (cost one debugging round)
 

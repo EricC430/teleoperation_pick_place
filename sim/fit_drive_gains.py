@@ -1,82 +1,97 @@
-"""S5 gap 1 — fit the drive gains against real recorded trajectories (D029, sim/README.md gap #1).
+"""S5 gap 1 -- score (not yet: calibrate) the provisional drive gains against a real trajectory.
 
-Input is `traj.npz` from `scripts/s5_prepare_replay.py` (host side). Each gain candidate gets its own
-env, so a whole grid replays in one pass:
+Context: `sim/README.md` "the provisional drive gains cannot hold the arm's own weight" -- holding
+the all-zero pose for 1s drifts 19-35 deg. `omx_constants.stiffness/damping` is
+`stall_torque / 5deg` and `5% of stiffness` -- dimensionally honest, reproducible, and never fit
+against anything real. `S5_sim_replay_augmentation.md` §2 gap 1 / `docs/decisions.md` D029 say the
+fix is a fit against a real `(action, observation.state)` trajectory, not another guessed
+constant. This script replays ONE real episode's `action` open-loop through the Isaac Lab
+articulation (position control, no vision, no object) and scores the result against that same
+episode's `observation.state`, for one candidate (stiffness_scale, damping_scale) pair.
 
-  stiffness = stall_torque / tracking_error      (tracking_error swept, current rule = 5 deg)
-  damping   = damping_fraction * stiffness       (damping_fraction swept, current rule = 0.05)
+🔴 Runs ONE combo per process, on purpose. An earlier draft tried to sweep a grid of scales inside
+a single simulation_app by rebuilding the scene per combo -- rebuilding/destroying an
+InteractiveScene+Articulation mid-process is not something this repo's other sim/ scripts do, and
+without a container to actually test it in, claiming that works would be a guess wearing a
+calibration's clothes. Sweep externally instead (cheap: each run is a few hundred physics steps,
+no rendering):
 
-For every frame t: command action[t], step one dataset frame (1/fps s), compare the sim joint angles
-with the REAL state[t+1]. Scored on the five body joints only — the real gripper stalls on the object
-and there is no object here, so gripper error would reward the wrong thing.
+    for s in 1 2 4 8 16; do
+      for d in 1 2 4; do
+        ./sim/run_in_container.sh fit_drive_gains.py --dataset-root "$DS" --episode 0 \\
+            --stiffness-scale "$s" --damping-scale "$d" --headless \\
+            --out "/workspace/test_isaaclab/omx_sim/gain_fit_ep0_s${s}_d${d}.json"
+      done
+    done
 
-Read the result against `real_tracking.json` (same script, host side): the real follower's own
-|action[t] - state[t+1]|. A sim that tracks its command much better than the real arm does is too
-stiff even when its error against state is small.
+Then compare the printed/written `agg_p50_deg` across the output files by hand -- there is no
+aggregator script here; writing one before a single real number has come back would be exactly
+the "guessed a bigger constant" mistake `sim/README.md` already warns against.
 
-    ./sim/run_in_container.sh fit_drive_gains.py --headless \
-        --traj /workspace/test_isaaclab/omx_sim/s5_prep/uvc_60/traj.npz --episodes 0,10,20,30,40,50
+🔴 2026-09-18: runs made before the merge read `.pos` as degrees (see `joint_mapping.py` docstring) --
+their numbers are void; rerun. (`actions_deg`/`states_deg` below hold LeRobot `.pos` units, the
+names predate the fix.)
 
-🔴 Precondition: `joint_mapping.py` signs / zero offsets are [未確認]. A wrong sign turns this into
-   fitting gains against a mirrored trajectory — gravity loads land on the wrong side and the best
-   candidate means nothing. Run the S4 §5-1 five-pose comparison first, or read the result as a smoke
-   test of the machinery only.
-🔴 This script never writes `omx_constants.py`. It prints and saves a ranking; a human decides.
+⚠️ UNVERIFIED PREREQUISITE (inherited from `joint_mapping.py`): the recorded `.pos` -> sim-radians
+SIGN convention defaults to +1 for all six joints and has not been confirmed by the five-pose test
+(S4 §5-1). A large, joint-specific error here could be a sign bug, not a gain problem -- read
+`joint_mapping.py`'s docstring before reading a bad per-joint number as "this joint's gain is off".
+
+The dataset lives in this repo's git history, not under `~/isaaclab_volume` --
+`run_in_container.sh` does not copy it (only `sim/*.py` and the placement CSVs). Copy the episode
+data in first (parquet only -- no need for the video files this script never reads):
+
+    mkdir -p ~/isaaclab_volume/omx_sim/dataset
+    cp -r data/huggingface/lerobot/ericc430/omx_pick_place_pilot_uvc_60/data \\
+          ~/isaaclab_volume/omx_sim/dataset/
+
+    ./sim/run_in_container.sh fit_drive_gains.py \\
+        --dataset-root /workspace/test_isaaclab/omx_sim/dataset --episode 0 --headless \\
+        --out /workspace/test_isaaclab/omx_sim/gain_fit_ep0_baseline.json
+
+`--dataset-root` needs a `data/chunk-*/file-*.parquet` layout underneath it (i.e. point it at the
+directory that CONTAINS `data/`, matching the HF dataset repo layout) -- this script does not need
+`meta/info.json`, the column order is hardcoded from `joint_mapping.DATASET_JOINT_ORDER` and
+cross-checked against `omx_constants.JOINTS` at import time.
 """
 
 from __future__ import annotations
 
 import argparse
-import itertools
+import glob
 import json
-import math
 import os
 import sys
 
 from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-parser.add_argument("--traj", required=True, help="traj.npz from scripts/s5_prepare_replay.py")
-parser.add_argument("--episodes", default=None, help="comma-separated episode indices (default: all in the npz)")
-parser.add_argument("--tracking-error-deg", default="0.5,1,2,5,10", help="stiffness = stall_torque / this")
-parser.add_argument("--damping-fraction", default="0.02,0.05,0.1,0.2,0.5", help="damping = this * stiffness")
-parser.add_argument("--dt", type=float, default=1.0 / 120.0, help="physics dt (s); must divide 1/fps")
-parser.add_argument("--max-frames", type=int, default=None, help="truncate each episode (for a quick run)")
-parser.add_argument("--out", default="/workspace/test_isaaclab/omx_sim/out/fit_drive_gains")
-parser.add_argument("--dry-run", action="store_true", help="print the grid and the data summary, do not start Isaac Sim")
+parser.add_argument("--dataset-root", required=True, help="dir containing data/chunk-*/file-*.parquet")
+parser.add_argument("--episode", type=int, required=True)
+parser.add_argument("--stiffness-scale", type=float, default=1.0, help="multiplies omx_constants.stiffness()")
+parser.add_argument("--damping-scale", type=float, default=1.0, help="multiplies omx_constants.damping()")
+parser.add_argument(
+    "--effort-scale",
+    type=float,
+    default=1.0,
+    help="multiplies the actuator effort_limit (default: the real motor's rated stall torque, "
+    "omx_scene_cfg.py). A stiffness-scale sweep with this left at 1.0 only tests gains UP TO "
+    "whatever torque the real motor could actually produce -- if the commanded torque is already "
+    "saturating that cap, more stiffness does nothing, sign-correct or not. This flag tests "
+    "whether the ceiling itself, not the gain below it, is what's binding.",
+)
+parser.add_argument(
+    "--sign-override",
+    default="",
+    help="e.g. 'shoulder_lift=-1' or 'shoulder_lift=-1,elbow_flex=-1' -- overrides joint_mapping.SIGN "
+    "for the named joint(s) for this run only, to test a candidate sign without waiting for the "
+    "five-pose test (S4 §5-1). See joint_mapping.py's docstring for why SIGN defaults to +1.",
+)
+parser.add_argument("--out", required=True, help="where to write the JSON report")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-import numpy as np  # noqa: E402
-
-import joint_mapping as JM  # noqa: E402
-import omx_constants as K  # noqa: E402
-
-BODY = 5  # first five columns of the npz are the body joints
-
-data = np.load(args.traj)
-fps = int(data["fps"])
-ep_all = data["episode_index"]
-episodes = sorted({int(e) for e in args.episodes.split(",")}) if args.episodes else sorted(np.unique(ep_all).tolist())
-substeps = round((1.0 / fps) / args.dt)
-if abs(substeps * args.dt - 1.0 / fps) > 1e-9:
-    raise SystemExit(f"--dt {args.dt} does not divide 1/fps = {1.0 / fps}")
-if tuple(data["joint_names"].tolist()) != JM.URDF_NAMES:
-    raise SystemExit(f"🔴 npz joint order {data['joint_names'].tolist()} != {JM.URDF_NAMES}")
-
-grid = list(itertools.product([float(x) for x in args.tracking_error_deg.split(",")],
-                              [float(x) for x in args.damping_fraction.split(",")]))
-print(f"traj      : {args.traj}  ({fps} fps, {substeps} physics steps per frame at dt={args.dt:.5f})")
-print(f"source    : {data['source']}   mapping: {data['mapping_note']}")
-print(f"episodes  : {episodes}")
-print(f"grid      : {len(grid)} candidates = one env each")
-print(f"current rule: tracking_error {math.degrees(K.GAIN_TRACKING_ERROR_RAD):.1f} deg, damping_fraction {K.GAIN_DAMPING_FRACTION}")
-if args.dry_run:
-    for i, (te, df) in enumerate(grid):
-        print(f"  env {i:>2}: tracking_error {te:5.2f} deg  damping_fraction {df:.3f}")
-    raise SystemExit(0)
 
 app_launcher = AppLauncher(args)
 simulation_app = app_launcher.app
@@ -84,100 +99,159 @@ simulation_app = app_launcher.app
 import torch  # noqa: E402
 
 import isaaclab.sim as sim_utils  # noqa: E402
-from isaaclab.scene import InteractiveScene  # noqa: E402
+from isaaclab.assets import ArticulationCfg, AssetBaseCfg  # noqa: E402
+from isaaclab.scene import InteractiveScene, InteractiveSceneCfg  # noqa: E402
+from isaaclab.utils import configclass  # noqa: E402
 
+import joint_mapping as JM  # noqa: E402
+import omx_constants as K  # noqa: E402
 import omx_scene_cfg as SC  # noqa: E402
 
-sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=args.dt, device=args.device))
-scene = InteractiveScene(SC.OmxArmOnlySceneCfg(num_envs=len(grid), env_spacing=1.0))
+RAD2DEG = 180.0 / 3.141592653589793
+DATASET_FPS = 15.0  # meta/info.json "fps" -- every campaign so far agrees; not re-read from disk
+
+if args.sign_override:
+    for entry in args.sign_override.split(","):
+        name, val = entry.split("=")
+        name = name.strip()
+        if name not in JM.SIGN:
+            raise SystemExit(f"--sign-override: {name!r} is not one of {JM.DATASET_JOINT_ORDER}")
+        JM.SIGN[name] = float(val)
+    print(f"⚠️  SIGN overridden for this run only (not saved back to joint_mapping.py): {JM.SIGN}")
+
+
+def load_episode(dataset_root: str, episode: int):
+    """Pure-pyarrow parquet load -- avoids depending on the `lerobot` pip package, which
+    `/isaac-sim/python.sh` (the interpreter `run_in_container.sh` uses) is not known to have."""
+    try:
+        import pyarrow.parquet as pq
+    except ImportError as e:
+        raise SystemExit(
+            "pyarrow not importable in this python -- install it in the container once: "
+            "/isaac-sim/python.sh -m pip install pyarrow"
+        ) from e
+
+    files = sorted(glob.glob(os.path.join(dataset_root, "data", "chunk-*", "file-*.parquet")))
+    if not files:
+        raise SystemExit(f"no parquet files under {dataset_root}/data/chunk-*/file-*.parquet")
+
+    rows = []
+    for f in files:
+        d = pq.read_table(f, columns=["episode_index", "frame_index", "action", "observation.state"]).to_pydict()
+        for ep, fi, act, st in zip(d["episode_index"], d["frame_index"], d["action"], d["observation.state"]):
+            if ep == episode:
+                rows.append((fi, act, st))
+    if not rows:
+        raise SystemExit(f"episode {episode} not found under {dataset_root}")
+    rows.sort(key=lambda r: r[0])
+    actions = [r[1] for r in rows]
+    states = [r[2] for r in rows]
+    return actions, states
+
+
+actions_deg, states_deg = load_episode(args.dataset_root, args.episode)
+n_frames = len(actions_deg)
+print(f"episode {args.episode}: {n_frames} frames loaded from {args.dataset_root}")
+print(f"stiffness_scale={args.stiffness_scale}  damping_scale={args.damping_scale}  effort_scale={args.effort_scale}  (1.0 = omx_constants provisional)")
+
+actions_rad = [JM.row_to_sim_rad(r) for r in actions_deg]
+states_rad = [JM.row_to_sim_rad(r) for r in states_deg]
+
+substeps = round(120.0 / DATASET_FPS)  # sim solver runs at 1/120s; hold each dataset-fps target that many steps
+
+
+@configclass
+class GainFitSceneCfg(InteractiveSceneCfg):
+    ground = AssetBaseCfg(prim_path="/World/GroundPlane", spawn=sim_utils.GroundPlaneCfg())
+    dome_light = AssetBaseCfg(
+        prim_path="/World/DomeLight", spawn=sim_utils.DomeLightCfg(intensity=1200.0, color=(1.0, 1.0, 1.0))
+    )
+    robot: ArticulationCfg = SC.omx_articulation_cfg("{ENV_REGEX_NS}/Robot")
+
+
+scene_cfg = GainFitSceneCfg(num_envs=1, env_spacing=2.0, replicate_physics=False)
+
+# scale every joint's gains uniformly -- see the module docstring for why this is a global,
+# not per-joint, scale for the first pass.
+for j in K.JOINTS:
+    act = scene_cfg.robot.actuators[j.urdf_name]
+    act.stiffness = K.stiffness(j) * args.stiffness_scale
+    act.damping = K.damping(j) * args.damping_scale
+    act.effort_limit = j.motor.stall_torque_nm * args.effort_scale
+
+# start at the recorded first frame's pose, not the zero pose -- avoids an irrelevant transient
+# from "sim starts folded, real starts mid-reach" dominating the error metric. Real hardware
+# cannot teleport into position; sim can, and S5's own §5 item 1 asks for a meaningful comparison,
+# not a replay of a problem this script isn't trying to measure.
+joint_names = [j.urdf_name for j in K.JOINTS]
+first_pose = {name: val for name, val in zip(joint_names, actions_rad[0])}
+first_pose[K.MIMIC_JOINT[0]] = 0.0
+scene_cfg.robot.init_state.joint_pos = first_pose
+
+sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=1.0 / 120.0, device=args.device))
+scene = InteractiveScene(scene_cfg)
 sim.reset()
+
 robot = scene["robot"]
-dev = sim.device
-n_env = len(grid)
+joint_idx = [robot.joint_names.index(n) for n in joint_names]
 
-ids = [robot.find_joints(n)[0][0] for n in JM.URDF_NAMES]
-mimic_id = robot.find_joints(K.MIMIC_JOINT[0])[0][0]
-all_env = torch.arange(n_env, device=dev)
+errors_deg = [[] for _ in range(6)]  # per dataset joint, degrees
 
-# per-env gains, per joint (radian convention, like omx_scene_cfg)
-stiff = torch.zeros(n_env, len(ids), device=dev)
-damp = torch.zeros(n_env, len(ids), device=dev)
-for e, (te_deg, dfrac) in enumerate(grid):
-    for j, joint in enumerate(K.JOINTS):
-        stiff[e, j] = joint.motor.stall_torque_nm / math.radians(te_deg)
-        damp[e, j] = dfrac * stiff[e, j]
-robot.write_joint_stiffness_to_sim(stiff, joint_ids=ids, env_ids=all_env)
-robot.write_joint_damping_to_sim(damp, joint_ids=ids, env_ids=all_env)
+target = robot.data.default_joint_pos.clone()
+for t in range(n_frames - 1):
+    for k, i in enumerate(joint_idx):
+        target[:, i] = actions_rad[t][k]
+    for _ in range(substeps):
+        robot.set_joint_position_target(target)
+        scene.write_data_to_sim()
+        sim.step()
+        scene.update(sim.get_physics_dt())
 
-errors = [[] for _ in range(n_env)]  # per env: list of (frames, 5) abs errors in deg
-limit_hits = 0
-for ep in episodes:
-    sel = ep_all == ep
-    act = torch.tensor(data["action_rad"][sel], device=dev)
-    st = torch.tensor(data["state_rad"][sel], device=dev)
-    if args.max_frames:
-        act, st = act[: args.max_frames + 1], st[: args.max_frames + 1]
+    real_next_rad = states_rad[t + 1]
+    for k, i in enumerate(joint_idx):
+        sim_rad = robot.data.joint_pos[0, i].item()
+        err_deg = abs(sim_rad - real_next_rad[k]) * RAD2DEG
+        errors_deg[k].append(err_deg)
 
-    # start every env exactly at the real first state
-    q0 = robot.data.default_joint_pos.clone()
-    q0[:, ids] = st[0]
-    q0[:, mimic_id] = K.MIMIC_JOINT[2] * st[0, 5]
-    lim = robot.data.joint_pos_limits[0, ids]
-    outside = ((st < lim[:, 0]) | (st > lim[:, 1])).any(dim=0)
-    if outside.any():
-        limit_hits += 1
-        names = [JM.URDF_NAMES[j] for j in torch.nonzero(outside).flatten().tolist()]
-        print(f"  ⚠️ ep {ep}: real state leaves the USD joint limits on {names} — clamped in sim (mapping 未確認?)")
-    scene.reset()
-    robot.write_joint_state_to_sim(q0, torch.zeros_like(q0))
+    if t % max(1, (n_frames // 10)) == 0:
+        print(f"  frame {t}/{n_frames}")
 
-    target = q0.clone()
-    ep_err = torch.zeros(n_env, len(act) - 1, BODY, device=dev)
-    for t in range(len(act) - 1):
-        target[:, ids] = act[t]
-        for _ in range(substeps):
-            robot.set_joint_position_target(target)
-            scene.write_data_to_sim()
-            sim.step()
-            scene.update(args.dt)
-        ep_err[:, t] = (robot.data.joint_pos[:, ids[:BODY]] - st[t + 1, :BODY]).abs()
-    for e in range(n_env):
-        errors[e].append(torch.rad2deg(ep_err[e]).cpu().numpy())
-    print(f"  ep {ep}: {len(act) - 1} frames replayed")
 
-results = []
-for e, (te_deg, dfrac) in enumerate(grid):
-    err = np.concatenate(errors[e], axis=0)
-    per_joint = {JM.URDF_NAMES[j]: {"p50": float(np.percentile(err[:, j], 50)),
-                                    "p95": float(np.percentile(err[:, j], 95)),
-                                    "max": float(err[:, j].max())} for j in range(BODY)}
-    results.append({"tracking_error_deg": te_deg, "damping_fraction": dfrac,
-                    "score_p95_all_body": float(np.percentile(err, 95)),
-                    "p50_all_body": float(np.percentile(err, 50)), "joints": per_joint})
-results.sort(key=lambda r: r["score_p95_all_body"])
+def pctl(vals, p):
+    s = sorted(vals)
+    idx = min(len(s) - 1, max(0, round(p / 100.0 * (len(s) - 1))))
+    return s[idx]
 
-print(f"\nsim joint angle vs REAL state[t+1], body joints, deg — ranked by p95 over all joints/frames")
-print(f"{'rank':>4}{'track_err':>11}{'damp_frac':>11}{'p50':>8}{'p95':>8}   " + "".join(f"{n:>9}" for n in JM.URDF_NAMES[:BODY]))
-for r_i, r in enumerate(results, start=1):
-    per = "".join(f"{r['joints'][n]['p95']:9.2f}" for n in JM.URDF_NAMES[:BODY])
-    print(f"{r_i:>4}{r['tracking_error_deg']:11.2f}{r['damping_fraction']:11.3f}{r['p50_all_body']:8.2f}{r['score_p95_all_body']:8.2f}   {per}")
 
-best = results[0]
-te_vals = sorted({g[0] for g in grid})
-df_vals = sorted({g[1] for g in grid})
-edge = best["tracking_error_deg"] in (te_vals[0], te_vals[-1]) or best["damping_fraction"] in (df_vals[0], df_vals[-1])
-if edge:
-    print("\n⚠️  best candidate sits on the EDGE of the grid — the optimum may lie outside it; widen before trusting it")
-if limit_hits:
-    print(f"⚠️  {limit_hits} episode(s) left the USD limits — suspect joint_mapping signs/offsets before the gains")
-print("Compare the per-joint p95 above with real_tracking.json (the real arm's own lag-1 error).")
-print("🔴 Nothing was written to omx_constants.py.")
+print(f"\n{'joint':<16}{'p50(deg)':>10}{'p95(deg)':>10}{'max(deg)':>10}")
+report_joints = {}
+for name, errs in zip(JM.DATASET_JOINT_ORDER, errors_deg):
+    p50, p95, mx = pctl(errs, 50), pctl(errs, 95), max(errs)
+    print(f"{name:<16}{p50:>10.2f}{p95:>10.2f}{mx:>10.2f}")
+    report_joints[name] = {"p50_deg": p50, "p95_deg": p95, "max_deg": mx}
 
-os.makedirs(args.out, exist_ok=True)
-out_path = os.path.join(args.out, "fit_drive_gains.json")
-with open(out_path, "w", encoding="utf-8") as fh:
-    json.dump({"traj": args.traj, "source": str(data["source"]), "episodes": episodes, "fps": fps, "dt": args.dt,
-               "mapping_note": str(data["mapping_note"]), "best_on_grid_edge": edge,
-               "episodes_outside_limits": limit_hits, "ranking": results}, fh, indent=2, ensure_ascii=False)
-print(f"wrote {out_path}")
+agg_p50 = sum(v["p50_deg"] for v in report_joints.values()) / 6.0
+print(f"\naggregate (mean of per-joint p50): {agg_p50:.2f} deg")
+print("compare this file's agg_p50_deg against other --stiffness-scale/--damping-scale runs by hand (see module docstring)")
+print("⚠️  SIGN is [未確認] for every joint (joint_mapping.py) -- a bad number here could be a sign bug, not a gain bug")
+
+os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
+with open(args.out, "w") as fh:
+    json.dump(
+        {
+            "source_episode_id": args.episode,
+            "dataset_root": args.dataset_root,
+            "n_frames": n_frames,
+            "stiffness_scale": args.stiffness_scale,
+            "effort_scale": args.effort_scale,
+            "damping_scale": args.damping_scale,
+            "sign_unverified": True,
+            "per_joint": report_joints,
+            "agg_p50_deg": agg_p50,
+        },
+        fh,
+        indent=2,
+    )
+print(f"\nwrote {args.out}")
+
 simulation_app.close()

@@ -117,9 +117,20 @@ os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
 stiff = {j.urdf_name: K.stiffness(j) for j in K.JOINTS}
 damp = {j.urdf_name: K.damping(j) for j in K.JOINTS}
-# gripper_joint_2 is a mimic follower; give it its master's gains so the pair is consistent.
-stiff[K.MIMIC_JOINT[0]] = stiff[K.MIMIC_JOINT[1]]
-damp[K.MIMIC_JOINT[0]] = damp[K.MIMIC_JOINT[1]]
+# 🔴 2026-09-18 fix: gripper_joint_2 is a mimic follower and must be UNDRIVEN at the USD level --
+# it is meant to be governed only by the PhysxMimicJointAPI constraint applied further down.
+# This previously copied gripper_joint_1's (nonzero) gains onto gripper_joint_2 "so the pair is
+# consistent" -- but the URDF converter's joint_drive config applies those gains as an actual
+# PhysX position drive targeting gripper_joint_2's initial pose (0 rad, from
+# omx_scene_cfg.py's ArticulationCfg.init_state). That drive actively held the joint near 0
+# and fought the (much softer, naturalFrequency=25/dampingRatio=0.005) mimic constraint -- the
+# leading hypothesis (not yet re-verified as of this edit) for why gripper_joint_2 moved <0.15deg
+# while gripper_joint_1 swept 90deg with BOTH +1.0 and -1.0 gearing (sim/verify_mimic_gearing.py
+# --no-render). Re-run that script after this change before trusting it. Probably not a sign or
+# axis bug alone -- see sim/inspect_mimic_axis.py for the referenceJointAxis fix made alongside
+# this one, which by itself did NOT change the measured ratio.
+stiff[K.MIMIC_JOINT[0]] = 0.0
+damp[K.MIMIC_JOINT[0]] = 0.0
 
 cfg = UrdfConverterCfg(
     asset_path=urdf_path,
@@ -203,7 +214,13 @@ elif any("Mimic" in sch for sch in follower.GetAppliedSchemas()):
 else:
     api = PhysxSchema.PhysxMimicJointAPI.Apply(follower, "rotZ")
     api.CreateReferenceJointRel().SetTargets([master.GetPath()])
-    api.CreateReferenceJointAxisAttr().Set("rotX")
+    # 🔴 2026-09-18 fix: both gripper joints' UsdPhysics.RevoluteJoint.axis is Z (matches the
+    # URDF's <axis xyz="0 0 1"/> on both), confirmed with sim/inspect_mimic_axis.py. This was
+    # previously "rotX", which referenced an axis gripper_joint_1 does not rotate about, so the
+    # mimic constraint tracked a reference quantity that never changed -- gripper_joint_2 stayed
+    # within ~0.1deg of zero regardless of gearing sign (measured with verify_mimic_gearing.py on
+    # both +1.0 and -1.0). Not a sign bug; a reference-axis bug.
+    api.CreateReferenceJointAxisAttr().Set("rotZ")
     api.CreateGearingAttr().Set(float(args.mimic_gearing))
     api.CreateOffsetAttr().Set(0.0)
     # naturalFrequency / dampingRatio are present on the GUI-imported asset but are not exposed
