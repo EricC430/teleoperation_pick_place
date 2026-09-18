@@ -158,10 +158,19 @@ one probably does need an actuator entry.
 
    **Where this work still lives:** gap 1 remains a hard dependency for **S4** (live teleop-in-sim
    has no already-recorded outcome to copy — the sim really does have to control the arm in real
-   time), so `fit_drive_gains.py` and the numbers above are not discarded, just re-homed. And the
-   five-pose test (S4 §5-1) is still needed regardless: a kinematic replay still converts recorded
-   degrees to sim radians via `joint_mapping.py`, and a flipped SIGN still renders a mirrored arm —
-   it just no longer comes tangled up with gains and torque.
+   time), so `fit_drive_gains.py` and the numbers above are not discarded, just re-homed.
+
+   **✅ The SIGN half is now settled for `shoulder_lift`, without a lab day.** Once the arm became
+   a kinematic replay, checking the sign stopped needing hardware: pose the sim at the recorded
+   `observation.state` and put the render beside the real recorded video at the same timestamp
+   (`render_state_replay.py` + `scripts/compare_sim_real_frames.py`). At episode 0 frame 226, where
+   the real arm is reaching down to the cup, SIGN=+1 renders the arm extended forward at table
+   height (matches) and the `--sign-override shoulder_lift=-1` **control** renders it pointing
+   nearly straight up (grossly wrong). The control is what makes this evidence rather than a
+   vibe — it shows the test can discriminate. Agrees with both earlier independent arguments.
+   The other five joints show no mismatch across six frames but have **no control run of their
+   own**; weakest for `wrist_roll` (subtle visual effect) and `gripper` (amplitude already known
+   wrong, gap 2 residual). See `joint_mapping.py`'s docstring for the per-joint evidence level.
 2. ✅ **The mimic gearing sign is CLOSED — `gearing=1.0` (the default) is correct.** Run 2026-09-18
    with `verify_mimic_gearing.py` (both `--no-render` numbers and a camera render):
 
