@@ -1,0 +1,112 @@
+"""LeRobot `.pos` units <-> URDF joint radians, for the OMX-F. Pure numpy — runs on the host AND in
+the isaac-lab container, so the two sides cannot disagree about units.
+
+Used by S5 (`scripts/s5_prepare_replay.py`, `sim/fit_drive_gains.py`) and meant to be reused by S4.
+
+What is VERIFIED here and what is NOT
+-------------------------------------
+`[已查證 2026-09-18]` the LeRobot side, from `lerobot/` commit a16f34c0:
+  * `OmxFollowerConfig.use_degrees` defaults to False, and no config in `configs/` sets it
+    -> the five body joints are `MotorNormMode.RANGE_M100_100`, the gripper is `RANGE_0_100`
+    (`robots/omx_follower/omx_follower.py:50-62`).
+  * normalisation is `norm = (raw - range_min) / (range_max - range_min) * 200 - 100`
+    (`motors/motors_bus.py:_normalize`), and `-norm` when `drive_mode` is set.
+  * every follower calibration in `calibration/` from 2026-09-13 on is the factory default
+    (`range_min=0, range_max=4095, drive_mode=0, homing_offset=0`), which is what makes the
+    conversion below a constant. `check_calibration()` refuses anything else.
+  * XL330/XL430 position resolution is 4096 ticks per revolution.
+
+`[未確認]` the URDF side — BODY_SIGN, BODY_ZERO_DEG, GRIPPER_SIGN, GRIPPER_ZERO_DEG:
+  whether raw tick 2048 is the URDF's zero, and whether +tick is +URDF-angle, is NOT read off any
+  spec. The defaults (+1, 0) are the simplest guess. They are settled by the S4 §5-1 five-pose
+  comparison (home / J1 only / J2 only / J3 only / gripper), not by this file. Everything downstream
+  (gain fit, replay) is only as right as these eight numbers.
+"""
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+
+LEROBOT_NAMES = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper")
+URDF_NAMES = ("joint1", "joint2", "joint3", "joint4", "joint5", "gripper_joint_1")
+
+TICKS_PER_REV = 4096
+RANGE_MIN, RANGE_MAX = 0, 4095
+CENTER_TICK = 2048
+
+# [未確認] — see the module docstring. Order follows LEROBOT_NAMES[:5].
+BODY_SIGN = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
+BODY_ZERO_DEG = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+# [未確認] Real uvc_60 data: open ~59, closed on a paper cup ~47-50 (gripper.pos units). With the
+# defaults below that is +32 deg open / -11 deg closed, and the USD limits gripper_joint_1 to
+# 0..100 deg — so at least one of these two numbers is probably wrong. The mimic check prints the
+# finger gap per angle; pick the offset that makes "59 = open" land on an open gap.
+GRIPPER_SIGN = 1.0
+GRIPPER_ZERO_DEG = 0.0
+
+
+def check_calibration(path: str | Path) -> list[str]:
+    """Return problems; empty list = the constant conversion in this module is valid."""
+    cal = json.loads(Path(path).read_text(encoding="utf-8"))
+    problems = []
+    for name in LEROBOT_NAMES:
+        c = cal.get(name)
+        if c is None:
+            problems.append(f"{name}: missing")
+            continue
+        if (c["range_min"], c["range_max"]) != (RANGE_MIN, RANGE_MAX):
+            problems.append(f"{name}: range {c['range_min']}..{c['range_max']} != factory {RANGE_MIN}..{RANGE_MAX}")
+        if c["drive_mode"] != 0:
+            problems.append(f"{name}: drive_mode={c['drive_mode']} (follower is expected to be 0)")
+    return problems
+
+
+def _norm_to_raw(x: np.ndarray, lo: float, hi: float) -> np.ndarray:
+    return (x - lo) / (hi - lo) * (RANGE_MAX - RANGE_MIN) + RANGE_MIN
+
+
+def _raw_to_motor_deg(raw: np.ndarray) -> np.ndarray:
+    return (raw - CENTER_TICK) * 360.0 / TICKS_PER_REV
+
+
+def lerobot_to_urdf_rad(pos: np.ndarray) -> np.ndarray:
+    """(..., 6) LeRobot `.pos` values in LEROBOT_NAMES order -> (..., 6) radians in URDF_NAMES order."""
+    pos = np.asarray(pos, dtype=np.float64)
+    out = np.empty_like(pos)
+    body_deg = _raw_to_motor_deg(_norm_to_raw(pos[..., :5], -100.0, 100.0))
+    out[..., :5] = np.radians(BODY_SIGN * body_deg + BODY_ZERO_DEG)
+    grip_deg = _raw_to_motor_deg(_norm_to_raw(pos[..., 5], 0.0, 100.0))
+    out[..., 5] = math.radians(1.0) * (GRIPPER_SIGN * grip_deg + GRIPPER_ZERO_DEG)
+    return out
+
+
+def urdf_rad_to_lerobot(q: np.ndarray) -> np.ndarray:
+    """Inverse of `lerobot_to_urdf_rad` (no tick quantisation, no clamping)."""
+    q = np.asarray(q, dtype=np.float64)
+    out = np.empty_like(q)
+    body_deg = (np.degrees(q[..., :5]) - BODY_ZERO_DEG) / BODY_SIGN
+    raw = body_deg * TICKS_PER_REV / 360.0 + CENTER_TICK
+    out[..., :5] = (raw - RANGE_MIN) / (RANGE_MAX - RANGE_MIN) * 200.0 - 100.0
+    grip_deg = (np.degrees(q[..., 5]) - GRIPPER_ZERO_DEG) / GRIPPER_SIGN
+    raw = grip_deg * TICKS_PER_REV / 360.0 + CENTER_TICK
+    out[..., 5] = (raw - RANGE_MIN) / (RANGE_MAX - RANGE_MIN) * 100.0
+    return out
+
+
+if __name__ == "__main__":
+    import sys
+
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    probe = np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 50.0], [100.0, -100.0, 50.0, -50.0, 10.0, 59.0]])
+    q = lerobot_to_urdf_rad(probe)
+    back = urdf_rad_to_lerobot(q)
+    np.set_printoptions(precision=3, suppress=True)
+    print("lerobot .pos         ->", probe.tolist())
+    print("urdf deg             ->", np.degrees(q).tolist())
+    print("round-trip max error ->", float(np.abs(back - probe).max()))
+    print("🔴 BODY_SIGN / BODY_ZERO_DEG / GRIPPER_SIGN / GRIPPER_ZERO_DEG are [未確認] — S4 §5-1 settles them.")

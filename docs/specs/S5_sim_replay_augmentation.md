@@ -157,3 +157,64 @@ LeRobotDataset.add_frame(...) → save_episode()　（repo_id 帶 sim_ 前綴＋
 ## 10. Cross-reference
 
 `docs/decisions.md` D021, D025, D029, D030, `docs/specs/S4_sim_teleop_collect.md`, `sim/README.md`, `eval/README.md`, `docs/phase_plan.md`（Phase B 定義）, `configs/replay_omx.yaml`（既有真實→真實 replay 的對照範本）。
+
+---
+
+## 11. 2026-09-18 四個缺口的準備工作（`[柏宇說]`「做s5的四個準備」）
+
+**範圍：只做「準備」——工具與離線分析，不是開始 §4 的 `sim_replay_augment.py` 本體。** §0 的「是否要做 S5」仍待 Eric 裁決。
+**這台是 Windows 筆電，沒有 Isaac Sim：** 標 `未在模擬器執行` 的腳本只過了語法檢查（`py_compile`），第一次在 5090 容器上跑很可能要修。
+
+| 缺口 | 產出 | 跑過了嗎 | 結果／還缺什麼 |
+|---|---|---|---|
+| 共用 | `sim/joint_mapping.py`：LeRobot `.pos` ↔ URDF 弧度 | ✅ 本機（round-trip 誤差 1e-14） | LeRobot 端 `已查證`（`use_degrees=False`、出廠校正 0–4095）。🔴 **8 個符號／零點是 `[未確認]`**，由 S4 §5-1 五姿態對照決定——缺口 1、2 的結果都以它為前提 |
+| 2 mimic | `sim/mimic_check.py`：掃 `gripper_joint_1`，量兩指在 link5 座標系的間距與中點，自動判「鏡像／同向」；`--override-gearing` 在 USD 副本上測另一個正負號 | ❌ 未在模擬器執行 | 每個候選 gearing 各跑一次，通過的值回填 `convert_omx_urdf.py --mimic-gearing` 與 `sim/README.md` |
+| 1 gains | `scripts/s5_prepare_replay.py`（主機端）→ `traj.npz`＋`real_tracking.json`；`sim/fit_drive_gains.py`（模擬端）每個增益候選一個 env，逐幀比對 sim 關節角 vs 真實 `state[t+1]` | 主機端 ✅（uvc_60，60 集 15966 幀）；模擬端 ❌ | 見下方「真實手臂的追蹤基準」。腳本**不會**寫 `omx_constants.py` |
+| 3 attach | `s5_prepare_replay.py` 的 `grasp_segments.csv`（每集夾爪閉合區段）＋下方設計選項 | ✅ 本機 | **決策未做**——選項待裁決 |
+| 4 相機 | `scripts/measure_camera_geometry.py`：`markers` / `board` / `rs-intrinsics`（`--save-image` 同時存外參用照片）/ `capture` / `checkerboard` / `extrinsics` / `selftest`；標記擺放點 `configs/camera_markers_campA_136sym_20260918.csv`（6 個分散的 placement 點） | `selftest` ✅（合成影像：相機位置還原誤差 1.77 mm、注視點 0.04 mm）；實機 ❌ | 要 lab day。**墊子上沒有 ArUco**（`make_placement_mat.py` 無此功能）→ 要另外印 `markers` 並照「印出來的上緣朝 +X」擺在墊子已知點。⚠️ **手腕相機只做得到內參**——外參（安裝偏移）要配合手臂姿態的 FK，本工具沒做 |
+
+### 11-1 uvc_60 的離線結果（`[產出物]` `outputs/s5_prep/uvc_60/`，未進 git）
+
+**真實 follower 自己的追蹤誤差** `|action[t] − state[t+1]|`（度，映射 `[未確認]` 但絕對誤差不受正負號影響）：
+
+| joint | p50 | p95 | max | 平均帶號誤差 |
+|---|---|---|---|---|
+| joint1 shoulder_pan | 0.70 | 2.99 | 8.88 | +0.11 |
+| joint2 shoulder_lift | 1.23 | 7.12 | 15.12 | **−1.57** |
+| joint3 elbow_flex | 0.53 | 1.58 | 2.90 | −0.54 |
+| joint4 wrist_flex | 1.58 | 7.03 | 13.71 | **−2.22** |
+| joint5 wrist_roll | 0.09 | 1.14 | 7.65 | −0.11 |
+
+`[AI推論]` joint2／joint4 有一致的帶號偏差，像是承重關節的重力下垂——**這正是 sim 增益要重現的東西**，sim 若在這兩個關節誤差趨近 0，代表太硬，不是比較好。
+
+**映射可疑的跡象 `[AI推論]`：** 用預設映射（符號 +1、零點 0），joint1 範圍 −101.5°～56.9°，超出 `omx_constants` 的現場扇區 −90°～45°；joint3 到 101.1°，超出原廠 +90°。可能是零點偏移，也可能扇區本身不準——**五姿態對照前不要下結論**。
+
+**夾爪：** 張開 ≈59、夾紙杯 ≈47–50（`gripper.pos`）。「數值變小＝閉合」的依據是夾住時 action 比 state 更小（ep 0：−2.4）——`[AI推論]`，手腕相機的極值畫面看不到指尖，**目視沒有確認到**。預設映射下是 −2°～38°，USD 限制 0°～100° → `GRIPPER_ZERO_DEG` 大概要調，由 `mimic_check.py` 印出的指距對照決定。
+
+**抓取分段：** 69 段閉合、60 集都有；9 集有重抓（0, 1, 2, 21, 24, 25, 31, 47, 52）。
+**第一次閉合前的幀佔 48%（7685/15966），最後一次張開後佔 18%**——`--skip-grasp-frames` 的簡化版大約能用到 2/3 的幀。
+⚠️ `stalled_on_object` 欄位是弱證據：28 段閉合沒有 stall，多數是 leader 本身就停在 ≈49.6，不代表沒夾到。
+
+### 11-2 缺口 3：attach/detach 設計選項 `[AI提議]`，🟡 待裁決
+
+| | A. 腳本化吸附（kinematic attach） | B. 物理抓取（摩擦接觸） | C. 不渲染抓取段 |
+|---|---|---|---|
+| 做法 | 在 `close_start` 把物體設為 kinematic，之後每步 `物體 pose = link5 pose ∘ 當下的相對位姿`；`close_end` 放開、恢復動力學 | 靠手指碰撞＋摩擦夾住 | `--skip-grasp-frames`，只出 approach／retreat 段 |
+| 需要先關閉的缺口 | 1（手臂要跟得上）、2（手指畫面要對） | 1、2，再加碰撞近似與摩擦參數調校 | 無 |
+| 抓取段畫面 | 有物體，但物體相對夾爪的位置是 sim 當下的，不是真實的 | 最接近真實，但最容易穿模／滑落 | 無 |
+| 可用幀 | 100% | 100%（如果調得動） | ≈66% |
+| 風險 | 真實抓取時物體可能被推動過，起點跟 `placement_id` 不同 → 吸附位置偏 | §8 已明列第一版不做 | 策略學不到抓取瞬間的視覺 |
+
+`[AI推論]` 依 §2 的建議順序，C 可以先出、A 是第二步；B 維持 §8 不做。**這是提議，不是決定。**
+
+### 11-3 順帶發現的不一致（沒有改，待確認）
+
+- `sim/scene_constants.py` 寫兩台相機都是 **848×480**，但 wrist 在 2026-09-13 已換成 UVC **640×480**（D022、`configs/record_omx.yaml`、uvc_60 `info.json`）。S4 場景的 `cam_wrist` 解析度與資料集不符，**S4／S5 產出前要改**。
+
+### 11-4 下一步（依賴順序）
+
+1. 5090 容器：`mimic_check.py`（gearing 1.0 與 −1.0 各一次）→ 回填 gearing
+2. 實機或 sim：S4 §5-1 五姿態對照 → 回填 `joint_mapping.py` 的 8 個 `[未確認]` 值 → 重跑 `s5_prepare_replay.py`
+3. 5090 容器：`fit_drive_gains.py`（先 `--max-frames 60` 試跑，再全跑）→ 與 11-1 的表對照 → 人決定要不要改 `omx_constants.py`
+4. lab day：印 `markers`、量 `rs-intrinsics`（front-left）、`capture`＋`checkerboard`（wrist UVC）、`extrinsics`
+5. 缺口 3 選項裁決
