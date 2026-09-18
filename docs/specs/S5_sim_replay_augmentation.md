@@ -204,6 +204,52 @@ step 幾次（dt=1/120）根本推不過那個週期，`camera.data.output["rgb"
 **是 `md5sum` 抓到的，不是肉眼。** 修法：渲染離散姿態的腳本一律把 `update_period` 設成 0.0，
 **而且存完要用 `md5sum` 確認每張真的不一樣再相信它們**。
 
+### 🟡 2026-09-18 §2-B：管線本體兩階段都跑通了——但產出的東西還不是規格承諾的東西
+
+**兩階段，分工是被環境逼出來的，不是風格選擇**（`docs/environment.md`「5090 Linux 筆電：什麼裝在哪」）：
+
+| 階段 | 腳本 | 跑在哪 | 做什麼 |
+|---|---|---|---|
+| 1 | `sim/replay_render_episode.py` | `isaac-lab` 容器 | 運動學重播 `observation.state` ＋ DR ＋ 抓取判定 → 兩台相機的 PNG ＋ `manifest.json` |
+| 2 | `scripts/sim_replay_augment.py` | `huggingface/lerobot-gpu` image | PNG ＋ manifest → LeRobotDataset，強制 `sim_` 前綴，fidelity 寫進 `meta/sim_provenance.json` |
+
+Isaac Lab 容器裡沒有 lerobot／av／torchcodec；lerobot image 裡沒有 Isaac Lab。**兩階段都已實際跑通**
+（上面 §7 的勾選都是實測，不是推論）。
+
+**DR 的實作方式偏離了規格的字面**（`[AI提議]`——已經寫進程式，但你不同意就改回 `EventTerm`，理由寫在腳本 docstring）：規格寫用 `EventTerm`，但那是
+manager-based env 的機制，這條管線直接驅動 `InteractiveScene`；硬塞一層 manager 只為了字面相符，不會改變
+任何一個隨機化數值。**規格真正釘死的是數值範圍**（§5 item 4：exposure −4~3、色溫 2500–9500 K、
+相機 ±0.02 m／±0.05 rad），那些照做了。⚠️ **物體外觀隨機化沒做**——物體在 spawn 時就決定，
+中途換不了；每集換物體又會讓下面第 1 點更糟。已記在 manifest 裡，不是漏掉。
+
+#### 🔴 需要 Eric 裁決：S5 目前無法兌現 §1／§4 的核心承諾
+
+§1／§4 說這條管線產出「**同一顆物體、同一個起始位置，只有畫面環境變了**」。**目前兩者都做不到：**
+
+1. **物體**：`uvc_60` 的真實物體是**紙杯**（episode 0 的真實影格可見），`assets/trash_obj/` **沒有杯子**
+   （只有罐子×3、寶特瓶×3、蘋果、香蕉、柳橙、蛋盒、廚餘）。
+2. **位置**：`episode_meta/` **只涵蓋舊的 `omx_pick_place_pilot`（8 集），沒有 `uvc_60`（60 集）**；
+   而就算在那 8 集，`placement_id` 也有 7 集是空白、1 集是 "manual"。**`uvc_60` 沒有任何一集有擺放紀錄。**
+
+**這不是紙上的免責聲明——它在煙霧測試裡直接讓抓取失效**（§7 下方第 1 點）：物體擺在預設位置，
+真實手臂伸去的地方沒有東西，所以每一集都會是「手臂抓空氣」。
+
+**可能的方向**（`[AI提議]`，不是決定）：
+- **(a) 補資料**：從真實影片反推每集的物體起始位置（front-left 影格裡杯子的位置 → 桌面座標，需要缺口 4 的
+  相機外參）＋ 取得或建一個紙杯 USD。最忠實，也最貴，**且被缺口 4 卡住**。
+- **(b) 重新定義 S5 的承諾**：接受物體／位置不符，把 S5 定位成「手臂運動＋背景／光照多樣化」的資料，
+  **不含可信的抓取畫面**。便宜，但這樣的資料拿去訓練抓取策略，價值要打很大的折扣——畫面上的手沒在抓東西。
+- **(c) 往後的錄製補上 `placement_id`**：`episode_meta/` 的欄位本來就存在，只是 `uvc_60` 那一輪沒填。
+  這不救現有 60 集，但讓之後的資料能直接進 S5。
+
+**另外，`verify_dataset.py` 有一個跟 S5 無關、但影響你現有資料的 bug，已修（`[已查證]`）：**
+它把 **uvc_60 判成壞掉、要求重錄**——實際上資料是完好的。lerobot v3.0 會把超過
+`video_files_size_in_mb: 200` 的影片切成多檔；舊的檢查 2 用檔名配對影片與 parquet（v2.x 一集一檔的假設），
+結果拿 front-left 的 `file-000`（6626 幀）去比整份 parquet（15966 行），而 `file-001`（9340 幀）因為配不到
+就被**無聲跳過**。6626 + 9340 = 15966，完全吻合。**這代表 Phase B 用 uvc_60 訓練的 ACT，資料本身沒問題。**
+改成每台相機加總所有分檔後比對；**以故意截短一台相機影片的負面測試確認它仍然抓得到真的錯誤**
+（exit 1，並精確指出是哪台相機）。修正前後都用 git HEAD 的原版跑過，證明失敗是既存的，不是這次改動造成。
+
 ### 綜合結論
 
 - **唯一真正卡住「開始動工」的東西：沒有一個。** 缺口 2、1、3 全部不需要 lab day，缺口 4 需要，但缺口 4 只在要求幾何精確對齊時才是硬依賴，而且可以整個延後或外包。
@@ -329,12 +375,29 @@ LeRobotDataset.add_frame(...) → save_episode()　（repo_id 帶 sim_ 前綴＋
 
 ## 7. 驗收條件
 
-- [ ] 缺口 2 的五姿態對照表（沿用 S4 §5-1 做法）印出來，夾爪開合方向確認正確
-- [ ] 缺口 1 的回歸：拿一段真實 `(action, observation.state)` 序列，比較 sim 重播出的關節軌跡與真實 `observation.state` 的逐幀誤差，印出誤差分佈（p50/p95/max），不是只看有沒有跑起來
-- [ ] 每個輸出 episode 的 `meta` 記錄 `source_episode_id`、`dr_seed`、`dr_preset`、是否含抓取判定（缺口 3 是否已套用）
-- [ ] `repo_id` 沒有 `sim_` 前綴時直接拒絕，同 S4 §7
-- [ ] 若缺口 4（相機幾何）未完成，`meta` 明確標注「幾何未對齊，PLACEHOLDER 相機」，不得暗示已對齊——同 S4 §5-5 的立場
-- [ ] `verify_dataset.py` 對輸出跑過，退出碼 0，且 `features` 鍵序與來源真實資料集一致
+> 🟡 **2026-09-18 狀態。以下打勾的項目，全部是在一次 14 幀的煙霧測試（`--stride 40`，episode 0，
+> DR seed 42）上驗的，不是完整 534 幀的 episode。** 完整跑一集還沒做。
+
+- [x] 缺口 2 的夾爪開合方向確認正確——**方向**已由另一個 session 以 `verify_mimic_gearing.py` 關閉
+      （`gearing=+1.0`，見 `sim/README.md`）。⚠️ **幅度**只到理論值一半，是另一個未關的問題
+- [x] ~~缺口 1 的回歸~~——**做了**（`fit_drive_gains.py`，p50/p95/max 已印，見 §2），**但對 S5 已不適用**：
+      §4 改成運動學重播後，手臂姿態不經過增益，這條驗收的前提消失了。歸屬轉 S4
+- [x] `meta` 記錄 `source_episode_id`、`dr_seed`、`dr_preset`、抓取模式——寫在輸出資料集的
+      `meta/sim_provenance.json`，已讀回確認
+- [x] `repo_id` 沒有 `sim_` 前綴時直接拒絕——**已測**（`omx_replay_no_prefix` → 拒絕，exit 1）
+- [x] 缺口 4 未完成時 `meta` 明確標注幾何未對齊——`fidelity.geometry_aligned = false` ＋ 說明文字
+- [x] `verify_dataset.py` 退出碼 0，`features` 鍵序與來源一致——**已測**。另外 codec／crf／preset／
+      pix_fmt／g／`robot_type` 也全部對齊來源（第一版輸出是 AV1、`robot_type=None`，已修成從來源
+      `info.json` 讀回編碼設定）
+
+**🔴 §7 沒列、但實際跑出來的兩個問題：**
+
+1. **煙霧測試裡抓取完全沒觸發**（`grasp events: []`）。不是 `grasp_attach.py` 的 bug——渲染圖上一眼可見：
+   手臂在自己那一區伸展，罐子在桌子中央，兩者根本不在同一個地方，proximity gate 正確地拒絕附著。
+   **原因是 `fidelity` 裡那兩個 flag 真的咬到了**：沒有 `placement_id` 紀錄、沒有紙杯資產，物體只能放在
+   預設位置。**在這兩個輸入補上之前，S5 產出的每一集都是「手臂抓空氣」**——動作標籤描述的抓取，
+   畫面上沒有發生。見 §2-B。
+2. **`verify_dataset.py` 對模擬資料說「這批資料可以進訓練」**——與 §8 直接衝突。已修（見 §2-B）。
 
 ## 8. 明確不做（第一版）
 
