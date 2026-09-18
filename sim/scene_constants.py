@@ -4,7 +4,7 @@
 
 `docs/experiment_spec.md` §3 (場景常數表) is the authority for every constant in this file, and
 most of its rows are still BLANK — table height, camera x/y/z, camera pitch, lighting are all
-`___` as of 2026-09-03, and the D405 exposure fix has not happened yet either.
+`___` as of 2026-09-18.
 
 So the values below are of two kinds, and they are labelled:
 
@@ -16,9 +16,11 @@ A scene built from PLACEHOLDER values is good for exactly one thing: checking th
 runs (S4 §5-5 says so explicitly). It is NOT geometrically aligned with the real cell, and any
 dataset recorded from it must say so in its `meta`.
 
-The path to replacing the placeholders is S4 §5-5 T1/T2: read the RealSense intrinsics off the
-device, and solve the extrinsics from ArUco markers on the placement mat. Both happen on the next
-lab day (9/6-9/7 work order, `docs/meeting/2026-09-03.md` §4-3).
+The path to replacing the placeholders is S4 §5-5 T1/T2, not yet done as of 2026-09-18:
+  T1 (intrinsics) — front-left (D455): sim/calib_intrinsics_realsense.py reads the device.
+                    wrist (Innomaker U20CAM-720P, opencv_uvc, D022 2026-09-13 — NOT a RealSense,
+                    no device-readable intrinsics): sim/calib_intrinsics_checkerboard.py instead.
+  T2 (extrinsics) — sim/calib_extrinsics_aruco.py, both cameras, from ArUco markers on the mat.
 """
 
 from __future__ import annotations
@@ -46,9 +48,16 @@ R_OUTER_M = 0.41            # S1 tape measure 2026-08-31 (36 cm + 5 cm d_offset)
 THETA_MIN_DEG = -90.0       # experiment_spec §3: camera-rig collision, not FOV
 THETA_MAX_DEG = 45.0
 
-CAM_WIDTH = 848             # configs/record_omx.yaml — both cameras record at 848x480
-CAM_HEIGHT = 480
-CAM_FPS = 15                # configs/record_omx.yaml (dataset fps must match)
+# MEASURED (2026-09-18, read from configs/record_omx.yaml) — the two cameras do NOT share a
+# resolution; a single shared CAM_WIDTH/CAM_HEIGHT here was a bug, not a simplification:
+#   wrist       = Innomaker U20CAM-720P, opencv_uvc (D022 2026-09-13) -> 640x480
+#                 (848 not supported under DSHOW, see configs/teleoperate_omx.yaml's own comment)
+#   front-left  = RealSense D455, intelrealsense_pinned                -> 848x480
+CAM_WIDTH_WRIST = 640
+CAM_HEIGHT_WRIST = 480
+CAM_WIDTH_FRONT_LEFT = 848
+CAM_HEIGHT_FRONT_LEFT = 480
+CAM_FPS = 15                # configs/record_omx.yaml (dataset fps must match; the UVC sensor sends 30, lerobot's record loop takes the newest frame)
 
 # --------------------------------------------------------------------------------------
 # PLACEHOLDER — every one of these replaces a blank row in experiment_spec §3
@@ -96,9 +105,9 @@ DOME_LIGHT_INTENSITY = 1200.0   # PLACEHOLDER  光照強度 ___ lux
 #    reports are what actually determines where a 3-D point lands in the image. Do not treat
 #    these as "the cameras are aligned" — they are "the scene can be rendered".
 SENSOR_APERTURE_MM = 20.955     # Isaac Sim's standard 35 mm-equivalent horizontal aperture
-HFOV_WRIST_DEG = 87.0           # D405 datasheet RGB horizontal FOV        [PROVISIONAL]
+HFOV_WRIST_DEG = 87.0           # PLACEHOLDER  Innomaker U20CAM-720P, unmeasured. Real value: sim/calib_intrinsics_checkerboard.py (T1)
 HFOV_FRONT_LEFT_DEG = 90.0      # D455 datasheet RGB horizontal FOV        [PROVISIONAL]
-CLIP_WRIST = (0.04, 2.0)        # D405 min range ~4 cm
+CLIP_WRIST = (0.04, 2.0)        # PLACEHOLDER  Innomaker U20CAM-720P render clip range, unmeasured
 CLIP_FRONT_LEFT = (0.10, 3.0)
 
 
@@ -164,7 +173,7 @@ if __name__ == "__main__":
 
     print(f"frame: origin = pan axis on the table top, +X ahead, +Y operator-left, +Z up")
     print(f"workspace: r {R_INNER_M*100:.0f}-{R_OUTER_M*100:.0f} cm, theta {THETA_MIN_DEG:.0f}..{THETA_MAX_DEG:.0f} deg")
-    print(f"cameras: {CAM_WIDTH}x{CAM_HEIGHT} @ {CAM_FPS} fps")
+    print(f"cameras: wrist {CAM_WIDTH_WRIST}x{CAM_HEIGHT_WRIST}, front-left {CAM_WIDTH_FRONT_LEFT}x{CAM_HEIGHT_FRONT_LEFT} @ {CAM_FPS} fps")
     print(f"  wrist       hfov {HFOV_WRIST_DEG} deg -> focal {focal_length_mm(HFOV_WRIST_DEG):.3f} mm  [PROVISIONAL]")
     print(f"  front-left  hfov {HFOV_FRONT_LEFT_DEG} deg -> focal {focal_length_mm(HFOV_FRONT_LEFT_DEG):.3f} mm  [PROVISIONAL]")
     if len(sys.argv) > 1:
