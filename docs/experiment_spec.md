@@ -202,7 +202,7 @@
 | `placement_id` | `string` | 🔴 **2026-08-30 由 `object_pos` 更名（D024）。** 指向凍結抽樣清單中的一點，**不是 1–9 格位**。舊名 `object_pos` 已作廢 |
 | `env_light` | `string` | 環境光照條件（如 `indoor_normal`, `bright_lamp`, `dim`） |
 | `env_bg` | `string` | 桌面/背景環境（如 `white_desk`, `black_mat`, `asphalt_print`） |
-| `valid` | `int (1/0)` | 是否為有效試驗（若 0 需附 `void_reason`） |
+| `valid` | `int (1/0)` | 是否為有效試驗（若 0 需附 `void_reason`）。定義見 §1-3 ③：**0 只給受場外干擾的試驗**，真實失敗仍是 1。**不是「要不要納入訓練」**（2026-09-18，schema v4） |
 | `outcome` | `string` | 任務結果（`success` / `no_grasp` / `dropped` / `misplaced`） |
 | `mechanism` | `string` | 失效機制標籤（以分號分隔） |
 | `quality` | `string / int` | 人工示範品質評級 |
@@ -484,6 +484,7 @@ lerobot-find-cameras     # 列出相機並可預覽確認
 | v1 | 2026-08-11 | 初版 | — | — |
 | v2 | 2026-08-12 | §1-3 改為兩軸失敗分類（草案） | 原 F1–F7 混淆結果與機制 | 尚未收資料，無影響 |
 | v3 | 2026-08-13 | §1-3 兩軸分類正式決議通過（D015）；§5 評估次數改為每物體 30 回合（D016） | 8/13 同儕會議決議 | 尚未收資料，無影響 |
+| schema v4 | 2026-09-18 | `configs/episode_meta_schema.yaml` 的 `valid` 題目由「納入訓練?」改為「有效試驗?（0 = 受場外干擾）」，對齊 §1-3 ③；本文件定義不變 | 題目與 §1-3 ③ 不一致，標註時被理解成兩種意思（`docs/meeting/2026-09-18.md` §3-3） | 已查：`omx_pick_place_pilot.csv` 8 集全為 success／valid=1，兩種解讀結果相同，無需改 |
 
 ---
 

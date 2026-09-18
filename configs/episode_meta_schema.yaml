@@ -33,7 +33,10 @@
 #   default   fixed default when there is no previous answer
 #   auto      "now" = prefilled with the current timestamp (still editable)
 
-version: 3   # 2026-09-01: placement_id no longer required — pilot campaigns use manual
+version: 4   # 2026-09-18: valid prompt/help realigned with docs/experiment_spec.md §1-3 ③ — it read
+             #             「納入訓練?」, but the spec defines valid as "not disturbed from outside the
+             #             task" (0 = drop from the success-rate denominator). Meaning, not field set, changed.
+             # 2026-09-01: placement_id no longer required — pilot campaigns use manual
              #             eyeball placement with no frozen list (D023 §2026-09-01).
              # 2026-08-30: object_pos -> placement_id (D024); mechanism gains repetition_loop (D015, 2026-08-16)
 
@@ -100,9 +103,12 @@ fields:
     values: ["1", "2", "3", "4", "5"]
 
   - name: valid
-    prompt: 納入訓練?
-    help: 0 excludes this episode from the training set without deleting it.
-          Deleting renumbers episode_index and breaks this file's keying.
+    prompt: 有效試驗? (0 = 受場外干擾：馬達過熱／相機掉線／人為誤觸…，不計入成功率分母)
+    help: docs/experiment_spec.md §1-3 ③. 0 only for trials spoiled by something
+          outside the task (hardware fault, a human bumping the scene). A genuine
+          failure - too far, missed grasp - is still valid=1 and counts against
+          the success rate. Mark 0 here instead of deleting the episode: deleting
+          renumbers episode_index and breaks this file's keying.
     default: "1"
     required: true
     strict: true
