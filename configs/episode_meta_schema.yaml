@@ -107,7 +107,7 @@ fields:
     help: docs/experiment_spec.md §1-3 ③. 0 only for trials spoiled by something
           outside the task (hardware fault, a human bumping the scene). A genuine
           failure - too far, missed grasp - is still valid=1 and counts against
-          the success rate. Mark 0 here instead of deleting the episode: deleting
+          the success rate. Mark 0 here instead of deleting the episode - deleting
           renumbers episode_index and breaks this file's keying.
     default: "1"
     required: true
