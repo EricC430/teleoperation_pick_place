@@ -1,0 +1,33 @@
+dataset:
+  repo_id: ericc430/omx_pick_place_pilot_60_alcan_20260918_100719
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_60_alcan_20260918_100719
+  # 60 episodes, 24001 frames, fps 15, 2 cameras (wrist + front-left) -- verified meta/info.json,
+  # scripts/verify_dataset.py passed 2026-09-18 (data/verify_alcan60.log).
+  # The only 60-episode alcan set on the Hub (checked 2026-09-18). The repo name still carries its
+  # recording timestamp -- not yet renamed to a clean name like the plastic_bottle set was.
+  # Eval-open set for this campaign exists separately:
+  # ericc430/omx_pick_place_pilot_alcan_open_loop_20260918_150040 (12 episodes) -> eval_split=0.0,
+  # evaluate with scripts/eval_open_loop.py against that set instead.
+  eval_split: 0.0
+
+policy:
+  type: act
+  push_to_hub: false
+
+output_dir: /workspace/data/train/alcan60
+job_name: act_omx_alcan60
+# 100,000 steps @ batch 32 ~= 133 epochs over 24,001 frames. Same settings as the plastic_bottle
+# run (configs/train_omx_phase_b4a_plastic_bottle.yaml) so the two campaigns stay comparable.
+# Note (2026-09-18 open-loop, 11 eps excl. failed ep4): plastic_bottle was best at 20k (9.08 deg)
+# and drifted up to 9.47 at 100k; uvc_60 was flat 6.23-6.46 across 20k-100k. save_freq=20000 keeps
+# every 20k checkpoint, so the step curve can be evaluated after the run, not just the last one.
+steps: 100000
+batch_size: 32
+# eval_steps must be 0 when eval_split=0.0 -- lerobot/configs/train.py raises otherwise.
+eval_steps: 0
+log_freq: 50
+save_freq: 20000
+
+wandb:
+  enable: true
+  project: teleoperation_pick_place
