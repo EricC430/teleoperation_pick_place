@@ -235,6 +235,17 @@ anything in `sim/` inside the container: poll for the output file's existence
 (`docker exec isaac-lab test -f <path>`), don't wait for the shell command to return — then
 `docker exec isaac-lab pkill -9 -f <script.py>` once the output is there.**
 
+## Batching container runs: use one tracked background job per step
+
+`nohup bash -c 'for ... done' &` does NOT survive here -- a three-seed render batch launched that
+way completed its first seed and then vanished silently, leaving only the usual hung post-exit
+process behind. Nothing errored; the later seeds simply never started, and it only surfaced because
+a watch expired with no events.
+
+Run multi-step container work **one step per tracked background job**, and check the step actually
+finished (its output file exists) before starting the next. Slower to orchestrate, but a step that
+dies is visible instead of silent.
+
 ## Units trap (cost one debugging round)
 
 `omx_constants.py` works in **radians** (the convention the motor datasheets use). `UsdPhysics`
