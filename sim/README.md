@@ -32,11 +32,22 @@ The script spec is `docs/specs/S4_sim_teleop_collect.md`.
 +18.2 / +7.1          -1.9 cm       8.0 cm        78°     (杯口 9.5 cm)
 ```
 
-**怎麼做：** 在 `sim/joint_mapping.py` 把
-`OFFSET_RAD["shoulder_lift"]` 加 `math.radians(18.2)`、
-`OFFSET_RAD["wrist_flex"]` 加 `math.radians(7.1)`，重渲 episode 0，與真實影片並排。
-⚠️ **只為了看圖而改，看完就還原**——這是 `[AI提議]`，對「假設的目標值」做的擬合，
-**不是可以直接寫死的常數**。
+**怎麼做：** ~~改 `joint_mapping.py` 再還原~~ **不必改檔**。`--offset-delta-deg`
+（`replay_render_episode.py` 與 `render_state_replay.py` 都有）只影響那一次執行，
+會印出改動前後的值並寫進 manifest，所以沒有「忘了還原」這個風險：
+
+```bash
+./sim/run_in_container.sh replay_render_episode.py \
+    --dataset-root /workspace/test_isaaclab/omx_sim/dataset --episode 0 \
+    --placements /workspace/test_isaaclab/omx_sim/placement_label_map_campA_136sym_20260908.csv \
+    --place-from-episode --dr-seed 42 --stride 4 \
+    --offset-delta-deg shoulder_lift=+18.2,wrist_flex=+7.1 \
+    --out /workspace/test_isaaclab/omx_sim/s5_tcp_fingertip_liftC --headless --enable_cameras
+```
+
+並排圖：`scripts/compare_sim_real_frames.py` 吃多個 render 目錄，一張圖同時放
+真實｜甲｜丁（`--frames 232` 只做要看的那幾格）。
+⚠️ 這組是 `[AI提議]`，對「假設的目標值」做的擬合，**不是可以直接寫死的常數**。
 
 **看完怎麼判斷：**
 
