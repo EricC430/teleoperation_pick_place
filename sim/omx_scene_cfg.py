@@ -103,7 +103,7 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
         ),
         # the slab's centre sits half a thickness below the top surface
         init_state=AssetBaseCfg.InitialStateCfg(
-            pos=(S.TABLE_SIZE[0] / 2.0 - 0.15, 0.0, S.TABLE_TOP_Z - S.TABLE_SIZE[2] / 2.0)
+            pos=(S.TABLE_CENTER_XY[0], S.TABLE_CENTER_XY[1], S.TABLE_TOP_Z - S.TABLE_SIZE[2] / 2.0)
         ),
     )
 
@@ -117,7 +117,7 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.20, 0.55, 0.70)),
         ),
         init_state=AssetBaseCfg.InitialStateCfg(
-            pos=(0.0, 0.0, S.TABLE_TOP_Z + S.ARM_RISER_HEIGHT / 2.0)
+            pos=(S.ARM_RISER_CENTER[0], S.ARM_RISER_CENTER[1], S.TABLE_TOP_Z + S.ARM_RISER_HEIGHT / 2.0)
         ),
     )
 
@@ -131,8 +131,9 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.15, 0.35, 0.65)),
         ),
+        # `[Eric說 2026-09-21]` the bin stands ON the riser, not on the table
         init_state=AssetBaseCfg.InitialStateCfg(
-            pos=(S.BIN_POS[0], S.BIN_POS[1], S.TABLE_TOP_Z + S.BIN_SIZE[2] / 2.0)
+            pos=(S.BIN_POS[0], S.BIN_POS[1], S.TABLE_TOP_Z + S.ARM_RISER_HEIGHT + S.BIN_SIZE[2] / 2.0)
         ),
     )
 

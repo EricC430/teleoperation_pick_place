@@ -64,14 +64,24 @@ CAM_FPS = 15                # configs/record_omx.yaml (dataset fps must match; t
 # --------------------------------------------------------------------------------------
 TABLE_TOP_Z = 0.75          # PLACEHOLDER  桌面高度 ___ cm
 TABLE_SIZE = (1.20, 0.80, 0.04)  # PLACEHOLDER  table top slab (x, y, thickness)
+# `[Eric說 2026-09-21]` the platform (and so the arm) sits at the table's NEAR-RIGHT corner, with the
+# table extending away (+X) and to the operator's left (+Y). Before this the table was centred on
+# the arm in Y, which put the arm mid-edge instead of in the corner.
+TABLE_CENTER_XY = (TABLE_SIZE[0] / 2.0 - 0.18, TABLE_SIZE[1] / 2.0 - 0.18)  # PLACEHOLDER
 
 # 🔴 [Eric說 2026-09-21] THE ARM DOES NOT SIT ON THE TABLE. It is mounted on a riser ~15 cm above
 # the table top. Until 2026-09-21 the scene put ARM_BASE_POS straight on the table, which is why a
 # kinematic replay of real joint angles left the gripper ~11 cm above the object it was supposed to
 # be holding (S5 §2-C): the whole arm was 15 cm too low relative to its own workspace.
 # Height is Eric's measurement; the FOOTPRINT is still a PLACEHOLDER (nobody has measured it).
-ARM_RISER_HEIGHT = 0.15
-ARM_RISER_SIZE = (0.18, 0.18, ARM_RISER_HEIGHT)   # (x, y) PLACEHOLDER, z measured
+# `[Eric說 2026-09-21]` ONE platform carries BOTH the arm base AND the bin, and it sits at the
+# table's near-right corner (the arm then faces outward, up-and-left in the operator's view).
+ARM_RISER_HEIGHT = 0.15                  # measured
+ARM_RISER_SIZE = (0.36, 0.52, ARM_RISER_HEIGHT)   # (x, y) PLACEHOLDER -- large enough to carry the
+                                                  # arm at its near edge AND the bin; nobody has
+                                                  # measured the real footprint yet
+ARM_RISER_CENTER = (0.06, 0.16)          # PLACEHOLDER (x, y) of the platform centre, pan-axis frame:
+                                         # spans from just behind the arm out to past the bin
 
 BIN_POS = (0.10, 0.30, 0.0)      # PLACEHOLDER  目標區位置 (relative to the pan axis, on the table)
 BIN_SIZE = (0.16, 0.16, 0.12)    # PLACEHOLDER
