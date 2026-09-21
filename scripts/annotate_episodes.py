@@ -22,6 +22,8 @@ session of 10 demos with the same object and lighting is mostly Enter.
 
 Other modes:
 
+    --clips                                # show (and optionally play) each
+                                           # episode's video while answering
     --set outcome=success --episodes 0-9   # batch fill, no prompting
     --check                                # validate only, non-zero exit on problems
     --redo --episodes 7                    # re-ask an episode that is already filled
@@ -37,6 +39,7 @@ import io
 import json
 import os
 import re
+import subprocess
 import sys
 from datetime import datetime
 
@@ -299,7 +302,23 @@ def ask(field, default, context_line):
         return value
 
 
-def annotate(episodes, rows, fields, context, overrides, redo, no_prompt=False):
+def show_clip(path, player):
+    """Print the episode's clip path, and open it if a player was asked for."""
+    if not os.path.exists(path):
+        print("  video : %s -- not cut yet (scripts/clip_episodes.py)" % path)
+        return
+    print("  video : %s" % path)
+    if not player:
+        return
+    try:
+        subprocess.Popen(player.split() + [path],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError as exc:                                     # noqa: BLE001
+        print("  (could not run %r: %s)" % (player, exc))
+
+
+def annotate(episodes, rows, fields, context, overrides, redo, no_prompt=False,
+             clips=None, player=None):
     """Interactively fill rows for `episodes`. Returns number of rows touched."""
     touched = 0
     previous = None
@@ -318,6 +337,8 @@ def annotate(episodes, rows, fields, context, overrides, redo, no_prompt=False):
         if existing:
             header += "  [re-annotating]"
         print(header)
+        if clips and not no_prompt:
+            show_clip(clips(ep), player)
         row = dict(existing) if existing else {}
         for field in fields:
             name = field["name"]
@@ -413,6 +434,13 @@ def main():
                         help="re-ask episodes that already have a row")
     parser.add_argument("--check", action="store_true",
                         help="validate and report coverage, write nothing")
+    parser.add_argument("--clips", nargs="?", const="", metavar="DIR",
+                        help="show each episode's clip while asking; DIR defaults to "
+                             "outputs/episode_clips/<dataset> (cut them first with "
+                             "scripts/clip_episodes.py)")
+    parser.add_argument("--player", metavar="CMD",
+                        help="command to open the clip with, e.g. 'mpv --loop' or "
+                             "'xdg-open' (default: just print the path)")
     parser.add_argument("--dry-run", action="store_true", help="do not write the CSV")
     args = parser.parse_args()
 
@@ -445,6 +473,14 @@ def main():
     print("schema  : %s (version %s, %d fields)"
           % (args.schema, schema.get("version", "?"), len(fields)))
     print("csv     : %s (%d existing rows)" % (csv_file, len(rows)))
+
+    clips = None
+    if args.clips is not None:
+        import clip_episodes                                   # noqa: PLC0415
+        clip_dir = args.clips or os.path.join(
+            clip_episodes.DEFAULT_OUT_ROOT, clip_episodes.slug(args.dataset))
+        clips = lambda ep: clip_episodes.clip_path(clip_dir, ep)   # noqa: E731
+        print("clips   : %s" % clip_dir)
     if total_episodes is None:
         print("note    : dataset not found locally -- episode count unknown, "
               "--episodes is required")
@@ -477,7 +513,7 @@ def main():
     interrupted = False
     try:
         touched = annotate(episodes, rows, fields, context, overrides, args.redo,
-                           args.no_prompt)
+                           args.no_prompt, clips, args.player)
     except KeyboardInterrupt:
         interrupted = True
         touched = sum(1 for e in episodes if e in rows)

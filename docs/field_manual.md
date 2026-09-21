@@ -648,6 +648,7 @@ uv run python scripts/annotate_episodes.py --dataset ./.cache/lerobot/omx_pick_p
 ```
 
 - **工作流**：開兩個終端機 —— 一個 `lerobot-dataset-viz --episode-index N` 看那一集，另一個跑 annotate 回答那一集。或憑記憶標（8 集這種規模通常記得）。
+- 🔴 **v3.0 起沒有 per-episode mp4**（整個相機串成一支 `file-000.mp4`）。要邊看邊標就先跑 `scripts/clip_episodes.py` 把每集切回一支，再用 `annotate_episodes.py --clips`，它會印出當集的影片路徑。用法正本在 `episode_meta/README.md`「Watching the episode while you label it」。
 - 產出 `episode_meta/<dataset>.csv`（keyed by `episode_index`）。**不進 dataset 本體**，跟 repo 一起版控。
 - `sticky` 欄位（燈光、背景、操作者、錄製日期…）預設沿用上一集 → 同場 demo 多半按 Enter。
 - 🔴 **`record_ts` 是「錄製那天」的日期，手打**。LeRobot metadata 沒存 wall-clock（只有檔案 mtime，per-file 不 per-episode、複製就掉）。
