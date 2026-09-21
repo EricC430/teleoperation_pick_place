@@ -1150,6 +1150,11 @@ poolable. `pilot` / `pilot_2` are left untouched.
      `EricC430/...` returns `403 ... rights to create a dataset under the namespace "EricC430"` even with a write token.
      `record_omx.yaml` / `train_omx_pilot.yaml` still say `EricC430/omx_pick_place_pilot`: harmless while `push_to_hub: false`
      and `root` is set, but it would 403 if push were turned on.
+     → Fixed the same day: `repo_id` → lowercase in `record_omx.yaml`, `replay_omx.yaml`, `train_omx_pilot.yaml` (4090 `root`
+     paths unchanged — they are real directory names). `scripts/eval_open_loop.py`'s default left mixed-case: with no
+     `--dataset.root` it resolves to the 4090's `.../lerobot/EricC430/...` directory (`[AI推論]`, not run on the 4090).
+     `verify_dataset.py` check 2 rewritten for v3 (per video file, via `meta/episodes`); the old filename matching had also
+     **silently skipped** front-left `file-001` of `uvc_60`.
    - `[柏宇說]` 2026-09-13: 「第三視角應該要看的到」 → start-pose visibility applies to the third-person camera only,
      not the wrist. `experiment_spec.md` §1-1 and `field_manual.md` §階段 B ⑥ unified accordingly.
    - `[柏宇說]` 2026-09-13: arm connected but 「先不要測試因為環境目前不穩定」 → no hardware test was run for (c).

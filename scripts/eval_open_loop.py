@@ -96,16 +96,16 @@ def plot_episode_trajectories(ep_idx, joint_names, gt_actions, pred_actions, ove
         ax.plot(time_steps, pred_actions[:, j_idx], label=pred_label, color="#d62728", linestyle="--", linewidth=2.0)
 
         j_name = joint_names[j_idx] if j_idx < len(joint_names) else f"joint_{j_idx}"
-        ax.set_title(f"{j_name} (MAE: {mae_per_joint[j_idx]:.2f}°)", fontsize=12, fontweight="bold")
+        ax.set_title(f"{j_name} (MAE: {mae_per_joint[j_idx]:.2f})", fontsize=12, fontweight="bold")
         ax.grid(True, linestyle=":", alpha=0.6)
         if j_idx in [0, 3]:
-            ax.set_ylabel("Joint Position (°)", fontsize=10)
+            ax.set_ylabel("Joint Position (.pos units)", fontsize=10)
         if j_idx >= 3:
             ax.set_xlabel("Time (s)", fontsize=10)
         ax.legend(loc="upper right", fontsize=9)
 
     plt.suptitle(
-        f"{dataset_label} — Episode {ep_idx} (Overall MAE: {overall_mae:.2f}°)\n"
+        f"{dataset_label} — Episode {ep_idx} (Overall MAE: {overall_mae:.2f})\n"
         f"Total frames: {len(gt_actions)} ({len(gt_actions)/fps:.1f}s at {fps} fps)",
         fontsize=14,
         fontweight="bold",
@@ -170,6 +170,7 @@ def main():
 
     per_episode_errors = []
     saved_plots = []
+    trajectories = {}  # ep{N}_gt / ep{N}_pred, [T, D] -- for overlaying several checkpoints later
 
     for ep_idx in args.episodes:
         logging.info(
@@ -218,6 +219,8 @@ def main():
 
         pred_actions = np.array(pred_actions)
         gt_actions = np.array(gt_actions)
+        trajectories[f"ep{ep_idx}_gt"] = gt_actions
+        trajectories[f"ep{ep_idx}_pred"] = pred_actions
 
         # Compute errors
         l1_diff = np.abs(pred_actions - gt_actions)  # [T, D]
@@ -263,6 +266,34 @@ def main():
     print(colored(f"  Mean across episodes: MAE = {mean_all_mae:.4f}, MSE = {mean_all_mse:.4f}", "cyan"))
     if saved_plots:
         print(colored(f"  Saved plot(s) to: {save_plot_dir}", "yellow"))
+
+    # Machine-readable copy of everything printed above, so runs can be compared later
+    # (scripts/compare_open_loop.py) without scraping console logs.
+    save_plot_dir.mkdir(parents=True, exist_ok=True)
+    metrics = {
+        "checkpoint": str(checkpoint_path),
+        "policy_type": policy_type,
+        "dataset_repo_id": args.dataset_repo_id,
+        "dataset_root": args.dataset_root,
+        "units": "LeRobot .pos (body RANGE_M100_100, gripper RANGE_0_100) -- not degrees",
+        "joint_names": list(joint_names),
+        "episodes": [
+            {
+                "episode": int(ep_idx),
+                "mae": float(ep_mae),
+                "mse": float(ep_mse),
+                "mae_per_joint": {j: float(v) for j, v in zip(joint_names, mae_j)},
+                "mse_per_joint": {j: float(v) for j, v in zip(joint_names, mse_j)},
+            }
+            for ep_idx, ep_mae, ep_mse, mae_j, mse_j in per_episode_errors
+        ],
+        "mean_mae": float(mean_all_mae),
+        "mean_mse": float(mean_all_mse),
+    }
+    np.savez_compressed(save_plot_dir / "trajectories.npz", fps=fps, **trajectories)
+    metrics_path = save_plot_dir / "metrics.json"
+    metrics_path.write_text(json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(colored(f"  Saved metrics to: {metrics_path}", "yellow"))
     print("=" * 50)
 
 

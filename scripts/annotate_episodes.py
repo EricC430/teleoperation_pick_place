@@ -33,6 +33,7 @@ which case episode length/task context is not shown.
 
 import argparse
 import csv
+import io
 import json
 import os
 import re
@@ -182,15 +183,23 @@ def csv_path_for(dataset, explicit):
 def read_csv(path):
     if not os.path.exists(path):
         return {}, []
-    with open(path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        columns = list(reader.fieldnames or [])
-        rows = {}
-        for row in reader:
-            raw = (row.get(KEY) or "").strip()
-            if raw == "":
-                continue
-            rows[int(raw)] = {k: (v if v is not None else "") for k, v in row.items()}
+    try:
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            text = f.read()
+    except UnicodeDecodeError:
+        # Excel on zh-TW Windows saves CSV as cp950 (Big5). Read it; the next write turns it back to UTF-8.
+        with open(path, newline="", encoding="cp950") as f:
+            text = f.read()
+        print("warning: %s is cp950, not UTF-8 (saved from Excel?) -- will be rewritten as UTF-8"
+              % path, file=sys.stderr)
+    reader = csv.DictReader(io.StringIO(text, newline=""))
+    columns = list(reader.fieldnames or [])
+    rows = {}
+    for row in reader:
+        raw = (row.get(KEY) or "").strip()
+        if raw == "":
+            continue
+        rows[int(raw)] = {k: (v if v is not None else "") for k, v in row.items()}
     if columns and columns[0] != KEY:
         print("warning: %s does not start with a '%s' column" % (path, KEY), file=sys.stderr)
     return rows, columns
@@ -211,7 +220,8 @@ def write_csv(path, rows, fields, existing_columns):
         os.makedirs(directory)
 
     tmp = path + ".tmp"
-    with open(tmp, "w", newline="", encoding="utf-8") as f:
+    # utf-8-sig: the BOM is what makes Excel open this as UTF-8 instead of cp950 garbage.
+    with open(tmp, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=columns, extrasaction="ignore")
         writer.writeheader()
         for idx in sorted(rows):
@@ -245,12 +255,12 @@ def parse_episodes(spec):
 def ask(field, default, context_line):
     name = field["name"]
     label = field.get("prompt") or name
+    if label != name:
+        label = "%s (%s)" % (label, name)   # the CSV column name, so the prompt maps to a column
     values = field.get("values") or []
     hint = ""
     if values:
         shown = "/".join(v if v != "" else "<blank>" for v in values)
-        if len(shown) > 60:
-            shown = shown[:57] + "..."
         hint = "  {%s}" % shown
     if field.get("multi"):
         hint += "  {several, ';'-separated}"
@@ -278,7 +288,14 @@ def ask(field, default, context_line):
             print("    ! %s" % message)
             continue
         if kind == "warning":
-            print("    ~ %s (kept)" % message)
+            # Not a lock (see the schema header), but a typo should not slip through on Enter.
+            print("    ~ %s" % message)
+            try:
+                confirm = input("    不在清單內，確定保留 %r? [y/N]: " % value)
+            except EOFError:
+                raise KeyboardInterrupt
+            if confirm.strip().lower() != "y":
+                continue
         return value
 
 

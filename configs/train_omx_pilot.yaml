@@ -1,5 +1,5 @@
 dataset:
-  repo_id: EricC430/omx_pick_place_pilot
+  repo_id: ericc430/omx_pick_place_pilot  # Hub 帳號是小寫；下面 root 是 4090 上的實際資料夾名，大小寫照舊不能改
   root: /workspace/data/huggingface/lerobot/EricC430/omx_pick_place_pilot
   eval_split: 0.125 # 8 筆中留 1 筆 (Episode 7) 進行開環隔離評估，前 7 筆 (Episode 0-6) 進行訓練
 

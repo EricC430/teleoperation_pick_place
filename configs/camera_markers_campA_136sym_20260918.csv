@@ -1,0 +1,7 @@
+id,x_pan_cm,y_pan_cm,z_cm,placement_id,short_id
+0,24.62,0.87,0,train_005,t5
+1,17.57,34.34,0,train_022,t22
+2,21.26,-32.67,0,eval-close_026,c26
+3,35.45,-15.83,0,eval-close_006,c6
+4,29.42,19.43,0,eval-open_010,o10
+5,12.0,-13.0,0,eval-close_036,c36

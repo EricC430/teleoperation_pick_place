@@ -55,6 +55,10 @@ Eric 要求「平行做缺口1和缺口3」。兩者都已寫出程式碼，**�
   `joint_pos` 與真實 `observation.state`（換算後），印 p50/p95/max（同 §7 驗收條件格式）。依賴新增的
   `sim/joint_mapping.py`（見下）。**對 uvc_60 第 0 集（534 幀）實跑了 5 組**（容器 `isaac-lab`，headless）：
 
+  > 🔴 **2026-09-18 merge 後作廢，要重跑。** 下表是用「`.pos` 當成度」的舊版 `joint_mapping.py` 跑的；
+  > 實際單位是 RANGE_M100_100／RANGE_0_100 正規化值（見下方 `joint_mapping.py` 條目的更正），
+  > 身體關節角度被少算約 1.8 倍、夾爪零點與比例都不對。表格保留作為紀錄，**數字不能拿來下結論**。
+
   | run | stiffness×/damping× | shoulder_lift p50/p95/max (deg) | elbow_flex p50/p95/max (deg) |
   |---|---|---|---|
   | baseline | 1× / 1× | 103.9 / 151.4 / 151.6 | 23.9 / 61.9 / 73.6 |
@@ -110,6 +114,23 @@ Eric 要求「平行做缺口1和缺口3」。兩者都已寫出程式碼，**�
 - **缺口 3：`sim/grasp_attach.py` ＋ `sim/verify_grasp_attach.py`。** 決策（`[AI提議]`，見該檔案 docstring）：
   **不做物理接觸抓取**（同 §8 立場），改成「附著時每步強制物體位姿跟隨夾爪 TCP」的 kinematic
   follow；觸發訊號用**真實錄製的 `gripper.pos`**（每集自動算 5/95 百分位定開合閾值），不是模擬夾爪關節讀數
+  🔴 **`[已查證 2026-09-21]` 有更乾淨的訊號，建議改用：`action[gripper] − observation.state[gripper]`。**
+  在 uvc_60 全 60 集 15966 幀上量到——**未接觸時 +0.07 單位（follower 幾乎完美追到命令），
+  接觸夾持時 −2.09 單位**（馬達一直被要求再閉合但被物體擋住，停在電流上限；夾爪是
+  `CURRENT_POSITION` 模式）。**差 30 倍，是乾淨的二元訊號**，23.7% 的幀落在夾持區。
+  比 5/95 百分位好的三個理由：① 不需要每集重新估閾值，絕對閾值（例如 `< −1.0`）就夠；
+  ② 百分位法假設每集都有完整開合循環，但 §2 已經發現有一集出現兩次循環；
+  ③ 百分位看的是位置，會被指尖撓曲汙染——S6 量到接觸後指尖還會再壓進約 4 mm 當量
+  （`.pos` 實際最低 49.40，而兩指接觸是 50.21），位置訊號在那一段是非線性的，gap 不受影響。
+  🔴 **但 gap 單獨拿來定位「抓取那一刻」會錯，連續幀也救不了。** gap 在**快速移動**時同樣會變負
+  （follower 追隨延遲），而那種情形在每集開頭就會出現並持續很久。實測（60 集，對照各集記錄的
+  擺放位置）：取第一個 `gap < −1.0` 的幀，夾爪讀數中位數 **58.75**；要求連續 5 幀、連續 15 幀，
+  仍然是 58.5——**全都是張開的**。取「該集 EE 最低點」更糟，落在離杯子 **21.5 cm** 的停放姿勢。
+  ✅ **實際可用的是「該集夾爪最閉合的那一幀」**（`argmin(observation.state[gripper])`）：夾爪讀數
+  49.68（兩指接觸是 50.21，中間夾著薄杯壁），且水平位置與記錄的杯子位置只差 **−0.2 cm**。
+  **gap 適合當「有沒有夾到東西」的狀態判斷（未接觸 +0.07 / 夾持中 −2.09），不適合當事件偵測器。**
+  要用 gap 定位事件，必須**同時**要求夾爪位置接近閉合。
+  ⚠️ `[未確認]`：只在 uvc_60（紙杯）上驗過。較軟或較薄的物體 gap 會不會小到接近雜訊，沒測。
   （避免把缺口 1 的追蹤誤差摻進缺口 3 的判定）。**`verify_grasp_attach.py` 對 uvc_60 第 0 集實跑過**：
   在 frame 226/401 附著、frame 382/464 放開（自動算出的閾值 53.7°）——**意外發現：一集裡出現兩次
   開合循環**，不是原本文件預期的一次；回頭比對 gripper 原始軌跡（frame 400-456 附近讀數確實又降到
@@ -118,13 +139,22 @@ Eric 要求「平行做缺口1和缺口3」。兩者都已寫出程式碼，**�
   都還沒關閉，物體的真實 3D 位置對不對得上模擬 TCP 驗不了，所以腳本直接把物體「瞬移」到模擬 TCP
   位置來測附著邏輯——這是承認限制，不是繞過限制。
 - **新增共用模組：`sim/joint_mapping.py`。** 把「真實錄製角度（度）→ 模擬關節角（弧度）」這個 S4/S5
-  都需要、原本各自要重推一次的轉換，抽成一個檔案。**`[已查證 2026-09-18]` 數值單位是「度」，不是
-  RANGE_0_100／RANGE_M100_100 正規化值**——直接讀 `data/huggingface/lerobot/ericc430/omx_pick_place_pilot_uvc_60/meta/stats.json`
-  與一集真實 parquet 逐幀比對出來的（見該檔案 docstring）。**正負號：`shoulder_lift` 已確認 = `+1`**
-  （§2-A 的渲染對照＋對照組，2026-09-18）。⚠️ 本節上面第 2 點寫的「sign-override 讓誤差下降、
-  所以符號可能接反」**是當時的錯誤解讀，已被第 3 點的 effort_limit 診斷與 §2-A 推翻**，保留原文
-  是為了留下推理軌跡，不是因為它還成立。其餘五個關節仍是 `[未確認]`（無各自對照組），見
+  都需要、原本各自要重推一次的轉換，抽成一個檔案。~~**`[已查證 2026-09-18]` 數值單位是「度」，不是
+  RANGE_0_100／RANGE_M100_100 正規化值**~~ 🔴 **2026-09-18 merge 更正 `[已查證]`：這句是錯的。**
+  `OmxFollowerConfig.use_degrees` 預設 `False`（`config_omx_follower.py:39`），`configs/` 沒有任何檔案改它 →
+  身體五軸 `RANGE_M100_100`、夾爪 `RANGE_0_100`（`omx_follower.py:50-62`、`motors_bus.py:868-873`）。
+  stats.json 的 −66..+41 同樣落在 −100..100 內，分辨不了兩者。merge 後的 `joint_mapping.py` 已改用正確換算
+  （1 個 `.pos` 單位 = 4095/200 ticks = 1.799 度，身體角被舊版低估約 1.8 倍），`row_to_sim_rad` 介面不變。
+  原文的依據——直接讀 `data/huggingface/lerobot/ericc430/omx_pick_place_pilot_uvc_60/meta/stats.json`
+  與一集真實 parquet 逐幀比對（見該檔案 docstring）。
+- **正負號：`shoulder_lift` 已確認 = `+1`**（§2-A 的渲染對照＋對照組，2026-09-18）。⚠️ 本節上面第 2 點寫的
+  「sign-override 讓誤差下降、所以符號可能接反」**是當時的錯誤解讀，已被第 3 點的 effort_limit 診斷與 §2-A
+  推翻**，保留原文是為了留下推理軌跡，不是因為它還成立。其餘五個關節仍是 `[未確認]`（無各自對照組），見
   `sim/joint_mapping.py` docstring 的逐關節證據強度。
+  🔴 **`[AI推論] 2026-09-21 merge 補註`：§2-A 的渲染是在上面那條單位更正之前做的**（身體角度偏小約 1.8 倍）。
+  `+1` vs `-1` 是粗大差異、對照組也分辨得出來，所以 `shoulder_lift` 的結論很可能仍成立；但「其餘五軸看起來
+  沒有構型不符」這個觀察是在錯的尺度下做的，**要用新換算重新渲染一次**——那次重渲同時也是單位更正本身的
+  實證檢查。同一段話已寫在 `sim/joint_mapping.py` 的 docstring。
 - **環境層面的發現（跟腳本邏輯無關,但會浪費時間，值得記下）：** 這幾支腳本（以及容器裡已有的
   `verify_mimic_gearing.py` 執行紀錄）寫完輸出檔之後，`simulation_app.close()` 不會讓 process 真的
   結束——它會卡住繼續吃 CPU（觀察到一個 process 掛了 3.5 小時沒退出）。**這是環境本身的行為，不是
@@ -174,6 +204,10 @@ GUI 匯入版沿用的，從未真正校過。**重播出來的夾爪開合幅�
 路，圖出來後另外補上。
 
 ### ✅ 2026-09-18 §2-A：SIGN 視覺驗證（`shoulder_lift` 已確認 = +1，不需要 lab day）
+
+> ⚠️ **merge 補記（2026-09-18）：這一節的渲染是在單位更正之前做的**——`.pos` 被當成度，身體關節角度少算約 1.8 倍。
+> `shoulder_lift` 的 +1／−1 有對照組、差異很大，結論大概率不受影響 `[AI推論]`；其他五軸「沒有不吻合」是在錯的比例下看的，
+> **要用更正後的 `joint_mapping.py` 重渲染一次**——這次重渲染同時也是單位更正本身的實證檢查。
 
 **新增兩支腳本：** `sim/render_state_replay.py`（容器內：把手臂擺到 `observation.state[t]`、渲染）、
 `scripts/compare_sim_real_frames.py`（host：從資料集自己的 `meta/episodes` metadata 找出該 episode
@@ -332,7 +366,7 @@ link4 10.4 / link5 10.5 / link7 11.3 / link6/7 中點 11.4 / link6 11.6 / end_ef
 **→ 五姿態測試（S4 §5-1）因此從「可做可不做」升為 lab day 第一優先。** 做法：把單一關節擺到物理上明確的
 姿態（連桿完全垂直或水平，用量角器／手機測角 app 量），記下 leader 報的度數，**差值就是該關節的偏移**；
 每個關節至少兩個姿態，以確認是偏移而非比例誤差。重點是共平面的那三個。
-`sim/joint_mapping.py` 已加 `OFFSET_RAD` 掛勾，量到就填、目前全為 0（是假設，不是結果）。
+`sim/joint_mapping.py` 已加 `OFFSET_RAD` 掛勾，量到就填、目前全為 0（是假設，不是結果）。🔴 **`[AI推論] 2026-09-21 merge 補註`：`OFFSET_RAD` 目前沒有被換算函式讀到**——實際生效的零點旋鈕是同一支檔案裡的 `BODY_ZERO_DEG` / `GRIPPER_ZERO_DEG`（單位是度，同樣在 SIGN 之後相加）。S6 量到之後要填哪一張表、還是把兩張併成一張，見 `sim/joint_mapping.py` 該段註解，未裁決。
 
 ### 🔴 2026-09-21 §2-D：基座墊高 15 cm 已修正——落差反而變大，這是好消息
 
@@ -474,7 +508,7 @@ link4 10.4 / link5 10.5 / link7 11.3 / link6/7 中點 11.4 / link6 11.6 / end_ef
   §2 缺口 1 的「放寬 effort_limit 換取追蹤效果」那個取捨問題**直接消失**，不是被繞過，是不存在。
 - **缺口 1 不再是 S5 的硬依賴**（§2 的表格標「🔴 是」已過期，見該節 2026-09-18 補記）。
   它仍然是 **S4 的**硬依賴——S4 是即時遙操作，沒有「已經發生的結果」可以照抄，
-  模擬必須靠自己的控制迴路即時算出手臂該去哪。**今天缺口 1 量到的數字與腳本不作廢，是換了歸屬。**
+  模擬必須靠自己的控制迴路即時算出手臂該去哪。**今天缺口 1 量到的數字與腳本不作廢，是換了歸屬。**（⚠️ 但那 5 組數字本身因單位錯誤要重跑，見 §2 缺口 1 表上方的 merge 更正——「換歸屬」不影響這點。）
 - **與缺口 3（scripted attach/detach）互相一致，不是巧合**：手臂既然是運動學 teleport、不是物理驅動，
   它本來就**不可能**對物體產生接觸力，所以抓取一定得是腳本化的（§8 早就排除物理抓取）。
   兩個決定是同一個架構的兩面。
@@ -595,3 +629,64 @@ LeRobotDataset.add_frame(...) → save_episode()　（repo_id 帶 sim_ 前綴＋
 ## 10. Cross-reference
 
 `docs/decisions.md` D021, D025, D029, D030, `docs/specs/S4_sim_teleop_collect.md`, `sim/README.md`, `eval/README.md`, `docs/phase_plan.md`（Phase B 定義）, `configs/replay_omx.yaml`（既有真實→真實 replay 的對照範本）。
+
+---
+
+## 11. 2026-09-18 四個缺口的準備工作（`[柏宇說]`「做s5的四個準備」）
+
+**範圍：只做「準備」——工具與離線分析，不是開始 §4 的 `sim_replay_augment.py` 本體。** §0 的「是否要做 S5」仍待 Eric 裁決。
+**這台是 Windows 筆電，沒有 Isaac Sim：** 標 `未在模擬器執行` 的腳本只過了語法檢查（`py_compile`），第一次在 5090 容器上跑很可能要修。
+
+| 缺口 | 產出 | 跑過了嗎 | 結果／還缺什麼 |
+|---|---|---|---|
+| 共用 | `sim/joint_mapping.py`：LeRobot `.pos` ↔ URDF 弧度 | ✅ 本機（round-trip 誤差 1e-14） | LeRobot 端 `已查證`（`use_degrees=False`、出廠校正 0–4095）。🔴 **8 個符號／零點是 `[未確認]`**，由 S4 §5-1 五姿態對照決定——缺口 1、2 的結果都以它為前提 |
+| 2 mimic | `sim/mimic_check.py`：掃 `gripper_joint_1`，量兩指在 link5 座標系的間距與中點，自動判「鏡像／同向」；`--override-gearing` 在 USD 副本上測另一個正負號 | ❌ 未在模擬器執行 | 每個候選 gearing 各跑一次，通過的值回填 `convert_omx_urdf.py --mimic-gearing` 與 `sim/README.md` |
+| 1 gains | `scripts/s5_prepare_replay.py`（主機端）→ `traj.npz`＋`real_tracking.json`；`sim/fit_drive_gains.py`（模擬端）每個增益候選一個 env，逐幀比對 sim 關節角 vs 真實 `state[t+1]` | 主機端 ✅（uvc_60，60 集 15966 幀）；模擬端 ❌ | 見下方「真實手臂的追蹤基準」。腳本**不會**寫 `omx_constants.py` |
+| 3 attach | `s5_prepare_replay.py` 的 `grasp_segments.csv`（每集夾爪閉合區段）＋下方設計選項 | ✅ 本機 | **決策未做**——選項待裁決 |
+| 4 相機 | `scripts/measure_camera_geometry.py`：`markers` / `board` / `rs-intrinsics`（`--save-image` 同時存外參用照片）/ `capture` / `checkerboard` / `extrinsics` / `selftest`；標記擺放點 `configs/camera_markers_campA_136sym_20260918.csv`（6 個分散的 placement 點） | `selftest` ✅（合成影像：相機位置還原誤差 1.77 mm、注視點 0.04 mm）；實機 ❌ | 要 lab day。**墊子上沒有 ArUco**（`make_placement_mat.py` 無此功能）→ 要另外印 `markers` 並照「印出來的上緣朝 +X」擺在墊子已知點。⚠️ **手腕相機只做得到內參**——外參（安裝偏移）要配合手臂姿態的 FK，本工具沒做 |
+
+### 11-1 uvc_60 的離線結果（`[產出物]` `outputs/s5_prep/uvc_60/`，未進 git）
+
+**真實 follower 自己的追蹤誤差** `|action[t] − state[t+1]|`（度，映射 `[未確認]` 但絕對誤差不受正負號影響）：
+
+| joint | p50 | p95 | max | 平均帶號誤差 |
+|---|---|---|---|---|
+| joint1 shoulder_pan | 0.70 | 2.99 | 8.88 | +0.11 |
+| joint2 shoulder_lift | 1.23 | 7.12 | 15.12 | **−1.57** |
+| joint3 elbow_flex | 0.53 | 1.58 | 2.90 | −0.54 |
+| joint4 wrist_flex | 1.58 | 7.03 | 13.71 | **−2.22** |
+| joint5 wrist_roll | 0.09 | 1.14 | 7.65 | −0.11 |
+
+`[AI推論]` joint2／joint4 有一致的帶號偏差，像是承重關節的重力下垂——**這正是 sim 增益要重現的東西**，sim 若在這兩個關節誤差趨近 0，代表太硬，不是比較好。
+
+**映射可疑的跡象 `[AI推論]`：** 用預設映射（符號 +1、零點 0），joint1 範圍 −101.5°～56.9°，超出 `omx_constants` 的現場扇區 −90°～45°；joint3 到 101.1°，超出原廠 +90°。可能是零點偏移，也可能扇區本身不準——**五姿態對照前不要下結論**。
+
+**夾爪：** 張開 ≈59、夾紙杯 ≈47–50（`gripper.pos`）。「數值變小＝閉合」的依據是夾住時 action 比 state 更小（ep 0：−2.4）——`[AI推論]`，手腕相機的極值畫面看不到指尖，**目視沒有確認到**。預設映射下是 −2°～38°，USD 限制 0°～100° → `GRIPPER_ZERO_DEG` 大概要調，由 `mimic_check.py` 印出的指距對照決定。
+
+**抓取分段：** 69 段閉合、60 集都有；9 集有重抓（0, 1, 2, 21, 24, 25, 31, 47, 52）。
+**第一次閉合前的幀佔 48%（7685/15966），最後一次張開後佔 18%**——`--skip-grasp-frames` 的簡化版大約能用到 2/3 的幀。
+⚠️ `stalled_on_object` 欄位是弱證據：28 段閉合沒有 stall，多數是 leader 本身就停在 ≈49.6，不代表沒夾到。
+
+### 11-2 缺口 3：attach/detach 設計選項 `[AI提議]`，🟡 待裁決
+
+| | A. 腳本化吸附（kinematic attach） | B. 物理抓取（摩擦接觸） | C. 不渲染抓取段 |
+|---|---|---|---|
+| 做法 | 在 `close_start` 把物體設為 kinematic，之後每步 `物體 pose = link5 pose ∘ 當下的相對位姿`；`close_end` 放開、恢復動力學 | 靠手指碰撞＋摩擦夾住 | `--skip-grasp-frames`，只出 approach／retreat 段 |
+| 需要先關閉的缺口 | 1（手臂要跟得上）、2（手指畫面要對） | 1、2，再加碰撞近似與摩擦參數調校 | 無 |
+| 抓取段畫面 | 有物體，但物體相對夾爪的位置是 sim 當下的，不是真實的 | 最接近真實，但最容易穿模／滑落 | 無 |
+| 可用幀 | 100% | 100%（如果調得動） | ≈66% |
+| 風險 | 真實抓取時物體可能被推動過，起點跟 `placement_id` 不同 → 吸附位置偏 | §8 已明列第一版不做 | 策略學不到抓取瞬間的視覺 |
+
+`[AI推論]` 依 §2 的建議順序，C 可以先出、A 是第二步；B 維持 §8 不做。**這是提議，不是決定。**
+
+### 11-3 順帶發現的不一致（沒有改，待確認）
+
+- `sim/scene_constants.py` 寫兩台相機都是 **848×480**，但 wrist 在 2026-09-13 已換成 UVC **640×480**（D022、`configs/record_omx.yaml`、uvc_60 `info.json`）。S4 場景的 `cam_wrist` 解析度與資料集不符，**S4／S5 產出前要改**。
+
+### 11-4 下一步（依賴順序）
+
+1. 5090 容器：`mimic_check.py`（gearing 1.0 與 −1.0 各一次）→ 回填 gearing
+2. 實機或 sim：S4 §5-1 五姿態對照 → 回填 `joint_mapping.py` 的 8 個 `[未確認]` 值 → 重跑 `s5_prepare_replay.py`
+3. 5090 容器：`fit_drive_gains.py`（先 `--max-frames 60` 試跑，再全跑）→ 與 11-1 的表對照 → 人決定要不要改 `omx_constants.py`
+4. lab day：印 `markers`、量 `rs-intrinsics`（front-left）、`capture`＋`checkerboard`（wrist UVC）、`extrinsics`
+5. 缺口 3 選項裁決

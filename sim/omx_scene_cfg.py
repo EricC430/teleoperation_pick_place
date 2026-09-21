@@ -190,3 +190,16 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
         # pose is set by look-at after the scene is built (see preview_scene.py)
         offset=CameraCfg.OffsetCfg(pos=S.CAM_FRONT_LEFT_POS, convention="ros"),
     )
+
+
+@configclass
+class OmxArmOnlySceneCfg(InteractiveSceneCfg):
+    """Ground + arm, nothing else. For checks that measure the arm itself (S5 gaps 1 and 2):
+    no cameras means no `--enable_cameras`, and many envs fit on one GPU."""
+
+    ground = AssetBaseCfg(prim_path="/World/GroundPlane", spawn=sim_utils.GroundPlaneCfg())
+    dome_light = AssetBaseCfg(
+        prim_path="/World/DomeLight",
+        spawn=sim_utils.DomeLightCfg(intensity=S.DOME_LIGHT_INTENSITY),
+    )
+    robot: ArticulationCfg = omx_articulation_cfg("{ENV_REGEX_NS}/Robot")

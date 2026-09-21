@@ -169,7 +169,7 @@ dated record, no exceptions.
 
 | What | Where | Why not in this repo |
 |---|---|---|
-| Raw datasets (demos, recovery demos) | Hugging Face Hub, private repo — Phase A pilot: `ericc430/omx_pick_place_pilot` (lowercase — the Hub namespace, unlike this repo's local `EricC430/...` labels). Real campaigns get a fresh `repo_id`, see `configs/record_omx.yaml` | Large, binary, versioned better by HF Hub / LeRobot tooling than git |
+| Raw datasets (demos, recovery demos) | Hugging Face Hub, private repo — Phase A pilot: `ericc430/omx_pick_place_pilot` (lowercase — the Hub namespace; `EricC430/...` 403s on create. Config `repo_id`s are lowercase since 2026-09-13; only the 4090's local directories still read `.../lerobot/EricC430/...`). 2026-09-13 pilot t1–t60: `ericc430/omx_pick_place_pilot_uvc_60`. Real campaigns get a fresh `repo_id`, see `configs/record_omx.yaml` | Large, binary, versioned better by HF Hub / LeRobot tooling than git |
 | Model checkpoints | Hugging Face Hub, private repo — Phase A pilot: `ericc430/act_omx_pick_place_pilot` | Same as above |
 | Raw video | Lab NAS — `TODO: path` | Large binary, no need to version in git |
 

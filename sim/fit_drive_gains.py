@@ -41,7 +41,11 @@ Then compare the printed/written `agg_p50_deg` across the output files by hand -
 aggregator script here; writing one before a single real number has come back would be exactly
 the "guessed a bigger constant" mistake `sim/README.md` already warns against.
 
-⚠️ UNVERIFIED PREREQUISITE (inherited from `joint_mapping.py`): the recorded-degrees -> sim-radians
+🔴 2026-09-18: runs made before the merge read `.pos` as degrees (see `joint_mapping.py` docstring) --
+their numbers are void; rerun. (`actions_deg`/`states_deg` below hold LeRobot `.pos` units, the
+names predate the fix.)
+
+⚠️ UNVERIFIED PREREQUISITE (inherited from `joint_mapping.py`): the recorded `.pos` -> sim-radians
 SIGN convention defaults to +1 for all six joints and has not been confirmed by the five-pose test
 (S4 §5-1). A large, joint-specific error here could be a sign bug, not a gain problem -- read
 `joint_mapping.py`'s docstring before reading a bad per-joint number as "this joint's gain is off".

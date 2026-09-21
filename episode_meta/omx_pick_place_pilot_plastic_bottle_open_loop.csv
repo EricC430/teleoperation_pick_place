@@ -1,0 +1,13 @@
+﻿episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
+0,plastic bottle,stand,o1,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Eric,2026/9/18,
+1,plastic bottle,stand,o2,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Eric,2026/9/18,
+2,plastic bottle,stand,o3,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Eric,2026/9/18,
+3,plastic bottle,stand,o4,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Eric,2026/9/18,
+4,plastic bottle,stand,o5,宿舍大燈、檯燈、窗簾拉上,,no_grasp,pushed_away,1,1,,Eric,2026/9/18,太遠抓不到
+5,plastic bottle,stand,o6,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Eric,2026/9/18,
+6,plastic bottle,stand,o7,宿舍大燈、檯燈、窗簾拉上,,success,self_recovered,3,1,,Eric,2026/9/18,
+7,plastic bottle,stand,o8,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Eric,2026/9/18,
+8,plastic bottle,stand,o9,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Eric,2026/9/18,
+9,plastic bottle,stand,o10,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Eric,2026/9/18,
+10,plastic bottle,stand,o11,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Eric,2026/9/18,
+11,plastic bottle,stand,o12,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Eric,2026/9/18,

@@ -20,7 +20,8 @@ runtime, which is easier to get right without being able to test in this environ
 `fit_drive_gains.py`'s docstring for the same constraint) -- if that trade turns out wrong,
 swapping the pose-forcing calls below for joint creation is a local change, not a redesign.
 
-**What decides attach/detach:** the REAL recorded `gripper.pos` channel (degrees,
+**What decides attach/detach:** the REAL recorded `gripper.pos` channel (LeRobot RANGE_0_100 units, not degrees -- the
+`*_deg` names below predate that correction; the trigger is percentile-based so units do not matter;
 `joint_mapping.DATASET_JOINT_ORDER[5]`), not the sim gripper joint. The sim joint is a PD-lagged
 copy of the same command (gap 1 is exactly the open question of how lagged) -- deciding the grasp
 from it would fold gap 1's uncertainty into gap 3's trigger for no reason, when the ground-truth

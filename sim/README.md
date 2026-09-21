@@ -9,10 +9,11 @@ The script spec is `docs/specs/S4_sim_teleop_collect.md`.
 | File | Runs where | What it does |
 |---|---|---|
 | `omx_constants.py` | anywhere (pure python) | **Single source of truth**: joint limits, actuator specs, drive gains, payload. Run it directly to print the table. |
-| `joint_mapping.py` | anywhere (pure python) | Real recording (degrees) ↔ sim joint (radians) conversion, shared by S4/S5. `SIGN` is `[未確認]` per joint — see its docstring. Run it directly for a self-test. |
+| `joint_mapping.py` | anywhere (numpy) | Real recording (LeRobot `.pos`: body −100..100, gripper 0..100 — **not degrees**, corrected 2026-09-18) ↔ sim joint (radians) conversion, shared by S4/S5. `SIGN` is `[未確認]` per joint — see its docstring. Run it directly for a self-test. |
 | `convert_omx_urdf.py` | inside `isaac-lab` | URDF → USD, then patches everything the URDF gets wrong. Prints every `original -> new`. |
 | `audit_usd.py` | inside `isaac-lab` | Read-only audit of any robot USD against the constants. Exit 0 = matches. |
 | `fit_drive_gains.py` | inside `isaac-lab` | S5 gap 1: replays one real episode's `action` and scores it against `observation.state` for one drive-gain scale combo (plus `--sign-override` for testing a candidate joint sign). Run 2026-09-18 against uvc_60 episode 0, 5 combos — see "Two gaps that are NOT closed" §1 below for the actual numbers. Not yet closed. |
+| `fit_drive_gains_grid.py` | inside `isaac-lab` | Same gap as above, other design (2026-09-18 merge): the whole stiffness × damping grid as parallel envs in one scene, input `traj.npz` from `scripts/s5_prepare_replay.py`. Never run yet. |
 | `grasp_attach.py` | inside `isaac-lab` (imported, not run directly) | S5 gap 3: `ScriptedGraspAttach` — kinematic object attach/detach, triggered off the real recorded gripper channel. `[AI提議]`, not `[Eric決定]` — see module docstring. |
 | `verify_grasp_attach.py` | inside `isaac-lab` | Smoke test for `grasp_attach.py`. Run 2026-09-18 against uvc_60 episode 0: state machine fires correctly (attach/detach at frame 226/382, and again 401/464 — a real second regrasp in the raw gripper trace, not a bug). Tests the mechanism only, not real-world grasp success — see script docstring. |
 | `inspect_mimic_axis.py` | inside `isaac-lab` (no `--enable_cameras` needed) | Read-only: prints the actual `RevoluteJoint.axis` and `PhysxMimicJointAPI` attributes for the gripper joints. Runs in seconds — use this before reaching for `verify_mimic_gearing.py` to check a hypothesis about the USD's own contents. |
@@ -136,6 +137,9 @@ one probably does need an actuator entry.
 1. 🔴 **Drive gains are provisional, and now there's a real number attached.** `fit_drive_gains.py`
    (S5 gap 1) replayed uvc_60 episode 0 (534 frames) open-loop against 5 gain/sign combos in the
    `isaac-lab` container, 2026-09-18:
+
+   > 🔴 **Void — rerun.** These runs read `.pos` as degrees; it is normalised −100..100 / 0..100
+   > (`joint_mapping.py` docstring, 2026-09-18 merge correction). Body angles were ~1.8× too small.
 
    | run | stiffness×/damping×/effort× | `shoulder_lift` p50/p95/max (deg) | `elbow_flex` p50/p95/max (deg) |
    |---|---|---|---|

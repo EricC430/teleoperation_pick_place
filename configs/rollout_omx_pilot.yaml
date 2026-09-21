@@ -31,9 +31,9 @@ robot:
 
 policy:
   path: ericc430/act_omx_pick_place_pilot  # pulled from HF Hub on first run, cached after
-  # lowercase: the Hub account namespace is "ericc430", not "EricC430" -- local dataset
-  # dirs/repo_id strings elsewhere in this repo keep the mixed-case spelling since they're
-  # local-only labels, but an actual Hub path must match the real (lowercase) namespace.
+  # lowercase: the Hub account namespace is "ericc430", not "EricC430" ("EricC430/..." 403s on
+  # create, D022 2026-09-13). Config repo_ids are lowercase too since then; only the 4090's local
+  # dataset directories still read .../lerobot/EricC430/... -- those are paths, not repo_ids.
 
 strategy:
   type: base  # fully autonomous, no dataset — sentry/highlight/dagger need --dataset

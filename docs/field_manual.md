@@ -582,7 +582,7 @@ uv run lerobot-replay --config_path configs/replay_omx.yaml --dataset.episode=0
 ```powershell
 # repo_id 形式 + 本地 root（本專案 dataset 在 .cache/lerobot/，不在 HF cache）
 uv run lerobot-dataset-viz `
-    --repo-id EricC430/omx_pick_place_pilot `
+    --repo-id ericc430/omx_pick_place_pilot `
     --root .cache/lerobot/omx_pick_place_pilot_uvc `   # UVC 腕部。`omx_pick_place_pilot` / `_2`（無 `_uvc` 後綴）是不同 root，不可混用
     --episode-index 0
 ```
