@@ -85,11 +85,15 @@ if args.placements:
 
 scene_cfg = SC.OmxCellSceneCfg(num_envs=1, env_spacing=2.0, replicate_physics=False)
 if args.object:
-    scene_cfg.object.spawn.usd_path = args.object
-if args.object_scale != 1.0:
+    scene_cfg.object.spawn = sim_utils.UsdFileCfg(
+        usd_path=args.object,
+        scale=S.TRASH_OBJ_SCALE if "trash_obj" in args.object else (1.0, 1.0, 1.0),
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(disable_gravity=False, max_depenetration_velocity=3.0),
+    )
+if args.object_scale != 1.0 and hasattr(scene_cfg.object.spawn, "scale"):
     scene_cfg.object.spawn.scale = (args.object_scale,) * 3
 if place is not None:
-    scene_cfg.object.init_state.pos = (place.x_m, place.y_m, S.TABLE_TOP_Z + 0.06)
+    scene_cfg.object.init_state.pos = (place.x_m, place.y_m, S.TABLE_TOP_Z + S.CUP_HEIGHT / 2.0)
 
 sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=1.0 / 120.0, device=args.device))
 scene = InteractiveScene(scene_cfg)

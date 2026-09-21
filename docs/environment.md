@@ -8,7 +8,37 @@
 |---|---|---|---|
 | Lab GPU (4090 / A6000) | **Training** | Docker (`huggingface/lerobot-gpu`) | Host driver caps the usable CUDA version — see the gotcha below |
 | Laptop (RTX 3050 4GB, **Windows**) | **實機蒐集 + 推論部署** | **uv** (decided 2026-08-13, D014) | ⚠️ Issue #4093 — see below |
-| 🔴 **Lab laptop (RTX 5090, Linux)** | **模擬蒐集**（Isaac Sim + leader 直插，D029） | Docker (`isaac-lab` / `nvcr.io/nvidia/isaac-sim`) ＋ 一份 lerobot | **leader 走 `/dev/ttyUSB*`，不是 `COM6`** — 需 udev／by-id 綁定（`experiment_spec.md` §7） |
+| 🔴 **Lab laptop (RTX 5090, Linux)** | **模擬蒐集**（Isaac Sim + leader 直插，D029） | Docker (`isaac-lab` / `nvcr.io/nvidia/isaac-sim`) ＋ lerobot **也在 docker 裡**（見下方「這台機器上什麼裝在哪」） | **leader 走 `/dev/ttyUSB*`，不是 `COM6`** — 需 udev／by-id 綁定（`experiment_spec.md` §7） |
+
+### 🔴 5090 Linux 筆電：什麼裝在哪（2026-09-18 查證）
+
+**這台機器的 host 上沒有 Isaac Lab、也沒有 lerobot、也沒有 uv**——`python3 -c "import lerobot"`、`pip show`、
+找 `.venv` 全部落空。**兩者都只在 docker 裡**。2026-09-18 AI 因為只查了 host 就兩度斷言「這台機器沒有」，
+兩次都被 Eric 糾正（同 `CLAUDE.md` 規則 1 的 2026-09-03 教訓，這次是漏查 docker）。
+**判斷「有沒有裝」之前，`docker ps -a` 和 `docker images` 要一起查。**
+
+| 要用的 | 在哪 | 跑法 |
+|---|---|---|
+| Isaac Sim / Isaac Lab | 常駐容器 **`isaac-lab`**（image `isaac-lab-base`，isaaclab 0.48.8） | `sim/run_in_container.sh`（見 `sim/README.md`）。⚠️ 容器內**沒有 lerobot／av／torchcodec**；`pyarrow` 是 2026-09-18 手動 `pip install` 進去的 |
+| lerobot 0.6.2 | image **`huggingface/lerobot-gpu@sha256:62df079f…`**——**與下方版本表裡 GPU 訓練機的釘選 digest 完全相同** | 見下方 |
+
+在 lerobot image 裡跑 repo 內的腳本，**三個旗標缺一不可**（每一個都是實際踩過才知道的）：
+
+```bash
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e USER=$USER \
+    -v "$PWD":/repo -w /repo huggingface/lerobot-gpu:latest \
+    python scripts/verify_dataset.py <root>
+```
+
+- `--user "$(id -u):$(id -g)"`：不加的話容器用自己的使用者，**讀不到 repo 裡的檔案**（PermissionError）
+- `-e USER=$USER`：torch import 時會用 `getpass.getuser()` 解析使用者名稱，uid 1020 不在 image 的
+  passwd 裡 → `KeyError: getpwuid(): uid not found`。`getpass` 會先看 `USER` 環境變數，設了就繞過
+- `-e HOME=/tmp`：同理，避免寫到不存在的家目錄
+
+⚠️ image 標籤是 `:latest`——**本檔案開頭警告的正是「兩邊各自裝 latest、默默分岔」**。目前本機這個
+`:latest` 的 digest 恰好等於版本表記錄的 GPU 機釘選值，所以版本一致；但 **`docker pull` 一次就可能不再成立**。
+要比較 sim 與實機資料之前，用 `docker image inspect huggingface/lerobot-gpu:latest --format '{{index .RepoDigests 0}}'`
+核對 digest，不要信標籤。（「0.6.2」這個字串本身無法辨識 commit，見下方 2026-09-07 的說明。）
 
 > 🔴 **第三台加入後，「LeRobot 版本必須完全一致」這條規則適用於三台，不是兩台。**
 > 模擬那台錄出來的 dataset 若用不同版本的 LeRobot 寫，會和實機資料在 schema 上分岔，

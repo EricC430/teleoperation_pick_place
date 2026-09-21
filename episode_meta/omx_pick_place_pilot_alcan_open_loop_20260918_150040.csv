@@ -1,0 +1,13 @@
+episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
+0,al can,stand,o1,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Boyu,2026/9/18,
+1,al can,stand,o2,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Boyu,2026/9/18,
+2,al can,stand,o3,宿舍大燈、檯燈、窗簾拉上,,success,self_recovered,3,1,,Boyu,2026/9/18,self recovered
+3,al can,stand,o4,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Boyu,2026/9/18,
+4,al can,stand,o5,宿舍大燈、檯燈、窗簾拉上,,no_grasp,pushed_away,1,1,,Boyu,2026/9/18,太遠抓不到
+5,al can,stand,o6,宿舍大燈、檯燈、窗簾拉上,,success,self_recovered,3,1,,Boyu,2026/9/18,self recovered
+6,al can,stand,o7,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Boyu,2026/9/18,第三視角看不到
+7,al can,stand,o8,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Boyu,2026/9/18,
+8,al can,stand,o9,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Boyu,2026/9/18,
+9,al can,stand,o10,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Boyu,2026/9/18,
+10,al can,stand,o11,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Boyu,2026/9/18,
+11,al can,stand,o12,宿舍大燈、檯燈、窗簾拉上,,success,,5,1,,Boyu,2026/9/18,

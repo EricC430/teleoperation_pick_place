@@ -20,6 +20,24 @@ The script spec is `docs/specs/S4_sim_teleop_collect.md`.
 | `verify_mimic_gearing.py` | inside `isaac-lab` | S5 gap 2: commands `gripper_joint_1` to two poses, reads back `gripper_joint_2`, renders a close-up (or `--no-render` for a fast numbers-only check). Run 2026-09-18, closed the gap — see "Two gaps" §2 below. |
 | `run_in_container.sh` | host | Copies `sim/*.py` into `~/isaaclab_volume/omx_sim/` and runs one of them in the container. **Does not copy dataset parquet files** — `fit_drive_gains.py`/`verify_grasp_attach.py` need that copied in separately, see their docstrings. |
 
+## Where the renders land
+
+Scripts inside the container write to `~/isaaclab_volume/omx_sim/<name>/`, which is the container's
+mount and **not** inside this repo -- that is why they are easy to lose. Copy what you want to look
+at into `outputs/renders/` (gitignored, regenerable):
+
+```bash
+cp -r ~/isaaclab_volume/omx_sim/<name> outputs/renders/
+```
+
+Current render dirs worth knowing about:
+
+| dir | what |
+|---|---|
+| `replay_ep0_v2/` | full S5 stage-1 replay with the 2026-09-21 corrected scene |
+| `state_replay_*/` | single-frame pose checks, incl. the `--sign-override` controls |
+| `outputs/videos/ep0_real_vs_sim*.mp4` | side-by-side real vs sim (built by `scripts/make_sim_real_video.py`) |
+
 ## Usage
 
 ```bash

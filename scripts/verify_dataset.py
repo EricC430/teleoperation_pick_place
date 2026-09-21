@@ -201,9 +201,29 @@ def main(root: Path) -> int:
     else:
         print("  ✅ 一致")
 
-    # ---- 檢查 2：影片幀數 vs parquet 行數 ----
+    # ---- 檢查 2：影片幀數 vs parquet 行數（兩條路徑）----
+    #
+    # 🔴 2026-09-21 merge：兩邊各自修了同一個 v3 bug，兩條路徑都保留。
+    #   主路徑 check_videos_by_episode_meta()：有 meta/episodes 就用它查「每支影片裝了哪幾集」，
+    #     期望幀數 = 那幾集的 parquet 行數加總 → 精確到「影片檔」，不會被影片／parquet 分檔不對稱騙到。
+    #   退路（本段以下）：沒有 meta/episodes 的舊結構，退回「每台相機加總 vs parquet 總行數」。
+    #
+    # 🔴 2026-09-18 修正（退路的由來）。原本「以檔名配對影片與 parquet、逐檔比對」只在 LeRobot v2.x（一集一個檔）
+    # 下成立。v3.0 是按「大小」切檔（video_files_size_in_mb / data_files_size_in_mb），而且影片與
+    # parquet 各自獨立切——同一台相機的影片可以切成 file-000 + file-001，parquet 卻只有一個 file-000。
+    # 舊寫法因此有三個 bug，在 uvc_60 上全部中招：
+    #   (1) 拿 front-left 的 file-000.mp4（6626 幀）去比「整份」parquet（15966 行）→ 假的 ❌
+    #   (2) 配不到 parquet 的 file-001.mp4（9340 幀）被 `continue` 直接跳過，完全沒被數到
+    #   (3) 相機名取成 v.parent.name（= chunk-000），輸出分不出是哪台相機
+    # 結論變成「唯一的解是重錄」——對一份完好的資料（6626 + 9340 = 15966）。
+    # 改成：每台相機把所有分檔加總，跟 parquet 總行數比。v2.x／v3.0 兩種結構都適用。
+    #
+    # ⚠️ 退路的已知弱點（誠實記下）：比的是「每台相機的總和」，不是逐 episode。若某集多 1 幀、另一集少 1 幀，
+    # 總和會互相抵銷而漏抓。本腳本要防的主要失效（info.json 宣稱總數 ≠ 影片實際總數 → 訓練中途
+    # IndexError，見 docstring）仍然抓得到。主路徑精確到「影片檔」，仍不是逐 episode——真正的逐
+    # episode 比對要用 meta/episodes 的 from/to_timestamp 解碼計數，成本高得多，目前沒做。
     print("\n" + "─" * 60)
-    print("檢查 2：每支影片實際幀數 vs 對應 parquet 行數")
+    print("檢查 2：影片幀數 vs parquet 行數")
     videos = sorted(root.glob("videos/**/*.mp4")) or sorted(root.glob("**/*.mp4"))
     v3_ok = check_videos_by_episode_meta(root, parquets, videos) if videos else None
     if not videos:
@@ -211,27 +231,32 @@ def main(root: Path) -> int:
     elif v3_ok is not None:
         ok = ok and v3_ok
     else:
-        # 舊結構（每集一支影片）：以檔名中的 episode 編號配對
-        def ep_key(p: Path) -> str:
-            stem = p.stem
-            return stem.split("_")[-1] if "_" in stem else stem
-
-        pq_by_ep = {ep_key(p): (p, n) for p, n in rows_per_file.items()}
+        # 退路（沒有 meta/episodes 的舊結構）：每台相機所有分檔加總，跟 parquet 總行數比。
+        videos_dir = root / "videos"
+        by_cam: dict[str, list[Path]] = {}
         for v in videos:
-            key = ep_key(v)
-            if key not in pq_by_ep:
-                continue
-            pq_path, pq_rows = pq_by_ep[key]
-            n = count_video_frames(v)
-            if n is None:
-                ok = False
-                continue
-            cam = v.parent.name
-            if n != pq_rows:
-                print(f"  ❌ {cam}/{v.name}: 影片 {n} 幀 ≠ parquet {pq_rows} 行")
-                ok = False
+            try:
+                cam = v.relative_to(videos_dir).parts[0]  # videos/<camera>/chunk-NNN/file-NNN.mp4
+            except ValueError:
+                cam = v.parent.name
+            by_cam.setdefault(cam, []).append(v)
+
+        for cam, files in by_cam.items():
+            counts = []
+            for v in files:
+                n = count_video_frames(v)
+                if n is None:
+                    ok = False
+                    break
+                counts.append((v, n))
             else:
-                print(f"  ✅ {cam}/{v.name}: {n}")
+                cam_total = sum(n for _, n in counts)
+                detail = " + ".join(f"{v.parent.name}/{v.name}={n}" for v, n in counts)
+                if cam_total != total_rows:
+                    print(f"  ❌ {cam}: 影片共 {cam_total} 幀 ≠ parquet {total_rows} 行   ({detail})")
+                    ok = False
+                else:
+                    print(f"  ✅ {cam}: {cam_total}   ({detail})")
 
     # ---- 檢查 3：timestamp 間隔 ----
     print("\n" + "─" * 60)
@@ -255,6 +280,21 @@ def main(root: Path) -> int:
 
     print("\n" + "═" * 60)
     if ok:
+        # This script checks STRUCTURAL integrity only. For a simulated dataset (S5), passing it
+        # says nothing about whether the data may be trained on -- S5 §8 / D025 premise 1 forbid
+        # that until the gate is decided, and the fidelity flags below are why. Exit code stays 0:
+        # the structure really is fine, and S5 §7 requires exit 0 as its structural check.
+        sim_meta = root / "meta" / "sim_provenance.json"
+        if sim_meta.exists():
+            prov = json.loads(sim_meta.read_text())
+            print("✅ 結構檢查全部通過。")
+            print("🔴 但這是【模擬】資料集（有 meta/sim_provenance.json）——結構正確 ≠ 可以進訓練。")
+            print("   S5 §8／D025 前提 1：在閘門被裁決之前，不得拿去訓練、不得在書審／報告宣稱有效。")
+            print("   fidelity flags：")
+            for k, v in prov.get("fidelity", {}).items():
+                if not k.endswith("_note"):
+                    print(f"     {k} = {v}")
+            return 0
         print("✅ 全部通過。這批資料可以進訓練。")
         return 0
     print("❌ 有問題。")

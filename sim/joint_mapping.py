@@ -165,6 +165,50 @@ def urdf_rad_to_lerobot(q: np.ndarray) -> np.ndarray:
     out[..., 5] = (raw - RANGE_MIN) / (RANGE_MAX - RANGE_MIN) * 100.0
     return out
 
+# 🔴 ZERO OFFSETS -- known to be NON-ZERO, values unknown. Added 2026-09-21.
+#
+# The recorded degrees come from lerobot's calibration (homing offset + encoder ticks). The URDF's
+# zero pose is a particular mechanical configuration. Nothing ever made those two agree, and the
+# data says they do not:
+#   * `[Eric說 2026-09-21]` the arm base sits 15 cm above the table. Applying that alone makes the
+#     replayed gripper land ~30 cm above the table at the grasp instant -- impossible for a ~9 cm
+#     paper cup, so a term is missing.
+#   * A sign error is ruled out: flipping elbow_flex turns the x-reach correlation against the
+#     known placements from +0.63 to -0.34.
+#   * A constant-offset model reconciles it: fitting offsets over all 60 episodes' grasp frames
+#     solves a grasp height of 8.2 cm above the table (i.e. 6.8 cm BELOW the base) -- exactly the
+#     shape of reaching down to a cup.
+# 🔴 The fitted values are NOT usable: shoulder_lift / elbow_flex / wrist_flex all rotate about the
+#    same y axis in the same plane, so their offsets trade off against each other (the fit returned
+#    elbow +32.5 deg and wrist_flex +32.4 deg, which is the degeneracy talking, not a measurement),
+#    and 9.3 cm of horizontal residual remains. **This cannot be resolved from recorded data alone.**
+#    It needs S4 §5-1's five-pose test: move ONE joint to a physically unambiguous pose (a link
+#    exactly vertical or horizontal, checked with a protractor / phone angle app), read what the
+#    leader reports, and the difference IS that joint's offset. Two poses per joint confirms it is
+#    an offset rather than a scale error.
+# Until measured these stay 0.0, which is an assumption, not a result -- same status the SIGN table
+# had before the render check settled shoulder_lift.
+OFFSET_RAD: dict[str, float] = {name: 0.0 for name in DATASET_JOINT_ORDER}
+
+# 🔴 [AI推論 2026-09-21 merge] OFFSET_RAD is NOT wired into the conversion above -- the live zero
+# knobs are BODY_ZERO_DEG / GRIPPER_ZERO_DEG, which play exactly the same role one unit earlier
+# (degrees, applied after SIGN). Do not paste S6 output into OFFSET_RAD and expect it to take
+# effect; nothing reads this dict today.
+#   * The two branches met here: main measured the zeros empirically (S6,
+#     `scripts/measure_joint_zeros.py`), this branch derived the scale from the lerobot source.
+#     They agree on the shape -- S6 solves `rad = SCALE_RAD_PER_UNIT[j] * reading + OFFSET_RAD[j]`,
+#     and the derivation above IS that affine map with SCALE fixed at 0.03140826 rad/unit for the
+#     five body joints (0.06281651 for the gripper, whose norm range is 0..100 not -100..100).
+#   * So S6 is the empirical check on this file's `[已查證]` unit claim: if the arm is real and the
+#     derivation is right, S6 must print `scale is 1.80x degrees` (its line 149 flag), not 1.00x.
+#   * 🔴 The evidence block above was computed with the DEGREES conversion (body angles ~1.8x too
+#     small). The qualitative conclusion "the zeros are non-zero" rests on the 15 cm base height and
+#     survives; the fitted numbers (8.2 cm grasp height, elbow +32.5 deg, 9.3 cm residual) do not --
+#     rerun that fit with this file's conversion before quoting them.
+#   * [未確認] whether to keep two zero tables at all. Once S6 measures the zeros, the honest move is
+#     probably to drop BODY_ZERO_DEG/GRIPPER_ZERO_DEG and let SCALE_RAD_PER_UNIT + OFFSET_RAD be the
+#     one table -- but that is Boyu's call, not this merge's.
+
 
 def row_to_sim_rad(row: "list[float] | tuple[float, ...]") -> list[float]:
     """One dataset row (6 LeRobot `.pos` values, DATASET_JOINT_ORDER) -> sim joint radians, same order."""

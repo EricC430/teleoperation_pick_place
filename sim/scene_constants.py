@@ -63,10 +63,81 @@ CAM_FPS = 15                # configs/record_omx.yaml (dataset fps must match; t
 # PLACEHOLDER — every one of these replaces a blank row in experiment_spec §3
 # --------------------------------------------------------------------------------------
 TABLE_TOP_Z = 0.75          # PLACEHOLDER  桌面高度 ___ cm
-TABLE_SIZE = (1.20, 0.80, 0.04)  # PLACEHOLDER  table top slab (x, y, thickness)
+TABLE_THICKNESS = 0.04           # PLACEHOLDER
+# `[Eric說 2026-09-21]` "桌面僅須至少大於 placement ids 的工作範圍即可" -- so the table is DERIVED
+# from what has to fit on it, not invented. Extent of campA_136sym's 108 points, pan-axis frame:
+#   x 0.101 .. 0.383,  y -0.327 .. +0.343   (t1..t60 alone: x 0.105..0.367, y -0.315..+0.343)
+# The table must also carry the riser, which reaches y = -0.385 and x = -0.139.
+_PLACEMENT_X = (0.101, 0.383)
+_PLACEMENT_Y = (-0.327, 0.343)
+_TABLE_MARGIN = 0.10             # [AI推論] breathing room beyond the outermost thing on the table
 
-BIN_POS = (0.10, 0.30, 0.0)      # PLACEHOLDER  目標區位置 (relative to the pan axis, on the table)
-BIN_SIZE = (0.16, 0.16, 0.12)    # PLACEHOLDER
+# --------------------------------------------------------------------------------------
+# Riser / bin / cup -- `[Eric說 2026-09-21]`, MEASURED unless marked otherwise
+# --------------------------------------------------------------------------------------
+# 🔴 THE ARM DOES NOT SIT ON THE TABLE. One platform 15 cm tall carries BOTH the arm base and
+# the bin. Until 2026-09-21 the scene put the arm straight on the table, which is why a kinematic
+# replay left the gripper ~11 cm above the object (S5 §2-C/§2-D).
+ARM_RISER_HEIGHT = 0.15          # MEASURED
+
+# Arm base plate footprint, read off `follower_01_base.stl` (URDF link0, scale 0.001):
+# x -0.060..+0.060, y -0.075..+0.075, z 0..0.0575. The pan axis sits at x=-0.01125 in that frame,
+# so in the PAN-AXIS frame (the one the placement mat uses) the plate spans:
+ARM_BASE_FRONT_X = 0.060 + 0.01125     # +0.0713 m ahead of the pan axis
+ARM_BASE_BACK_X = -0.060 + 0.01125     # -0.0488
+ARM_BASE_HALF_Y = 0.075                # +/- from the pan axis
+
+# `[Eric說]` the arm base's FRONT edge is flush with the riser's FRONT edge.
+RISER_FRONT_X = ARM_BASE_FRONT_X
+
+# Bin: a truncated cone. `[Eric說]` base dia 15 cm, opening dia 20 cm, height 22 cm, standing ON
+# the riser, and its LEFT edge is 10 cm to the right of the arm base's RIGHT edge.
+# (+Y is the operator's left, so "right" is -Y.)
+BIN_BASE_DIA = 0.15              # MEASURED
+BIN_OPENING_DIA = 0.20           # MEASURED
+BIN_HEIGHT = 0.22                # MEASURED
+BIN_GAP_FROM_ARM_BASE = 0.10     # MEASURED
+_bin_max_r = BIN_OPENING_DIA / 2.0
+BIN_CENTER_Y = -(ARM_BASE_HALF_Y + BIN_GAP_FROM_ARM_BASE + _bin_max_r)   # -0.275
+# ⚠️ [AI推論] Eric specified the bin's SIDEWAYS offset only. Its X is assumed flush at the front
+#    with the arm base and the riser -- tidy, and consistent with "front edges line up", but not
+#    something he said. Move it if the real layout differs.
+BIN_CENTER_X = RISER_FRONT_X - _bin_max_r
+
+# the third-person camera also stands ON the riser, so its Y is needed to size the riser below
+CAM_FRONT_LEFT_LEFT_OF_ARM = 0.20     # MEASURED: left of the arm base's left edge
+CAM_FRONT_LEFT_Y_PRE = ARM_BASE_HALF_Y + CAM_FRONT_LEFT_LEFT_OF_ARM
+
+# Riser footprint DERIVED to contain the arm base, the bin AND the third-person camera.
+# `[Eric說 2026-09-21]` only the HEIGHT is measured; the footprint follows from what stands on it.
+# 🔴 The FRONT edge takes NO margin -- `[Eric說]` the arm base plate and the bin are FLUSH with it.
+#    A first version added margin on all four sides, which pushed the front edge 1 cm proud and
+#    left both of them visibly short of it on the scene plan.
+_RISER_MARGIN = 0.03            # back and far side only
+_riser_back_x = min(ARM_BASE_BACK_X, BIN_CENTER_X - _bin_max_r) - _RISER_MARGIN
+_riser_left_y = max(ARM_BASE_HALF_Y, CAM_FRONT_LEFT_Y_PRE) + _RISER_MARGIN
+_riser_right_y = BIN_CENTER_Y - _bin_max_r - _RISER_MARGIN
+ARM_RISER_SIZE = (RISER_FRONT_X - _riser_back_x, _riser_left_y - _riser_right_y, ARM_RISER_HEIGHT)
+ARM_RISER_CENTER = ((RISER_FRONT_X + _riser_back_x) / 2.0, (_riser_left_y + _riser_right_y) / 2.0)
+
+# Cup (the real manipulated object). `[Eric說 2026-09-21]` opening dia 7.5 cm, base dia 5 cm,
+# height 9.5 cm, standing UPRIGHT on the TABLE. Replaces the `trash_obj` can, which was lying on
+# its side with its centre only 4.1 cm up -- a different object in a different pose.
+CUP_OPENING_DIA = 0.075          # MEASURED
+CUP_BASE_DIA = 0.05              # MEASURED
+CUP_HEIGHT = 0.095               # MEASURED
+# ⚠️ Modelled as a CYLINDER at the mean diameter: Isaac Lab's primitives have no truncated cone,
+#    and inventing a mesh would be a bigger fiction than a documented approximation. The taper is
+#    NOT modelled; dimensions and upright pose are right.
+CUP_MEAN_DIA = (CUP_OPENING_DIA + CUP_BASE_DIA) / 2.0
+
+# Table box, derived: must cover every placement AND the whole riser, plus margin.
+_t_min_x = min(_PLACEMENT_X[0], ARM_RISER_CENTER[0] - ARM_RISER_SIZE[0] / 2.0) - _TABLE_MARGIN
+_t_max_x = max(_PLACEMENT_X[1], ARM_RISER_CENTER[0] + ARM_RISER_SIZE[0] / 2.0) + _TABLE_MARGIN
+_t_min_y = min(_PLACEMENT_Y[0], ARM_RISER_CENTER[1] - ARM_RISER_SIZE[1] / 2.0) - _TABLE_MARGIN
+_t_max_y = max(_PLACEMENT_Y[1], ARM_RISER_CENTER[1] + ARM_RISER_SIZE[1] / 2.0) + _TABLE_MARGIN
+TABLE_SIZE = (_t_max_x - _t_min_x, _t_max_y - _t_min_y, TABLE_THICKNESS)
+TABLE_CENTER_XY = ((_t_min_x + _t_max_x) / 2.0, (_t_min_y + _t_max_y) / 2.0)
 
 # --------------------------------------------------------------------------------------
 # MEASURED (of the asset files, not the real cell) — `assets/trash_obj/*.usd`
@@ -87,11 +158,37 @@ BIN_SIZE = (0.16, 0.16, 0.12)    # PLACEHOLDER
 # it was never "on the table", it exploded through it.
 TRASH_OBJ_SCALE = (0.01, 0.01, 0.01)
 
-# Third-person camera, "front-left" — the name is from the OPERATOR's seat, see D022.
-CAM_FRONT_LEFT_POS = (0.62, 0.34, 0.42)   # PLACEHOLDER  外部相機位置 (x, y, z) ___
-CAM_FRONT_LEFT_LOOKAT = (0.26, 0.00, 0.02)  # PLACEHOLDER  外部相機角度（俯角）___
+# Third-person camera, "front-left" -- the name is from the OPERATOR's seat, see D022.
+# `[Eric說 2026-09-21]` MEASURED, in the pan-axis frame (+X ahead, +Y operator-left):
+#   * 20 cm to the LEFT of the arm base's left edge          -> y = ARM_BASE_HALF_Y + 0.20
+#   * 4.5 cm inward (-X, toward the operator) from the riser's FRONT edge
+#   * 11 cm high ABOVE THE RISER, i.e. 15 + 11 = 26 cm above the table top. `[Eric說 2026-09-21]`
+#     corrected this: a first version placed it 11 cm above the TABLE, which put it below the
+#     riser it actually stands on.
+#   * aimed at the centre, 45 deg off the rightward horizontal, i.e. bearing -45 deg from +X
+#   * pitched DOWN about 10 deg
+CAM_FRONT_LEFT_INSET_FROM_RISER = 0.045   # MEASURED
+CAM_FRONT_LEFT_Z = ARM_RISER_HEIGHT + 0.11   # MEASURED: 11 cm above the riser top
+CAM_FRONT_LEFT_BEARING_DEG = -45.0    # MEASURED: from the rightward horizontal, turned to centre
+CAM_FRONT_LEFT_PITCH_DEG = -10.0      # MEASURED: negative = looking down
 
-# Wrist camera, mounted on link5 (the gripper base). Offset is in the link frame.
+# `[Eric說 2026-09-21]` the inset is -X (toward the operator), corrected after a first render put
+# the camera a few cm the wrong side of the riser's front edge and inside the placement cloud.
+CAM_FRONT_LEFT_POS = (
+    RISER_FRONT_X - CAM_FRONT_LEFT_INSET_FROM_RISER,
+    CAM_FRONT_LEFT_Y_PRE,
+    CAM_FRONT_LEFT_Z,
+)
+# Look-at point: along the measured bearing, dropping at the measured pitch.
+_cam_bearing = math.radians(CAM_FRONT_LEFT_BEARING_DEG)
+_cam_pitch = math.radians(CAM_FRONT_LEFT_PITCH_DEG)
+_CAM_LOOK_DIST = 0.50
+CAM_FRONT_LEFT_LOOKAT = (
+    CAM_FRONT_LEFT_POS[0] + _CAM_LOOK_DIST * math.cos(_cam_pitch) * math.cos(_cam_bearing),
+    CAM_FRONT_LEFT_POS[1] + _CAM_LOOK_DIST * math.cos(_cam_pitch) * math.sin(_cam_bearing),
+    CAM_FRONT_LEFT_Z + _CAM_LOOK_DIST * math.sin(_cam_pitch),
+)
+
 CAM_WRIST_PARENT_LINK = "link5"
 CAM_WRIST_OFFSET_POS = (0.02, 0.0, 0.03)   # PLACEHOLDER  手腕相機安裝方式 ___
 CAM_WRIST_OFFSET_ROT = (0.5, -0.5, 0.5, -0.5)  # PLACEHOLDER (ros convention)
