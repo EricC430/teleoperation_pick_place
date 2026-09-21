@@ -81,12 +81,38 @@ assert tuple(j.lerobot_name for j in K.JOINTS) == DATASET_JOINT_ORDER, (
 # [未確認] see module docstring. Flip to -1.0 for a joint once the five-pose test decides it.
 SIGN: dict[str, float] = {name: 1.0 for name in DATASET_JOINT_ORDER}
 
+# 🔴 ZERO OFFSETS -- known to be NON-ZERO, values unknown. Added 2026-09-21.
+#
+# The recorded degrees come from lerobot's calibration (homing offset + encoder ticks). The URDF's
+# zero pose is a particular mechanical configuration. Nothing ever made those two agree, and the
+# data says they do not:
+#   * `[Eric說 2026-09-21]` the arm base sits 15 cm above the table. Applying that alone makes the
+#     replayed gripper land ~30 cm above the table at the grasp instant -- impossible for a ~9 cm
+#     paper cup, so a term is missing.
+#   * A sign error is ruled out: flipping elbow_flex turns the x-reach correlation against the
+#     known placements from +0.63 to -0.34.
+#   * A constant-offset model reconciles it: fitting offsets over all 60 episodes' grasp frames
+#     solves a grasp height of 8.2 cm above the table (i.e. 6.8 cm BELOW the base) -- exactly the
+#     shape of reaching down to a cup.
+# 🔴 The fitted values are NOT usable: shoulder_lift / elbow_flex / wrist_flex all rotate about the
+#    same y axis in the same plane, so their offsets trade off against each other (the fit returned
+#    elbow +32.5 deg and wrist_flex +32.4 deg, which is the degeneracy talking, not a measurement),
+#    and 9.3 cm of horizontal residual remains. **This cannot be resolved from recorded data alone.**
+#    It needs S4 §5-1's five-pose test: move ONE joint to a physically unambiguous pose (a link
+#    exactly vertical or horizontal, checked with a protractor / phone angle app), read what the
+#    leader reports, and the difference IS that joint's offset. Two poses per joint confirms it is
+#    an offset rather than a scale error.
+# Until measured these stay 0.0, which is an assumption, not a result -- same status the SIGN table
+# had before the render check settled shoulder_lift.
+OFFSET_RAD: dict[str, float] = {name: 0.0 for name in DATASET_JOINT_ORDER}
+
 
 def row_to_sim_rad(row: "list[float] | tuple[float, ...]") -> list[float]:
     """One dataset row (6 floats, degrees, `DATASET_JOINT_ORDER`) -> sim joint radians, same order."""
     if len(row) != 6:
         raise ValueError(f"expected 6 values in {DATASET_JOINT_ORDER}, got {len(row)}")
-    return [SIGN[name] * math.radians(float(v)) for name, v in zip(DATASET_JOINT_ORDER, row)]
+    return [SIGN[name] * math.radians(float(v)) + OFFSET_RAD[name]
+            for name, v in zip(DATASET_JOINT_ORDER, row)]
 
 
 def sim_rad_to_row(rad: "list[float] | tuple[float, ...]") -> list[float]:
@@ -94,7 +120,8 @@ def sim_rad_to_row(rad: "list[float] | tuple[float, ...]") -> list[float]:
     printing sim state back out in the same units the real dataset uses, for comparison tables."""
     if len(rad) != 6:
         raise ValueError(f"expected 6 values in {DATASET_JOINT_ORDER}, got {len(rad)}")
-    return [math.degrees(float(v)) / SIGN[name] for name, v in zip(DATASET_JOINT_ORDER, rad)]
+    return [math.degrees((float(v) - OFFSET_RAD[name]) / SIGN[name])
+            for name, v in zip(DATASET_JOINT_ORDER, rad)]
 
 
 if __name__ == "__main__":
