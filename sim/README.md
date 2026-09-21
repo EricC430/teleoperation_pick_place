@@ -4,49 +4,50 @@ Decided in `docs/decisions.md` **D029** (2026-09-03): the simulator is Isaac Sim
 simulation work is unblocked, and the leader arm plugs into the machine running the sim.
 The script spec is `docs/specs/S4_sim_teleop_collect.md`.
 
-## 🔴 待辦（2026-09-21 交接）：兩件事，做完抓取就會觸發
+## 🔴 待辦（2026-09-21 更新）：一件事，做完就知道還要不要動校正
 
-episode 0 的 TCP 到杯心最近距離是 **14.9 cm**，抓取閘門要 5 cm。那 14.9 cm 已經拆成兩項，
-在本機用 `reach_logger/fk.py` ＋ 記錄的擺放位置算過（不需要模擬器），**左上角那格與 Isaac Sim
-渲染量到的數字完全一致**，所以這張表可以拿來預測：
+**現況：** episode 0 的指尖到杯心最近距離 **10.4 cm**，抓取閘門要 5 cm。
+（起點 25.8 → 單位修正＋S6 零位 → 14.9 → TCP 改實測指尖 → 10.4。）
 
-| TCP 取法 | 甲 目前校正 | 乙 `shoulder_lift` offset **＋20.14°** |
-|---|---|---|
-| `link6`/`link7` body 原點 | **14.9 cm**（現況）| 6.8 cm |
-| 實測指尖（link5 前方 8 cm）| 10.4 cm | **3.6 cm** ✅ |
+**已關閉的兩項，不要重做：**
 
-### ✅ 1. TCP 已改成實測指尖 —— **已在 4090 的容器裡跑過，關閉**
+- ✅ **TCP ＝ 實測指尖**（`omx_constants.TCP_IN_LINK5_M`，link5 前方 8 cm）。
+  2026-09-21 在 4090 的 `isaac-lab` 容器跑過 episode 0，`tcp_pose_w` 不報錯，
+  14.9 → 10.4 cm，與本機 FK 預測一致 `[產出物]`（`~/isaaclab_volume/omx_sim/s5_tcp_fingertip/`）。
+- ✅ **甲／乙 A/B 渲染**。`[柏宇說 2026-09-21]`：**「兩個都不準」**，兩組都否決。
+  所以 §4-a 不再是「甲 vs 乙」。
 
-`omx_constants.TCP_IN_LINK5_M = (0.08, -0.00165, 0.0)`，`[柏宇說 2026-09-21]` 量測值。
-`grasp_attach.tcp_pose_w(robot)` 是唯一定義，`replay_render_episode.py` 與
-`verify_grasp_attach.py` 都改用它，原本各自算 `link6`/`link7` 中點的程式碼已移除。
-✅ **2026-09-21 在 `isaac-lab` 容器（4090）跑過 episode 0：`tcp_pose_w` 不報錯，
-距離 14.9 cm → 10.4 cm，與上表左下角預測值完全一致**`[產出物]`
-（`~/isaaclab_volume/omx_sim/s5_tcp_fingertip/`）。前一版寫的「未在容器內跑過」已不適用。
+---
 
-### 🟡 2. 待裁決：`shoulder_lift` 的 offset 要不要 ＋20.14°
+### 🟡 下一件：渲染第三組 `(shoulder_lift +18.2°, wrist_flex +7.1°)`
 
-正本是 `docs/specs/S6_joint_zero_calibration.md` §4-a。**這是 `[AI提議]`，不是決定。**
+**為什麼是這組**（本機全 60 集連續掃描，`docs/specs/S6_joint_zero_calibration.md` §4-a）：
+單獨調 `shoulder_lift` **做不到**——位置那兩項要 +16°，夾爪角度要 +26°，差 10°。
+**調到位置對角度就歪、調到角度對位置就跑掉，這正是「算接近但看起來不一樣」。**
+兩個參數才解得開：
 
-- **怎麼做：** 把 `sim/joint_mapping.py` 的 `OFFSET_RAD["shoulder_lift"]` 從 `-0.36919370`
-  改成 `-0.01766...`（＝加上 `math.radians(20.14)`），重渲 episode 0，比對真實影片。
-- **看什麼：** 夾爪有沒有下到杯口。甲的夾爪朝下 59°、乙是 77°，渲染一眼可分。
-- **支持乙的證據：** 60 集對照記錄的擺放位置，乙在三個條件上同時最好——近側杯緣水平誤差
-  −1.2 cm（甲 +3.0）、指尖高度 7.3 cm（略低於 9.5 cm 杯口，合理；甲 17.3 cm 懸空）、
-  夾爪朝下 77°（甲 59°）。
-- 🔴 **反對乙的理由（沒被解決）：** 鏈式代數說 j2 升高 20.14° 就該讓 j3 降低同樣的量，
-  但那個組合（丙）實測更差。所以還缺一塊解釋，**不要只憑上表就改成定案**，渲染確認後再改。
+```
+                    近緣水平      指尖高度      夾爪朝下
+目前校正              +3.0 cm      17.3 cm        59°
++18.2 / +7.1          -1.9 cm       8.0 cm        78°     (杯口 9.5 cm)
+```
 
-#### 🟡 2026-09-21：渲染確認做完了，**但仍是待裁決**
+**怎麼做：** 在 `sim/joint_mapping.py` 把
+`OFFSET_RAD["shoulder_lift"]` 加 `math.radians(18.2)`、
+`OFFSET_RAD["wrist_flex"]` 加 `math.radians(7.1)`，重渲 episode 0，與真實影片並排。
+⚠️ **只為了看圖而改，看完就還原**——這是 `[AI提議]`，對「假設的目標值」做的擬合，
+**不是可以直接寫死的常數**。
 
-`[產出物]` `outputs/renders/lift_AB_ep0/`（真實｜甲｜乙 三格並排）。摘要：畫面上乙 的夾爪
-下到杯身、與真實影格同構型，甲 懸在杯子上方；距離 乙 5.5 cm（不是預測的 3.6 cm，差額是
-「乙 真的把杯子推開了」，有對照實驗）；抓取仍未觸發。**完整證據與指令在
-`docs/specs/S6_joint_zero_calibration.md` §4-a，那裡是正本，本檔不複製。**
+**看完怎麼判斷：**
 
-渲染變體用 `--offset-delta-deg shoulder_lift=+20.14`（`replay_render_episode.py` 與
-`render_state_replay.py` 都有），**它只影響那一次執行**，所以上面「不要改常數」仍然有效。
-**代數那一塊仍然沒解決，改不改是 Eric 的裁決。**
+- **像了** → 方向確認，再決定要不要把這兩個 offset 正式寫進去（`[未確認]` 代數上還缺一塊解釋：
+  鏈式關係說 j2 升高就該讓 j3 降低，但那個組合實測更差）。
+- **還是不像** → 🔴 **嫌疑轉離關節校正**。下一個查 `scene_constants.py` 的**相機仍是
+  PLACEHOLDER**（S5 gap 4）：渲染視角本來就不等於真實影片視角，
+  「看起來不一樣」可能有一部分是鏡頭，不是手臂。那是獨立的一條線。
+
+**成本：** 一次渲染。本機 FK 已驗證能預測 sim 到 0.07 cm，所以**距離數字不必開模擬器**——
+開模擬器只為了「看起來像不像」這件事，那是人眼才能判斷的。
 
 ## What is here
 
