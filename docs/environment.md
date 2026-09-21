@@ -8,9 +8,18 @@
 |---|---|---|---|
 | Lab GPU (4090 / A6000) | **Training** | Docker (`huggingface/lerobot-gpu`) | Host driver caps the usable CUDA version — see the gotcha below |
 | Laptop (RTX 3050 4GB, **Windows**) | **實機蒐集 + 推論部署** | **uv** (decided 2026-08-13, D014) | ⚠️ Issue #4093 — see below |
-| 🔴 **Lab laptop (RTX 5090, Linux)** | **模擬蒐集**（Isaac Sim + leader 直插，D029） | Docker (`isaac-lab` / `nvcr.io/nvidia/isaac-sim`) ＋ lerobot **也在 docker 裡**（見下方「這台機器上什麼裝在哪」） | **leader 走 `/dev/ttyUSB*`，不是 `COM6`** — 需 udev／by-id 綁定（`experiment_spec.md` §7） |
+| 🔴 **Lab laptop (RTX 4090, Linux)** | **模擬蒐集**（Isaac Sim + leader 直插，D029） | Docker (`isaac-lab` / `nvcr.io/nvidia/isaac-sim`) ＋ lerobot **也在 docker 裡**（見下方「這台機器上什麼裝在哪」） | **leader 走 `/dev/ttyUSB*`，不是 `COM6`** — 需 udev／by-id 綁定（`experiment_spec.md` §7） |
 
-### 🔴 5090 Linux 筆電：什麼裝在哪（2026-09-18 查證）
+> 🔴 **2026-09-21 更正：沒有 5090。** `[柏宇說 2026-09-21]` 只有一台 4090，文件從頭就寫錯。
+> 本檔、`docs/specs/S4/S5/S6/README.md` 共 13 處 `5090` 已改成 `4090`。
+>
+> ⚠️ **改完之後這張表第 1 列（Lab GPU 4090/A6000，訓練）與第 3 列（Lab laptop RTX 4090，模擬蒐集）
+> 都寫 4090。兩者是不是同一台，`[未確認]`**——要依這張表決定事情之前先確認。
+>
+> ⚠️ **`docs/decisions.md` 與 `docs/meeting/` 仍寫 5090，刻意沒改**：decisions.md 當時有未提交的
+> 在途編輯，改它會跟那份草稿糾纏；會議紀錄是當日的記錄，不就地改寫。**以本檔為準。**
+
+### 🔴 4090 Linux 筆電：什麼裝在哪（2026-09-18 查證）
 
 **這台機器的 host 上沒有 Isaac Lab、也沒有 lerobot、也沒有 uv**——`python3 -c "import lerobot"`、`pip show`、
 找 `.venv` 全部落空。**兩者都只在 docker 裡**。2026-09-18 AI 因為只查了 host 就兩度斷言「這台機器沒有」，

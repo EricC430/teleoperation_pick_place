@@ -153,7 +153,7 @@ SCALE／OFFSET 最後要送進模擬，所以「真實關節角」只能用模�
 還缺一塊。**現有資料分辨不出來。**
 
 **裁決方法：** `sim/render_state_replay.py` ＋ `scripts/compare_sim_real_frames.py` 把抓取幀
-渲染出來跟真實影片並排，約 4 分鐘（需 Isaac Sim，5090 那台）。看夾爪指向是 59° 還是 77°
+渲染出來跟真實影片並排，約 4 分鐘（需 Isaac Sim，4090 那台）。看夾爪指向是 59° 還是 77°
 就分得出甲與乙。**在那之前 `joint_mapping.py` 維持甲，不要改。**
 
 #### 為什麼 SCALE 不受這個框架影響、OFFSET 受
