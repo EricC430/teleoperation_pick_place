@@ -53,6 +53,22 @@ def gen_aruco(args: argparse.Namespace) -> None:
         f"print at 100% scale, then measure the BLACK SQUARE (not the white border) of one marker "
         f"with a ruler -- pass the MEASURED value to calib_extrinsics_aruco.py --marker-side-m"
     )
+    if args.screen_ppi:
+        px = args.side_mm / MM_PER_INCH * args.screen_ppi
+        print()
+        print(f"--- displaying on a {args.screen_ppi:g} ppi screen instead of paper ---")
+        print(f"  a {args.side_mm:g} mm black square needs to be {px:.1f} screen pixels")
+        print(f"  one screen pixel = {MM_PER_INCH / args.screen_ppi:.4f} mm")
+        print("  🔴 a viewer that 'fits to screen' RESAMPLES the image and silently changes that size.")
+        print("     Display at 1:1, then MEASURE the black square on the glass with a ruler anyway and")
+        print("     pass the measured value -- the ruler step does not go away, it just moves.")
+        print("  🔴 --points-csv's height_above_table_m must carry the PHONE'S THICKNESS (~8-9 mm),")
+        print("     not 0: the screen surface, not the table, is where the marker plane sits.")
+        print("  🔴 glare: a glossy screen mirrors the ceiling lights back at a camera looking down at")
+        print("     an angle, which is exactly T2's geometry. Paper is matte and does not. Kill the")
+        print("     overhead light or light from the side, screen to full brightness, auto-brightness")
+        print("     and auto-lock OFF, and check a captured frame for blown highlights before trusting")
+        print("     a session's worth of shots.")
 
 
 def gen_checkerboard(args: argparse.Namespace) -> None:
@@ -91,6 +107,14 @@ def main(argv: list[str] | None = None) -> int:
     p_aruco.add_argument("--side-mm", type=float, default=50.0, help="requested black-square side length")
     p_aruco.add_argument("--dpi", type=int, default=300)
     p_aruco.add_argument("--out-dir", default=str(_REPO / "calibration" / "aruco_markers"))
+    p_aruco.add_argument(
+        "--screen-ppi",
+        type=float,
+        default=None,
+        help="display on a phone/tablet screen instead of paper: print the exact pixel size a "
+        "marker needs at this screen's ppi, plus the gotchas paper does not have. "
+        "calib_extrinsics_aruco.py's mode (b) is built for this.",
+    )
     p_aruco.set_defaults(func=gen_aruco)
 
     p_cb = sub.add_parser("checkerboard", help="generate a checkerboard for T1 UVC intrinsics")
