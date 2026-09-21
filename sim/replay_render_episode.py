@@ -20,15 +20,24 @@ rendered pose, so nothing here depends on gap 1.
 meta. They are not this script's bugs -- they are missing inputs, and the honest thing is to ship
 the flag, not to quietly pick something plausible:
 
-1. **`object_matches_source`** -- S5 §1/§4 promise "same object, same start position, only the
-   visual environment changes". The real `uvc_60` episodes use a **paper cup**;
+1. **`object_matches_source`** -- still open. S5 §1/§4 promise "same object, same start position,
+   only the visual environment changes". The real `uvc_60` episodes use a **paper cup**;
    `assets/trash_obj/` has no cup (cans, bottles, apple, banana, orange, egg carton, organic
    waste). So whatever `--object` renders is a DIFFERENT object from the one in the source
    recording, and the action labels describe grasping something that isn't on screen.
-2. **`placement_matches_source`** -- `episode_meta/` only covers the older
-   `omx_pick_place_pilot` (8 episodes) and its `placement_id` column is blank in 7 of them.
-   There is no recorded placement for any `uvc_60` episode, so `--place` is a choice, not a
-   reconstruction.
+   `[Eric說 2026-09-21]` the plan is to rebuild/restore the real asset, or author a
+   same-class stand-in -- so this flag is expected to close later, by a new asset, not by code here.
+2. **`placement_matches_source`** -- CLOSED when `--place-from-episode` is passed.
+   `[Eric說 2026-09-21]`: uvc_60 walked campA_136sym's `t1..t60` in order, so episode i used
+   `t{i+1}`. Nothing in the dataset records this (the `episode_meta/` CSV covers only the older
+   `omx_pick_place_pilot`), so it was corroborated independently before being wired in: taking each
+   episode's gripper-closing frame, running `observation.state` through `reach_logger/fk.py`, and
+   correlating the end-effector position against that episode's claimed placement gives
+   **x r=+0.63, y r=+0.66 over all 60 episodes, against r~0.00 for 20 shuffled pairings**, and the
+   correlation is strongest at exactly this alignment (shifting the mapping by +/-1 or +/-2
+   episodes drops it). Residual scatter (p50 9 cm after removing a constant +10 cm offset) is
+   attributable to the crude grasp-frame pick and to `end_effector_link` not being the grasp
+   centre -- not to the mapping. Without the flag, `--place` is a choice, not a reconstruction.
 3. **`geometry_aligned`** -- always false until S5 gap 4's T1/T2 land. `scene_constants.py`'s
    camera pose is PLACEHOLDER (S4 §5-5).
 
@@ -77,7 +86,13 @@ parser.add_argument("--object", default=None, help="object USD (default: omx_sce
 parser.add_argument("--source-object-name", default="paper_cup",
                     help="what the SOURCE recording actually had, for the fidelity record")
 parser.add_argument("--placements", default=None, help="placement_label_map CSV")
-parser.add_argument("--place", default=None, help="short_id / placement_id within that CSV")
+parser.add_argument("--place", default=None,
+                    help="short_id / placement_id within that CSV. Omit to derive it from the episode "
+                         "index -- see --place-from-episode")
+parser.add_argument("--place-from-episode", action="store_true",
+                    help="derive the placement as short_id t<episode+1> (episode 0 -> t1). "
+                         "[Eric說 2026-09-21] uvc_60 was recorded walking campA_136sym's t1..t60 in "
+                         "order. Corroborated independently, see the module docstring.")
 parser.add_argument("--dr-seed", type=int, default=None, help="omit for no randomization at all")
 parser.add_argument("--dr-preset", default="nvidia-so101-default", choices=["nvidia-so101-default"])
 parser.add_argument("--steps-per-frame", type=int, default=1, help="physics steps per dataset frame")
@@ -204,14 +219,26 @@ if args.object:
 scene_cfg.cam_wrist.offset.pos = tuple(p + d for p, d in zip(S.CAM_WRIST_OFFSET_POS, cam_dpos))
 
 place = None
+place_source = "default (omx_scene_cfg.py), NOT the source episode's placement"
 if args.placements:
     placements = S.load_placements(args.placements)
-    matches = [p for p in placements if p.short_id == args.place or p.placement_id == args.place]
-    if args.place and not matches:
-        raise SystemExit(f"no placement {args.place!r} in {args.placements}")
+    if args.place_from_episode:
+        if args.place:
+            raise SystemExit("--place and --place-from-episode are mutually exclusive")
+        want = f"t{args.episode + 1}"
+        matches = [p for p in placements if p.short_id == want]
+        if not matches:
+            raise SystemExit(f"--place-from-episode wanted {want!r}, not in {args.placements}")
+        place_source = f"episode {args.episode} -> {want} [Eric說 2026-09-21], t1..t60 in order"
+    else:
+        matches = [p for p in placements if p.short_id == args.place or p.placement_id == args.place]
+        if args.place and not matches:
+            raise SystemExit(f"no placement {args.place!r} in {args.placements}")
+        place_source = f"--place {args.place!r}" if args.place else "first row of the CSV (arbitrary)"
     place = matches[0] if matches else placements[0]
     scene_cfg.object.init_state.pos = (place.x_m, place.y_m, S.TABLE_TOP_Z + 0.06)
-    print(f"object placement {place.short_id} ({place.placement_id}) at x={place.x_m:.3f} y={place.y_m:.3f}")
+    print(f"object placement {place.short_id} ({place.placement_id}) "
+          f"at x={place.x_m:.3f} y={place.y_m:.3f}  [{place_source}]")
 
 sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=1.0 / 120.0, device=args.device))
 scene = InteractiveScene(scene_cfg)
@@ -269,17 +296,24 @@ for n, t in enumerate(frames):
         scene.update(sim.get_physics_dt())
 
     attached = False
+    tcp_obj_dist = None
     if grasp is not None:
         tcp = (robot.data.body_pos_w[0, b6] + robot.data.body_pos_w[0, b7]) / 2.0
         tcp_q = robot.data.body_quat_w[0, b6]
-        want_p, want_q = grasp.step(t, states_deg[t][5], tcp, tcp_q, obj.data.root_pos_w[0], obj.data.root_quat_w[0])
+        obj_p = obj.data.root_pos_w[0]
+        # 🔴 recorded every frame on purpose. When a grasp does not fire, the ONLY question that
+        # matters is "how close did the TCP actually get to the object", and guessing at it (too
+        # tight a radius? object rolled? wrong TCP frame?) wasted a cycle on 2026-09-21.
+        tcp_obj_dist = float(torch.norm(obj_p - tcp).item())
+        want_p, want_q = grasp.step(t, states_deg[t][5], tcp, tcp_q, obj_p, obj.data.root_quat_w[0])
         if grasp.attached:
             obj.write_root_pose_to_sim(torch.cat([want_p, want_q]).unsqueeze(0))
             obj.write_root_velocity_to_sim(torch.zeros(1, 6, device=want_p.device))
             attached = True
 
     rec = {"frame": t, "timestamp_s": t / DATASET_FPS, "action": actions_deg[t],
-           "observation_state": states_deg[t], "grasp_attached": attached}
+           "observation_state": states_deg[t], "grasp_attached": attached,
+           "tcp_object_dist_m": tcp_obj_dist}
     for key, name in (("cam_wrist", "wrist"), ("cam_front_left", "front-left")):
         rgb = scene[key].data.output["rgb"][0]
         fn = f"f{t:05d}_{name}.png"
@@ -314,11 +348,10 @@ manifest = {
             f"rendered {os.path.basename(args.object or SC.DEFAULT_OBJECT_USD)}; the source recording "
             f"used {args.source_object_name!r}, which has no asset in assets/trash_obj/"
         ),
-        "placement_matches_source": False,
-        "placement_note": (
-            "no placement_id recorded for this dataset's episodes (episode_meta/ covers only "
-            "omx_pick_place_pilot, and its placement_id column is blank in 7 of 8 rows)"
-        ),
+        "placement_matches_source": bool(args.placements and args.place_from_episode),
+        "placement_note": place_source,
+        "placement_id": None if place is None else place.placement_id,
+        "placement_short_id": None if place is None else place.short_id,
         "gripper_amplitude_verified": False,
         "gripper_note": "mimic constraint reaches ~half the intended amplitude (gap 2 residual)",
     },
@@ -330,6 +363,15 @@ with open(os.path.join(args.out, "manifest.json"), "w") as fh:
 print(f"\nrendered {len(records)} frame(s) x 2 cameras -> {args.out}")
 if grasp is not None:
     print(f"grasp events: {[(e.frame, e.kind) for e in grasp.events]}")
+    dists = [(r["tcp_object_dist_m"], r["frame"]) for r in records if r["tcp_object_dist_m"] is not None]
+    if dists:
+        dmin, fmin = min(dists)
+        print(f"TCP-to-object: closest {dmin*100:.1f} cm at frame {fmin} "
+              f"(attach radius {grasp.cfg.attach_radius_m*100:.0f} cm)")
+        if not grasp.events:
+            print("  🔴 no attach fired. If the closest distance above is larger than the radius, the "
+                  "object was never within reach of the TCP -- check the placement, whether the object "
+                  "rolled while settling, and whether link6/link7's midpoint is really the grasp centre.")
 print("🔴 fidelity flags (all recorded in manifest.json, stage 2 must carry them into dataset meta):")
 for k, v in manifest["fidelity"].items():
     if not k.endswith("_note"):
