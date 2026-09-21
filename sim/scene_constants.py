@@ -155,11 +155,38 @@ TABLE_CENTER_XY = ((_t_min_x + _t_max_x) / 2.0, (_t_min_y + _t_max_y) / 2.0)
 # it was never "on the table", it exploded through it.
 TRASH_OBJ_SCALE = (0.01, 0.01, 0.01)
 
-# Third-person camera, "front-left" — the name is from the OPERATOR's seat, see D022.
-CAM_FRONT_LEFT_POS = (0.62, 0.34, 0.42)   # PLACEHOLDER  外部相機位置 (x, y, z) ___
-CAM_FRONT_LEFT_LOOKAT = (0.26, 0.00, 0.02)  # PLACEHOLDER  外部相機角度（俯角）___
+# Third-person camera, "front-left" -- the name is from the OPERATOR's seat, see D022.
+# `[Eric說 2026-09-21]` MEASURED, in the pan-axis frame (+X ahead, +Y operator-left):
+#   * 20 cm to the LEFT of the arm base's left edge          -> y = ARM_BASE_HALF_Y + 0.20
+#   * 4.5 cm inward from the riser's FRONT edge              -> x, see the ambiguity note below
+#   * 11 cm high (above the TABLE TOP; these constants are table-relative, the render code adds
+#     TABLE_TOP_Z)                                           -> z = 0.11
+#   * aimed at the centre, 45 deg off the rightward horizontal, i.e. bearing -45 deg from +X
+CAM_FRONT_LEFT_LEFT_OF_ARM = 0.20     # MEASURED
+CAM_FRONT_LEFT_INSET_FROM_RISER = 0.045   # MEASURED
+CAM_FRONT_LEFT_Z = 0.11               # MEASURED, above the table top
+CAM_FRONT_LEFT_BEARING_DEG = -45.0    # MEASURED: from the rightward horizontal, turned to centre
 
-# Wrist camera, mounted on link5 (the gripper base). Offset is in the link frame.
+# ⚠️ [未確認] the SIGN of the 4.5 cm inset. "檯子前緣向內 4.5 公分" is read here as 4.5 cm further
+#    into the table (+X) from the riser's front edge. The other reading -- 4.5 cm back toward the
+#    operator (-X) -- is equally grammatical and puts the camera 9 cm further back. One constant
+#    to flip if it is the other way round.
+CAM_FRONT_LEFT_POS = (
+    RISER_FRONT_X + CAM_FRONT_LEFT_INSET_FROM_RISER,
+    ARM_BASE_HALF_Y + CAM_FRONT_LEFT_LEFT_OF_ARM,
+    CAM_FRONT_LEFT_Z,
+)
+# Look-at point: straight along the measured bearing, same height -- a horizontal optical axis.
+# ⚠️ [未確認] the PITCH was not specified; a level axis is the literal reading of "45 deg off the
+#    horizontal line". If the real camera is tilted down, drop the target's z.
+_cam_bearing = math.radians(CAM_FRONT_LEFT_BEARING_DEG)
+_CAM_LOOK_DIST = 0.50
+CAM_FRONT_LEFT_LOOKAT = (
+    CAM_FRONT_LEFT_POS[0] + _CAM_LOOK_DIST * math.cos(_cam_bearing),
+    CAM_FRONT_LEFT_POS[1] + _CAM_LOOK_DIST * math.sin(_cam_bearing),
+    CAM_FRONT_LEFT_Z,
+)
+
 CAM_WRIST_PARENT_LINK = "link5"
 CAM_WRIST_OFFSET_POS = (0.02, 0.0, 0.03)   # PLACEHOLDER  手腕相機安裝方式 ___
 CAM_WRIST_OFFSET_ROT = (0.5, -0.5, 0.5, -0.5)  # PLACEHOLDER (ros convention)
