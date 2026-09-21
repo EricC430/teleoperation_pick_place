@@ -63,28 +63,78 @@ CAM_FPS = 15                # configs/record_omx.yaml (dataset fps must match; t
 # PLACEHOLDER — every one of these replaces a blank row in experiment_spec §3
 # --------------------------------------------------------------------------------------
 TABLE_TOP_Z = 0.75          # PLACEHOLDER  桌面高度 ___ cm
-TABLE_SIZE = (1.20, 0.80, 0.04)  # PLACEHOLDER  table top slab (x, y, thickness)
-# `[Eric說 2026-09-21]` the platform (and so the arm) sits at the table's NEAR-RIGHT corner, with the
-# table extending away (+X) and to the operator's left (+Y). Before this the table was centred on
-# the arm in Y, which put the arm mid-edge instead of in the corner.
-TABLE_CENTER_XY = (TABLE_SIZE[0] / 2.0 - 0.18, TABLE_SIZE[1] / 2.0 - 0.18)  # PLACEHOLDER
+TABLE_THICKNESS = 0.04           # PLACEHOLDER
+# `[Eric說 2026-09-21]` "桌面僅須至少大於 placement ids 的工作範圍即可" -- so the table is DERIVED
+# from what has to fit on it, not invented. Extent of campA_136sym's 108 points, pan-axis frame:
+#   x 0.101 .. 0.383,  y -0.327 .. +0.343   (t1..t60 alone: x 0.105..0.367, y -0.315..+0.343)
+# The table must also carry the riser, which reaches y = -0.385 and x = -0.139.
+_PLACEMENT_X = (0.101, 0.383)
+_PLACEMENT_Y = (-0.327, 0.343)
+_TABLE_MARGIN = 0.10             # [AI推論] breathing room beyond the outermost thing on the table
 
-# 🔴 [Eric說 2026-09-21] THE ARM DOES NOT SIT ON THE TABLE. It is mounted on a riser ~15 cm above
-# the table top. Until 2026-09-21 the scene put ARM_BASE_POS straight on the table, which is why a
-# kinematic replay of real joint angles left the gripper ~11 cm above the object it was supposed to
-# be holding (S5 §2-C): the whole arm was 15 cm too low relative to its own workspace.
-# Height is Eric's measurement; the FOOTPRINT is still a PLACEHOLDER (nobody has measured it).
-# `[Eric說 2026-09-21]` ONE platform carries BOTH the arm base AND the bin, and it sits at the
-# table's near-right corner (the arm then faces outward, up-and-left in the operator's view).
-ARM_RISER_HEIGHT = 0.15                  # measured
-ARM_RISER_SIZE = (0.36, 0.52, ARM_RISER_HEIGHT)   # (x, y) PLACEHOLDER -- large enough to carry the
-                                                  # arm at its near edge AND the bin; nobody has
-                                                  # measured the real footprint yet
-ARM_RISER_CENTER = (0.06, 0.16)          # PLACEHOLDER (x, y) of the platform centre, pan-axis frame:
-                                         # spans from just behind the arm out to past the bin
+# --------------------------------------------------------------------------------------
+# Riser / bin / cup -- `[Eric說 2026-09-21]`, MEASURED unless marked otherwise
+# --------------------------------------------------------------------------------------
+# 🔴 THE ARM DOES NOT SIT ON THE TABLE. One platform 15 cm tall carries BOTH the arm base and
+# the bin. Until 2026-09-21 the scene put the arm straight on the table, which is why a kinematic
+# replay left the gripper ~11 cm above the object (S5 §2-C/§2-D).
+ARM_RISER_HEIGHT = 0.15          # MEASURED
 
-BIN_POS = (0.10, 0.30, 0.0)      # PLACEHOLDER  目標區位置 (relative to the pan axis, on the table)
-BIN_SIZE = (0.16, 0.16, 0.12)    # PLACEHOLDER
+# Arm base plate footprint, read off `follower_01_base.stl` (URDF link0, scale 0.001):
+# x -0.060..+0.060, y -0.075..+0.075, z 0..0.0575. The pan axis sits at x=-0.01125 in that frame,
+# so in the PAN-AXIS frame (the one the placement mat uses) the plate spans:
+ARM_BASE_FRONT_X = 0.060 + 0.01125     # +0.0713 m ahead of the pan axis
+ARM_BASE_BACK_X = -0.060 + 0.01125     # -0.0488
+ARM_BASE_HALF_Y = 0.075                # +/- from the pan axis
+
+# `[Eric說]` the arm base's FRONT edge is flush with the riser's FRONT edge.
+RISER_FRONT_X = ARM_BASE_FRONT_X
+
+# Bin: a truncated cone. `[Eric說]` base dia 15 cm, opening dia 20 cm, height 22 cm, standing ON
+# the riser, and its LEFT edge is 10 cm to the right of the arm base's RIGHT edge.
+# (+Y is the operator's left, so "right" is -Y.)
+BIN_BASE_DIA = 0.15              # MEASURED
+BIN_OPENING_DIA = 0.20           # MEASURED
+BIN_HEIGHT = 0.22                # MEASURED
+BIN_GAP_FROM_ARM_BASE = 0.10     # MEASURED
+_bin_max_r = BIN_OPENING_DIA / 2.0
+BIN_CENTER_Y = -(ARM_BASE_HALF_Y + BIN_GAP_FROM_ARM_BASE + _bin_max_r)   # -0.275
+# ⚠️ [AI推論] Eric specified the bin's SIDEWAYS offset only. Its X is assumed flush at the front
+#    with the arm base and the riser -- tidy, and consistent with "front edges line up", but not
+#    something he said. Move it if the real layout differs.
+BIN_CENTER_X = RISER_FRONT_X - _bin_max_r
+
+# Riser footprint DERIVED to contain the arm base and the bin plus a small margin -- not measured.
+# `[Eric說]` only the HEIGHT matters, so this is sized rather than invented.
+_RISER_MARGIN = 0.02
+ARM_RISER_SIZE = (
+    (RISER_FRONT_X - min(ARM_BASE_BACK_X, BIN_CENTER_X - _bin_max_r)) + _RISER_MARGIN,
+    (ARM_BASE_HALF_Y - (BIN_CENTER_Y - _bin_max_r)) + _RISER_MARGIN,
+    ARM_RISER_HEIGHT,
+)
+ARM_RISER_CENTER = (
+    RISER_FRONT_X - ARM_RISER_SIZE[0] / 2.0 + _RISER_MARGIN / 2.0,
+    ARM_BASE_HALF_Y - ARM_RISER_SIZE[1] / 2.0 + _RISER_MARGIN / 2.0,
+)
+
+# Cup (the real manipulated object). `[Eric說 2026-09-21]` opening dia 7.5 cm, base dia 5 cm,
+# height 9.5 cm, standing UPRIGHT on the TABLE. Replaces the `trash_obj` can, which was lying on
+# its side with its centre only 4.1 cm up -- a different object in a different pose.
+CUP_OPENING_DIA = 0.075          # MEASURED
+CUP_BASE_DIA = 0.05              # MEASURED
+CUP_HEIGHT = 0.095               # MEASURED
+# ⚠️ Modelled as a CYLINDER at the mean diameter: Isaac Lab's primitives have no truncated cone,
+#    and inventing a mesh would be a bigger fiction than a documented approximation. The taper is
+#    NOT modelled; dimensions and upright pose are right.
+CUP_MEAN_DIA = (CUP_OPENING_DIA + CUP_BASE_DIA) / 2.0
+
+# Table box, derived: must cover every placement AND the whole riser, plus margin.
+_t_min_x = min(_PLACEMENT_X[0], ARM_RISER_CENTER[0] - ARM_RISER_SIZE[0] / 2.0) - _TABLE_MARGIN
+_t_max_x = max(_PLACEMENT_X[1], ARM_RISER_CENTER[0] + ARM_RISER_SIZE[0] / 2.0) + _TABLE_MARGIN
+_t_min_y = min(_PLACEMENT_Y[0], ARM_RISER_CENTER[1] - ARM_RISER_SIZE[1] / 2.0) - _TABLE_MARGIN
+_t_max_y = max(_PLACEMENT_Y[1], ARM_RISER_CENTER[1] + ARM_RISER_SIZE[1] / 2.0) + _TABLE_MARGIN
+TABLE_SIZE = (_t_max_x - _t_min_x, _t_max_y - _t_min_y, TABLE_THICKNESS)
+TABLE_CENTER_XY = ((_t_min_x + _t_max_x) / 2.0, (_t_min_y + _t_max_y) / 2.0)
 
 # --------------------------------------------------------------------------------------
 # MEASURED (of the asset files, not the real cell) — `assets/trash_obj/*.usd`

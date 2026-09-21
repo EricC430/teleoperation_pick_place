@@ -82,7 +82,9 @@ parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.R
 parser.add_argument("--dataset-root", required=True, help="dir containing data/chunk-*/file-*.parquet")
 parser.add_argument("--episode", type=int, required=True)
 parser.add_argument("--out", required=True)
-parser.add_argument("--object", default=None, help="object USD (default: omx_scene_cfg.DEFAULT_OBJECT_USD)")
+parser.add_argument("--object", default=None,
+                    help="replace the default primitive cup with a USD asset (e.g. once a real "
+                         "paper-cup mesh exists). Default: the measured-dimension cylinder cup.")
 parser.add_argument("--source-object-name", default="paper_cup",
                     help="what the SOURCE recording actually had, for the fidelity record")
 parser.add_argument("--placements", default=None, help="placement_label_map CSV")
@@ -214,7 +216,13 @@ scene_cfg.cam_wrist.update_period = 0.0
 scene_cfg.dome_light.spawn.intensity = light_intensity
 scene_cfg.dome_light.spawn.color = light_color
 if args.object:
-    scene_cfg.object.spawn.usd_path = args.object
+    # the default cup is a primitive (CylinderCfg), so swapping in a USD means replacing the whole
+    # spawn config, not poking usd_path on it
+    scene_cfg.object.spawn = sim_utils.UsdFileCfg(
+        usd_path=args.object,
+        scale=S.TRASH_OBJ_SCALE if "trash_obj" in args.object else (1.0, 1.0, 1.0),
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(disable_gravity=False, max_depenetration_velocity=3.0),
+    )
 # wrist camera is parented to link5, so its DR jitter is a local offset tweak, pre-build
 scene_cfg.cam_wrist.offset.pos = tuple(p + d for p, d in zip(S.CAM_WRIST_OFFSET_POS, cam_dpos))
 
@@ -236,7 +244,8 @@ if args.placements:
             raise SystemExit(f"no placement {args.place!r} in {args.placements}")
         place_source = f"--place {args.place!r}" if args.place else "first row of the CSV (arbitrary)"
     place = matches[0] if matches else placements[0]
-    scene_cfg.object.init_state.pos = (place.x_m, place.y_m, S.TABLE_TOP_Z + 0.06)
+    # upright cup: centre half a cup-height above the table (a USD override may need its own z)
+    scene_cfg.object.init_state.pos = (place.x_m, place.y_m, S.TABLE_TOP_Z + S.CUP_HEIGHT / 2.0)
     print(f"object placement {place.short_id} ({place.placement_id}) "
           f"at x={place.x_m:.3f} y={place.y_m:.3f}  [{place_source}]")
 
@@ -345,8 +354,11 @@ manifest = {
         "geometry_note": "PLACEHOLDER camera pose, S5 gap 4 (T1/T2) not done",
         "object_matches_source": False,
         "object_note": (
-            f"rendered {os.path.basename(args.object or SC.DEFAULT_OBJECT_USD)}; the source recording "
-            f"used {args.source_object_name!r}, which has no asset in assets/trash_obj/"
+            (f"rendered USD {os.path.basename(args.object)}" if args.object else
+             f"rendered a primitive cylinder cup at the measured dimensions "
+             f"(opening {S.CUP_OPENING_DIA*100:.1f}cm / base {S.CUP_BASE_DIA*100:.1f}cm / "
+             f"height {S.CUP_HEIGHT*100:.1f}cm, upright) -- right size and pose, placeholder "
+             f"appearance, taper not modelled")
         ),
         "placement_matches_source": bool(args.placements and args.place_from_episode),
         "placement_note": place_source,

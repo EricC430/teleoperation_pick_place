@@ -123,35 +123,48 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
 
     robot: ArticulationCfg = omx_articulation_cfg("{ENV_REGEX_NS}/Robot")
 
-    # 🔴 PLACEHOLDER bin. `assets/Trashcan/` holds no USD, so this is a box, not the real bin.
+    # Bin: `[Eric說 2026-09-21]` base dia 15 cm, opening dia 20 cm, height 22 cm, standing ON the
+    # riser. ⚠️ Modelled as a CYLINDER at the opening diameter -- Isaac Lab has no truncated-cone
+    # primitive, and the opening is the dimension that matters for a place target. The taper is
+    # NOT modelled. Previously this was a 16x16x12 cm cuboid sitting on the TABLE: wrong shape,
+    # wrong size, wrong surface.
     bin = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Bin",
-        spawn=sim_utils.CuboidCfg(
-            size=S.BIN_SIZE,
+        spawn=sim_utils.CylinderCfg(
+            radius=S.BIN_OPENING_DIA / 2.0,
+            height=S.BIN_HEIGHT,
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.15, 0.35, 0.65)),
         ),
-        # `[Eric說 2026-09-21]` the bin stands ON the riser, not on the table
         init_state=AssetBaseCfg.InitialStateCfg(
-            pos=(S.BIN_POS[0], S.BIN_POS[1], S.TABLE_TOP_Z + S.ARM_RISER_HEIGHT + S.BIN_SIZE[2] / 2.0)
+            pos=(S.BIN_CENTER_X, S.BIN_CENTER_Y,
+                 S.TABLE_TOP_Z + S.ARM_RISER_HEIGHT + S.BIN_HEIGHT / 2.0)
         ),
     )
 
     object: RigidObjectCfg = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/Object",
-        spawn=sim_utils.UsdFileCfg(
-            usd_path=DEFAULT_OBJECT_USD,
-            # 🔴 trash_obj/*.usd is authored at metersPerUnit=0.01; without this the object is
-            # 100x too large and explodes on first contact. See scene_constants.TRASH_OBJ_SCALE.
-            scale=S.TRASH_OBJ_SCALE,
+        # The real object is a paper cup: `[Eric說 2026-09-21]` opening dia 7.5 cm, base dia 5 cm,
+        # height 9.5 cm, standing UPRIGHT. Until 2026-09-21 this spawned `trash_obj/trash_cans_1.usd`
+        # -- a can LYING DOWN with its centre 4.1 cm up, i.e. a different object in a different
+        # pose, which put the grasp height wrong on its own (S5 §2-D).
+        # ⚠️ A cylinder at the mean diameter, not a textured cup mesh: right size, right pose,
+        #    placeholder appearance. Eric plans to rebuild or author the real asset.
+        spawn=sim_utils.CylinderCfg(
+            radius=S.CUP_MEAN_DIA / 2.0,
+            height=S.CUP_HEIGHT,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 solver_position_iteration_count=16,
                 solver_velocity_iteration_count=1,
                 max_depenetration_velocity=3.0,
                 disable_gravity=False,
             ),
+            mass_props=sim_utils.MassPropertiesCfg(mass=0.012),   # empty paper cup, [AI推論]
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.90, 0.88, 0.82)),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.30, 0.0, S.TABLE_TOP_Z + 0.05)),
+        # standing on the table: centre half a cup-height above the top
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.30, 0.0, S.TABLE_TOP_Z + S.CUP_HEIGHT / 2.0)),
     )
 
     # ---- cameras, in dataset order -----------------------------------------------------
