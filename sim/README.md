@@ -15,13 +15,14 @@ episode 0 的 TCP 到杯心最近距離是 **14.9 cm**，抓取閘門要 5 cm。
 | `link6`/`link7` body 原點 | **14.9 cm**（現況）| 6.8 cm |
 | 實測指尖（link5 前方 8 cm）| 10.4 cm | **3.6 cm** ✅ |
 
-### ✅ 1. TCP 已改成實測指尖（本次 commit 已做，未在容器內跑過）
+### ✅ 1. TCP 已改成實測指尖 —— **已在 4090 的容器裡跑過，關閉**
 
 `omx_constants.TCP_IN_LINK5_M = (0.08, -0.00165, 0.0)`，`[柏宇說 2026-09-21]` 量測值。
 `grasp_attach.tcp_pose_w(robot)` 是唯一定義，`replay_render_episode.py` 與
 `verify_grasp_attach.py` 都改用它，原本各自算 `link6`/`link7` 中點的程式碼已移除。
-⚠️ **這台機器沒有 Isaac Lab，只驗到「編譯通過」。第一次在容器裡跑要確認 `tcp_pose_w` 不報錯**
-（用的是 `combine_frame_transforms`，與本檔既有用法相同）。
+✅ **2026-09-21 在 `isaac-lab` 容器（4090）跑過 episode 0：`tcp_pose_w` 不報錯，
+距離 14.9 cm → 10.4 cm，與上表左下角預測值完全一致**`[產出物]`
+（`~/isaaclab_volume/omx_sim/s5_tcp_fingertip/`）。前一版寫的「未在容器內跑過」已不適用。
 
 ### 🟡 2. 待裁決：`shoulder_lift` 的 offset 要不要 ＋20.14°
 
@@ -35,6 +36,17 @@ episode 0 的 TCP 到杯心最近距離是 **14.9 cm**，抓取閘門要 5 cm。
   夾爪朝下 77°（甲 59°）。
 - 🔴 **反對乙的理由（沒被解決）：** 鏈式代數說 j2 升高 20.14° 就該讓 j3 降低同樣的量，
   但那個組合（丙）實測更差。所以還缺一塊解釋，**不要只憑上表就改成定案**，渲染確認後再改。
+
+#### 🟡 2026-09-21：渲染確認做完了，**但仍是待裁決**
+
+`[產出物]` `outputs/renders/lift_AB_ep0/`（真實｜甲｜乙 三格並排）。摘要：畫面上乙 的夾爪
+下到杯身、與真實影格同構型，甲 懸在杯子上方；距離 乙 5.5 cm（不是預測的 3.6 cm，差額是
+「乙 真的把杯子推開了」，有對照實驗）；抓取仍未觸發。**完整證據與指令在
+`docs/specs/S6_joint_zero_calibration.md` §4-a，那裡是正本，本檔不複製。**
+
+渲染變體用 `--offset-delta-deg shoulder_lift=+20.14`（`replay_render_episode.py` 與
+`render_state_replay.py` 都有），**它只影響那一次執行**，所以上面「不要改常數」仍然有效。
+**代數那一塊仍然沒解決，改不改是 Eric 的裁決。**
 
 ## What is here
 

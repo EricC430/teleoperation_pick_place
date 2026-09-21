@@ -97,6 +97,12 @@ parser.add_argument("--place-from-episode", action="store_true",
                          "order. Corroborated independently, see the module docstring.")
 parser.add_argument("--dr-seed", type=int, default=None, help="omit for no randomization at all")
 parser.add_argument("--dr-preset", default="nvidia-so101-default", choices=["nvidia-so101-default"])
+parser.add_argument(
+    "--offset-delta-deg", default="",
+    help="e.g. 'shoulder_lift=+20.14' -- ADDS this many degrees to joint_mapping.OFFSET_RAD for "
+         "this run only, leaving the committed constant alone. For S6 section 4-a's undecided "
+         "question (does shoulder_lift's zero carry the upper arm's 20.14 deg lean); a flag, not "
+         "an edit, so that 甲 vs 乙 is one command and 甲 stays what is in git.")
 parser.add_argument("--steps-per-frame", type=int, default=1, help="physics steps per dataset frame")
 parser.add_argument("--warmup-steps", type=int, default=12, help="steps before the FIRST capture, to let RTX converge")
 parser.add_argument("--stride", type=int, default=1, help="render every Nth frame (smoke tests)")
@@ -120,6 +126,19 @@ import omx_constants as K  # noqa: E402
 import omx_scene_cfg as SC  # noqa: E402
 import scene_constants as S  # noqa: E402
 from grasp_attach import GraspAttachConfig, ScriptedGraspAttach, tcp_pose_w  # noqa: E402
+
+offset_delta_deg = {}
+if args.offset_delta_deg:
+    for _entry in args.offset_delta_deg.split(","):
+        _name, _val = _entry.split("=")
+        _name = _name.strip()
+        if _name not in JM.OFFSET_RAD:
+            raise SystemExit(f"--offset-delta-deg: {_name!r} is not one of {list(JM.OFFSET_RAD)}")
+        _before = JM.OFFSET_RAD[_name]
+        JM.OFFSET_RAD[_name] = _before + math.radians(float(_val))
+        offset_delta_deg[_name] = float(_val)
+        print(f"\u26a0\ufe0f  OFFSET_RAD[{_name}] {_before:+.8f} -> {JM.OFFSET_RAD[_name]:+.8f} rad "
+              f"({float(_val):+.2f} deg), THIS RUN ONLY -- the committed constant is unchanged")
 
 DATASET_FPS = 15.0
 # S5 §5 item 4 -- NVIDIA SO-101 tutorial ranges, quoted not invented
@@ -337,6 +356,8 @@ manifest = {
     "stride": args.stride,
     "rendered_frames": len(records),
     "sign": dict(JM.SIGN),
+    "offset_rad": dict(JM.OFFSET_RAD),
+    "offset_delta_deg": offset_delta_deg,
     "driven_by": "write_joint_state_to_sim (kinematic replay; no drive gains, S5 §4)",
     "dr": dr,
     "grasp": {

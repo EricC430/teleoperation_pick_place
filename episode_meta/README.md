@@ -127,6 +127,37 @@ The script also runs on the host without the container (it needs only `pyyaml`),
 dataset is in the local HF cache or you pass `--root`. Inside the container it can additionally show
 each episode's length and task.
 
+## Watching the episode while you label it
+
+`outcome` and `mechanism` are judgements about what happened, so they need the video. Since
+LeRobot v3.0 there is **no per-episode mp4** — every episode of a camera is concatenated into
+`videos/<key>/chunk-000/file-000.mp4`, and the only record of where episode 7 begins is a
+`from_timestamp` / `to_timestamp` pair in `meta/episodes/*.parquet`.
+
+[`scripts/clip_episodes.py`](../scripts/clip_episodes.py) cuts those ranges back apart, one file
+per episode, every camera side by side, with the camera names and a frame counter burnt in:
+
+```bash
+python3 scripts/clip_episodes.py --dataset ericc430/<dataset>
+# -> outputs/episode_clips/<dataset>/ep_000.mp4, ep_001.mp4, ...
+```
+
+Then annotate with `--clips`, which prints each episode's clip path as it asks about it
+(ctrl-click it in the VS Code terminal to open the video in a tab beside the prompts):
+
+```bash
+python3 scripts/annotate_episodes.py --dataset ericc430/<dataset> --clips
+```
+
+`--player CMD` additionally launches a viewer per episode (`--player mpv`, `--player xdg-open`) —
+useful on the laptop, useless over SSH to the sim box, where there is no display to open a window
+on. Both scripts run on the **host** with `python3` alone: `clip_episodes.py` needs `ffmpeg` +
+`pyarrow`, not lerobot, not the container, not a GPU. Clips already on disk are skipped, so
+re-running after a Ctrl-C costs nothing (`--force` re-cuts them).
+
+`outputs/` is gitignored, and so is `*.mp4` — the clips are scratch, regenerable from the dataset
+in seconds. The CSV is the thing that gets committed.
+
 > ⚠️ **Interactive mode needs a real terminal.** `run_container.sh` only passes `-i` to Docker when
 > stdin is a TTY, so *piping* answers into the containerized script hits EOF at the first question
 > and saves nothing. Scripted use → `--no-prompt`, or run the script on the host.
