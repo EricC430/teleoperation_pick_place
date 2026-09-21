@@ -22,8 +22,9 @@ import scene_constants as S
 OMX_USD = "/workspace/test_isaaclab/assets/omx_f_generated/omx_f.usd"
 DEFAULT_OBJECT_USD = "/workspace/test_isaaclab/assets/trash_obj/trash_cans_1.usd"
 
-# The arm sits on the table, so every link starts one table-height up.
-ARM_BASE_POS = (0.0, 0.0, S.TABLE_TOP_Z)
+# 🔴 The arm does NOT sit on the table -- it is on a ~15 cm riser ([Eric說 2026-09-21], see
+# scene_constants.ARM_RISER_HEIGHT). Getting this wrong put every replayed pose 15 cm low.
+ARM_BASE_POS = (0.0, 0.0, S.TABLE_TOP_Z + S.ARM_RISER_HEIGHT)
 
 
 def omx_articulation_cfg(prim_path: str, usd_path: str = OMX_USD) -> ArticulationCfg:
@@ -103,6 +104,20 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
         # the slab's centre sits half a thickness below the top surface
         init_state=AssetBaseCfg.InitialStateCfg(
             pos=(S.TABLE_SIZE[0] / 2.0 - 0.15, 0.0, S.TABLE_TOP_Z - S.TABLE_SIZE[2] / 2.0)
+        ),
+    )
+
+    # the riser the arm is actually mounted on ([Eric說 2026-09-21]). Height measured, footprint
+    # PLACEHOLDER. Sits directly under the pan axis.
+    arm_riser = AssetBaseCfg(
+        prim_path="{ENV_REGEX_NS}/ArmRiser",
+        spawn=sim_utils.CuboidCfg(
+            size=S.ARM_RISER_SIZE,
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.20, 0.55, 0.70)),
+        ),
+        init_state=AssetBaseCfg.InitialStateCfg(
+            pos=(0.0, 0.0, S.TABLE_TOP_Z + S.ARM_RISER_HEIGHT / 2.0)
         ),
     )
 
