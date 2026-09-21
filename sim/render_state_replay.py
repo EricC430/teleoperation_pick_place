@@ -64,6 +64,14 @@ parser.add_argument(
     help="e.g. 'shoulder_lift=-1' -- overrides joint_mapping.SIGN for this run only, to render a "
     "candidate sign for comparison. See joint_mapping.py's docstring.",
 )
+parser.add_argument(
+    "--offset-delta-deg",
+    default="",
+    help="e.g. 'shoulder_lift=+20.14' -- ADDS this many degrees to joint_mapping.OFFSET_RAD for "
+    "this run only, leaving the constant alone. Exists for S6 section 4-a's undecided question "
+    "(does shoulder_lift's zero keep the upper arm's 20.14 deg lean or not); the point of a flag "
+    "rather than an edit is that the comparison is one command, and 甲 stays the committed value.",
+)
 parser.add_argument("--settle-steps", type=int, default=8, help="physics steps after writing each pose, before rendering")
 parser.add_argument("--out", required=True)
 AppLauncher.add_app_launcher_args(parser)
@@ -109,6 +117,23 @@ class StateReplaySceneCfg(SC.OmxCellSceneCfg):
         offset=CameraCfg.OffsetCfg(convention="ros"),
     )
 
+
+def _apply_offset_delta(spec, JM):
+    """Mutate JM.OFFSET_RAD by a degrees delta, for this process only. Returns the applied dict."""
+    import math as _math
+    applied = {}
+    for entry in spec.split(","):
+        name, val = entry.split("=")
+        name = name.strip()
+        if name not in JM.OFFSET_RAD:
+            raise SystemExit(f"--offset-delta-deg: {name!r} is not one of {list(JM.OFFSET_RAD)}")
+        before = JM.OFFSET_RAD[name]
+        JM.OFFSET_RAD[name] = before + _math.radians(float(val))
+        applied[name] = float(val)
+        print(f"\u26a0\ufe0f  OFFSET_RAD[{name}] {before:+.8f} -> {JM.OFFSET_RAD[name]:+.8f} rad "
+              f"({float(val):+.2f} deg), THIS RUN ONLY -- the committed constant is unchanged")
+    return applied
+
 DATASET_FPS = 15.0
 
 if args.sign_override:
@@ -119,6 +144,8 @@ if args.sign_override:
             raise SystemExit(f"--sign-override: {name!r} is not one of {JM.DATASET_JOINT_ORDER}")
         JM.SIGN[name] = float(val)
     print(f"⚠️  SIGN overridden for this run only: {JM.SIGN}")
+
+_offset_delta = _apply_offset_delta(args.offset_delta_deg, JM) if args.offset_delta_deg else {}
 
 
 def load_episode_states(dataset_root: str, episode: int):
@@ -230,6 +257,8 @@ meta = {
     "dataset_fps": DATASET_FPS,
     "sign": dict(JM.SIGN),
     "sign_overridden": bool(args.sign_override),
+    "offset_rad": dict(JM.OFFSET_RAD),
+    "offset_delta_deg": _offset_delta,
     "driven_by": "write_joint_state_to_sim (kinematic; no drive gains involved)",
     "geometry": "PLACEHOLDER -- scene_constants.py camera pose is not measured (S5 gap 4 open)",
     "frames": manifest,

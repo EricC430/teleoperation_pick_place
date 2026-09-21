@@ -156,6 +156,47 @@ SCALE／OFFSET 最後要送進模擬，所以「真實關節角」只能用模�
 渲染出來跟真實影片並排，約 4 分鐘（需 Isaac Sim，5090 那台）。看夾爪指向是 59° 還是 77°
 就分得出甲與乙。**在那之前 `joint_mapping.py` 維持甲，不要改。**
 
+#### ✅ 2026-09-21 裁決方法已執行（4090／`isaac-lab` 容器），結果如下——**但裁決權仍在 Eric**
+
+`[產出物]` 圖在 `outputs/renders/lift_AB_ep0/`（f204／216／232／244，三格並排：真實｜甲｜乙）。
+兩次渲染只差一個旗標，其餘完全相同（episode 0、placement t1、DR seed 42、新的實測指尖 TCP）：
+
+```bash
+./sim/run_in_container.sh replay_render_episode.py \
+    --dataset-root /workspace/test_isaaclab/omx_sim/dataset --episode 0 \
+    --placements /workspace/test_isaaclab/omx_sim/placement_label_map_campA_136sym_20260908.csv \
+    --place-from-episode --dr-seed 42 --stride 4 \
+    --offset-delta-deg shoulder_lift=+20.14 \          # ← 乙；甲 就是拿掉這一行
+    --out /workspace/test_isaaclab/omx_sim/s5_tcp_fingertip_liftB --headless --enable_cameras
+```
+
+🔴 **`--offset-delta-deg` 只改這一次執行，不動 `joint_mapping.py` 的常數**——本節上面那句
+「維持甲，不要改」因此仍然成立，甲 還是 git 裡的值。
+
+**① 畫面（這是 §4-a 原本要的判準）**：frame 232，真實影格的夾爪已經下到杯身、手指包住杯子。
+**甲 的夾爪懸在杯子正上方一大截；乙 的夾爪就在杯身上，與真實影格同一個構型。**
+`[AI推論]` 這一眼的差距遠大於「渲染相機是 PLACEHOLDER」所能解釋的範圍。
+
+**② 距離**（TCP 到杯心最近值，新 TCP）：
+
+| 變體 | 本機 FK 預測 | Isaac Sim 實測 |
+|---|---|---|
+| 甲 | 10.4 cm | **10.4 cm**（f232） |
+| 乙 | 3.6 cm | **5.5 cm**（f216） |
+
+🔴 **乙 那 1.9 cm 的落差不是誤差，是「乙 真的碰到杯子」**：FK 與 sim 在甲 的
+f180–260 全程吻合到 **0.07 cm**，乙 也吻合到 f204，**只在 f208–236 分岔，f240 之後又吻合**。
+對照實驗確認`[產出物]`：比較同一變體 f204 與 f244 的渲染圖，杯子區域在**甲 只有 8 個像素變動**
+（雜訊），**乙 有 3271 個**——乙 的夾爪把杯子推開了。FK 假設杯子留在原處，所以它算的 3.6 cm
+是「未被推開的杯子」；sim 量的是被推開之後的杯子。兩個數字都對，前提不同。
+
+**③ 仍未觸發抓取。** 乙 的 5.5 cm 高於 5 cm 閘門。⚠️ `[AI推論]` **但這個閘門本身可能設錯了**：
+它量的是 TCP 到**杯心**，而杯子平均半徑約 3.1 cm，夾爪真的夾住杯身時 TCP 到杯心本來就會落在
+4–6 cm。乙 是「碰到了卻沒觸發」，不是「沒碰到」。閘門的正本在 `S5 §2 gap 3`，要另外處理。
+
+🔴 **反對乙的代數理由（§4-a 上面那條）仍然沒有被解決。** 這次新增的是「乙 在畫面與接觸上都對得起來」，
+不是「乙 在代數上說得通」。**要不要改 `OFFSET_RAD["shoulder_lift"]` 是 Eric 的裁決，這裡不代勞。**
+
 #### 為什麼 SCALE 不受這個框架影響、OFFSET 受
 
 **A 與 B 的差值把所有常數都消掉了**，所以只要 §4-b 的「A 到 B 之間其他關節不動」成立
