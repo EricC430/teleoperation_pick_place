@@ -99,6 +99,23 @@ SITE_R_INNER_M = 0.22
 SITE_R_OUTER_M = 0.41
 # Cross-check: ROBOTIS quotes OMX-F full reach 400 mm. The two agree within the
 # measurement's own resolution — treat that as corroboration, not as a coincidence.
+# --------------------------------------------------------------------------------------
+# Gripper contact point (the TCP)
+# --------------------------------------------------------------------------------------
+# `[柏宇說 2026-09-21]` MEASURED: the fingertips are 8 cm from link5's origin, along link5's +X.
+# The y term is the midline between the two finger pivots (URDF gripper_joint_1 y=+0.0075,
+# gripper_joint_2 y=-0.0108) -- the same midline end_effector_link uses.
+#
+# 🔴 This REPLACES "the midpoint of link6/link7's body frames" as the TCP. Those two are the
+# finger PIVOTS, only 2.95 cm from link5, i.e. 4.5 cm short of where the fingers actually touch.
+# Measured on uvc_60 episode 0 against that episode's recorded cup placement, the pivot choice
+# alone accounted for 4.5 cm of the 14.9 cm TCP-to-object gap (S5 §2-G).
+#
+# ⚠️ [未確認] this is ONE measurement, taken at one gripper opening. The fingers swing about
+# link6/link7's Z axes, so the tip's x in link5's frame shrinks as the gripper opens. How much is
+# not measured; at the grasp the gripper is nearly closed, which is the case this value is for.
+TCP_IN_LINK5_M = (0.08, -0.00165, 0.0)
+
 SPEC_FULL_REACH_M = 0.40
 
 # Payload, from the same spec page. An empty aluminium can (~15 g) is fine;

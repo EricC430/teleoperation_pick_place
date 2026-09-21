@@ -119,7 +119,7 @@ import joint_mapping as JM  # noqa: E402
 import omx_constants as K  # noqa: E402
 import omx_scene_cfg as SC  # noqa: E402
 import scene_constants as S  # noqa: E402
-from grasp_attach import GraspAttachConfig, ScriptedGraspAttach  # noqa: E402
+from grasp_attach import GraspAttachConfig, ScriptedGraspAttach, tcp_pose_w  # noqa: E402
 
 DATASET_FPS = 15.0
 # S5 §5 item 4 -- NVIDIA SO-101 tutorial ranges, quoted not invented
@@ -268,8 +268,6 @@ obj = scene["object"]
 joint_names = [j.urdf_name for j in K.JOINTS]
 joint_idx = [robot.joint_names.index(n) for n in joint_names]
 zeros = torch.zeros(1, len(joint_idx), device=sim.device)
-b6 = robot.body_names.index("link6")
-b7 = robot.body_names.index("link7")
 
 grasp = None
 if not args.skip_grasp:
@@ -307,8 +305,7 @@ for n, t in enumerate(frames):
     attached = False
     tcp_obj_dist = None
     if grasp is not None:
-        tcp = (robot.data.body_pos_w[0, b6] + robot.data.body_pos_w[0, b7]) / 2.0
-        tcp_q = robot.data.body_quat_w[0, b6]
+        tcp, tcp_q = tcp_pose_w(robot)   # measured fingertip, not the link6/link7 pivots
         obj_p = obj.data.root_pos_w[0]
         # 🔴 recorded every frame on purpose. When a grasp does not fire, the ONLY question that
         # matters is "how close did the TCP actually get to the object", and guessing at it (too

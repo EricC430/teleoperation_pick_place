@@ -60,7 +60,7 @@ from isaaclab.utils import configclass  # noqa: E402
 import joint_mapping as JM  # noqa: E402
 import omx_constants as K  # noqa: E402
 import omx_scene_cfg as SC  # noqa: E402
-from grasp_attach import GraspAttachConfig, ScriptedGraspAttach  # noqa: E402
+from grasp_attach import GraspAttachConfig, ScriptedGraspAttach, tcp_pose_w  # noqa: E402
 
 DATASET_FPS = 15.0
 
@@ -143,8 +143,6 @@ sim.reset()
 robot = scene["robot"]
 obj = scene["object"]
 joint_idx = [robot.joint_names.index(n) for n in joint_names]
-b6 = robot.body_names.index("link6")
-b7 = robot.body_names.index("link7")
 
 grasp = ScriptedGraspAttach(GraspAttachConfig(attach_radius_m=args.attach_radius, close_frac=args.close_frac))
 grasp.calibrate(gripper_trace_deg)
@@ -161,8 +159,7 @@ for t in range(n_frames):
         sim.step()
         scene.update(sim.get_physics_dt())
 
-    tcp_pos = (robot.data.body_pos_w[0, b6] + robot.data.body_pos_w[0, b7]) / 2.0
-    tcp_quat = robot.data.body_quat_w[0, b6]  # link6's orientation as the TCP frame -- approximate
+    tcp_pos, tcp_quat = tcp_pose_w(robot)   # measured fingertip, not the link6/link7 pivots
 
     if t == predicted_attach_frame - 1:
         # manufacture proximity: teleport the object onto the TCP one frame early, see docstring

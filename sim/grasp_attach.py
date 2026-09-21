@@ -9,8 +9,10 @@ not a reason to have skipped writing one -- gap 3's own estimate was "decision ~
 implementation 0.5-1 day" precisely because a decision has to exist before it can be argued with.
 
 **What "attach" means here, exactly:** while attached, every step, the object's world pose is
-forced to a fixed offset from the gripper TCP (the midpoint of `link6`/`link7`'s body frames --
-the same two bodies `verify_mimic_gearing.py` already uses for the gripper). The offset is
+forced to a fixed offset from the gripper TCP. 🔴 **2026-09-21: the TCP moved.** It used to be the
+midpoint of `link6`/`link7`'s body frames; those are the finger PIVOTS, 2.95 cm from link5, and the
+fingers actually touch 8 cm out (`omx_constants.TCP_IN_LINK5_M`, measured). Use `tcp_pose_w()`
+below -- it is the one definition, so the replay and the verifier cannot drift apart. The offset is
 computed once, at the instant of attach, from wherever the object actually is then. This is NOT a
 PhysX joint and it does not simulate contact, friction, or slip -- the object cannot be dropped or
 mis-grasped once attached, by construction. That is the accepted cost of skipping gap 3's physics
@@ -60,6 +62,25 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import torch
+
+
+def tcp_pose_w(robot):
+    """World pose of the gripper TCP: link5's frame, offset to the MEASURED fingertip point.
+
+    Returns (pos, quat) as 1-D tensors, the shapes `ScriptedGraspAttach.step` expects. The
+    orientation is link5's -- joint5 (wrist_roll) turns about link5's own +X, so rolling does not
+    move the TCP, and there is no separate "gripper frame" to prefer over it.
+    """
+    from isaaclab.utils.math import combine_frame_transforms
+
+    import omx_constants as K
+
+    b5 = robot.body_names.index("link5")
+    pos_w = robot.data.body_pos_w[0, b5]
+    quat_w = robot.data.body_quat_w[0, b5]
+    rel = torch.tensor(K.TCP_IN_LINK5_M, device=pos_w.device, dtype=pos_w.dtype)
+    pos, _ = combine_frame_transforms(pos_w.unsqueeze(0), quat_w.unsqueeze(0), rel.unsqueeze(0))
+    return pos.squeeze(0), quat_w
 
 
 @dataclass

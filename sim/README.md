@@ -4,6 +4,38 @@ Decided in `docs/decisions.md` **D029** (2026-09-03): the simulator is Isaac Sim
 simulation work is unblocked, and the leader arm plugs into the machine running the sim.
 The script spec is `docs/specs/S4_sim_teleop_collect.md`.
 
+## 🔴 待辦（2026-09-21 交接）：兩件事，做完抓取就會觸發
+
+episode 0 的 TCP 到杯心最近距離是 **14.9 cm**，抓取閘門要 5 cm。那 14.9 cm 已經拆成兩項，
+在本機用 `reach_logger/fk.py` ＋ 記錄的擺放位置算過（不需要模擬器），**左上角那格與 Isaac Sim
+渲染量到的數字完全一致**，所以這張表可以拿來預測：
+
+| TCP 取法 | 甲 目前校正 | 乙 `shoulder_lift` offset **＋20.14°** |
+|---|---|---|
+| `link6`/`link7` body 原點 | **14.9 cm**（現況）| 6.8 cm |
+| 實測指尖（link5 前方 8 cm）| 10.4 cm | **3.6 cm** ✅ |
+
+### ✅ 1. TCP 已改成實測指尖（本次 commit 已做，未在容器內跑過）
+
+`omx_constants.TCP_IN_LINK5_M = (0.08, -0.00165, 0.0)`，`[柏宇說 2026-09-21]` 量測值。
+`grasp_attach.tcp_pose_w(robot)` 是唯一定義，`replay_render_episode.py` 與
+`verify_grasp_attach.py` 都改用它，原本各自算 `link6`/`link7` 中點的程式碼已移除。
+⚠️ **這台機器沒有 Isaac Lab，只驗到「編譯通過」。第一次在容器裡跑要確認 `tcp_pose_w` 不報錯**
+（用的是 `combine_frame_transforms`，與本檔既有用法相同）。
+
+### 🟡 2. 待裁決：`shoulder_lift` 的 offset 要不要 ＋20.14°
+
+正本是 `docs/specs/S6_joint_zero_calibration.md` §4-a。**這是 `[AI提議]`，不是決定。**
+
+- **怎麼做：** 把 `sim/joint_mapping.py` 的 `OFFSET_RAD["shoulder_lift"]` 從 `-0.36919370`
+  改成 `-0.01766...`（＝加上 `math.radians(20.14)`），重渲 episode 0，比對真實影片。
+- **看什麼：** 夾爪有沒有下到杯口。甲的夾爪朝下 59°、乙是 77°，渲染一眼可分。
+- **支持乙的證據：** 60 集對照記錄的擺放位置，乙在三個條件上同時最好——近側杯緣水平誤差
+  −1.2 cm（甲 +3.0）、指尖高度 7.3 cm（略低於 9.5 cm 杯口，合理；甲 17.3 cm 懸空）、
+  夾爪朝下 77°（甲 59°）。
+- 🔴 **反對乙的理由（沒被解決）：** 鏈式代數說 j2 升高 20.14° 就該讓 j3 降低同樣的量，
+  但那個組合（丙）實測更差。所以還缺一塊解釋，**不要只憑上表就改成定案**，渲染確認後再改。
+
 ## What is here
 
 | File | Runs where | What it does |
