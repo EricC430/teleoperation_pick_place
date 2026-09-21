@@ -78,7 +78,21 @@ _TABLE_MARGIN = 0.10             # [AI推論] breathing room beyond the outermos
 # 🔴 THE ARM DOES NOT SIT ON THE TABLE. One platform 15 cm tall carries BOTH the arm base and
 # the bin. Until 2026-09-21 the scene put the arm straight on the table, which is why a kinematic
 # replay left the gripper ~11 cm above the object (S5 §2-C/§2-D).
-ARM_RISER_HEIGHT = 0.15          # MEASURED
+# `[柏宇說 2026-09-21]` the riser was 15 cm when the trajectories were recorded, drifted to 14 cm
+# by today's session, and will be restored to 15 cm. So 0.15 is the right value for replaying the
+# existing datasets, and stays. ⚠️ If a dataset is ever recorded at a different height, this
+# constant needs a time axis -- one number cannot serve two eras, and the mismatch is a silent
+# systematic offset in every z.
+# 🔴 What this height means, and it is easy to get wrong: it is TABLE SURFACE -> UNDERSIDE of the
+# arm base plate, i.e. the riser alone, not including the plate. That matches URDF link0, whose
+# mesh spans z 0..0.0575 (see the footprint note below), so link0's origin sits on the riser top.
+# reach_logger/fk.py returns positions in that same link0 frame, which is why "height above the
+# table" is simply fk z + this constant.
+# (The S6 joint calibration does NOT depend on this -- it only moves the conversion from the
+#  arm-base frame to "above the table". With 0.15 here, the S6 constants put the grasp at 16.3 cm
+#  against a 9.5 cm cup rim, median over 60 uvc_60 episodes. That ~6.8 cm is NOT this constant:
+#  1 cm either way is all it is worth. See joint_mapping.py for what it is not.)
+ARM_RISER_HEIGHT = 0.15          # MEASURED (Eric, 2026-09-21); see the conflict note above
 
 # Arm base plate footprint, read off `follower_01_base.stl` (URDF link0, scale 0.001):
 # x -0.060..+0.060, y -0.075..+0.075, z 0..0.0575. The pan axis sits at x=-0.01125 in that frame,
