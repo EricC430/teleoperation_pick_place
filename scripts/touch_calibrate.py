@@ -567,6 +567,134 @@ def cmd_selftest(_args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_solve(args: argparse.Namespace) -> int:
+    """Solve optimal joint offsets and scales from touch calibration CSV using least squares."""
+    from scipy.optimize import least_squares
+
+    path = Path(args.csv)
+    if not path.exists():
+        print(f"{path} not found")
+        return 1
+    rows = read_csv(path)
+    if len(rows) < 4:
+        print(f"need at least 4 points to solve, got {len(rows)}")
+        return 1
+
+    states = np.array([[float(r[f"state_{j}"]) for j in JOINTS] for r in rows])
+    targets = np.array([[float(r["target_x_cm"]), float(r["target_y_cm"]), float(r["target_z_cm"])] for r in rows])
+
+    nom_scale = 1.8 * np.pi / 180.0
+    nom_scales_4 = np.array([nom_scale, nom_scale, nom_scale, nom_scale])
+
+    init_scales = np.array([JM.SCALE_RAD_PER_UNIT[j] for j in JOINTS[:4]])
+    init_offsets = np.array([JM.OFFSET_RAD[j] for j in JOINTS[:4]])
+    init_wrist_roll_scale = nom_scale
+    init_wrist_roll_offset = JM.OFFSET_RAD["wrist_roll"]
+
+    fixed_riser = float(args.riser) if args.riser is not None else None
+
+    def eval_points(scales_4, offsets_4, riser):
+        tips, pitches = [], []
+        for s in states:
+            rad_4 = scales_4 * s[:4] + offsets_4
+            rad_roll = init_wrist_roll_scale * s[4] + init_wrist_roll_offset
+            rad_5 = list(rad_4) + [rad_roll]
+            t5 = fk.link5_transform(rad_5)
+            tip_m = t5 @ TCP_IN_LINK5
+            tip_cm = np.array([tip_m[0] * 100.0, tip_m[1] * 100.0, tip_m[2] * 100.0 + riser])
+            v = t5[:3, 0]
+            tips.append(tip_cm)
+            pitches.append(float(np.degrees(np.arcsin(np.clip(-v[2], -1.0, 1.0)))))
+        return np.array(tips), np.array(pitches)
+
+    # Initial baseline
+    tips_init, pitches_init = eval_points(init_scales, init_offsets, 15.0)
+    err_3d_init = np.linalg.norm(tips_init - targets, axis=1)
+
+    fit_scales = args.fit_scales
+
+    if not fit_scales:
+        def obj_fn(param):
+            offs = param[:4]
+            r = param[4] if fixed_riser is None else fixed_riser
+            tips, pitches = eval_points(nom_scales_4, offs, r)
+            err_pos = (tips - targets).ravel()
+            err_pitch = (pitches - 90.0) * 0.1
+            res = [err_pos, err_pitch]
+            if fixed_riser is None:
+                res.append([(r - 14.0) * 0.2])
+            return np.concatenate(res)
+
+        p0 = np.concatenate([init_offsets, [14.0] if fixed_riser is None else []])
+        res = least_squares(obj_fn, p0)
+        solved_offsets = res.x[:4]
+        solved_riser = float(res.x[4]) if fixed_riser is None else fixed_riser
+        solved_scales = nom_scales_4
+    else:
+        def obj_fn(param):
+            sc = param[:4]
+            offs = param[4:8]
+            r = param[8] if fixed_riser is None else fixed_riser
+            tips, pitches = eval_points(sc, offs, r)
+            err_pos = (tips - targets).ravel()
+            err_pitch = (pitches - 90.0) * 0.1
+            reg_scales = (sc - nom_scales_4) / nom_scales_4 * 0.5
+            res = [err_pos, err_pitch, reg_scales]
+            if fixed_riser is None:
+                res.append([(r - 14.0) * 0.2])
+            return np.concatenate(res)
+
+        p0 = np.concatenate([nom_scales_4, init_offsets, [14.0] if fixed_riser is None else []])
+        res = least_squares(obj_fn, p0)
+        solved_scales = res.x[:4]
+        solved_offsets = res.x[4:8]
+        solved_riser = float(res.x[8]) if fixed_riser is None else fixed_riser
+
+    tips_opt, pitches_opt = eval_points(solved_scales, solved_offsets, solved_riser)
+    err_3d_opt = np.linalg.norm(tips_opt - targets, axis=1)
+
+    print()
+    print("=" * 76)
+    print("  TOUCH CALIBRATION SOLVER")
+    print(f"  Source CSV: {path.name} ({len(rows)} points)")
+    print(f"  Mode: {'Fit SCALES + OFFSETS' if fit_scales else 'Nominal SCALES (1.80°/unit fixed) + Fit OFFSETS'}")
+    print(f"  Arm Riser Height: {solved_riser:.2f} cm")
+    print("=" * 76)
+    print()
+    print(f"  Overall 3D Error:  median {np.median(err_3d_init):.2f} cm -> {np.median(err_3d_opt):.2f} cm  (max: {np.max(err_3d_init):.2f} -> {np.max(err_3d_opt):.2f} cm)")
+    print(f"  Pitch Error:       median {np.median(pitches_init - 90.0):+.1f}° -> {np.median(pitches_opt - 90.0):+.1f}°")
+    print()
+    print(f"  {'id':>3s}  {'tgt_x':>6s} {'tgt_y':>6s}  {'opt_x':>6s} {'opt_y':>6s} {'opt_z':>6s}  {'pitch':>5s}  {'err_init':>8s} -> {'err_opt':>7s}")
+    print(f"  {'-'*3}  {'-'*6} {'-'*6}  {'-'*6} {'-'*6} {'-'*6}  {'-'*5}  {'-'*8}    {'-'*7}")
+    for i, r in enumerate(rows):
+        pid = r.get("point_id", str(i))
+        tx, ty = targets[i, 0], targets[i, 1]
+        ox, oy, oz = tips_opt[i]
+        pv = pitches_opt[i]
+        ei = err_3d_init[i]
+        eo = err_3d_opt[i]
+        print(f"  {pid:>3s}  {tx:6.1f} {ty:6.1f}  {ox:6.2f} {oy:6.2f} {oz:6.2f}  {pv:5.1f}°  {ei:6.2f} cm -> {eo:5.2f} cm")
+
+    print()
+    print("  --- Solved Constants (ready to paste into sim/joint_mapping.py) ---")
+    print()
+    print("SCALE_RAD_PER_UNIT: dict[str, float] = {")
+    for i, j in enumerate(JOINTS[:4]):
+        print(f'    "{j}": {solved_scales[i]:.8f},')
+    print('    "wrist_roll": 0.03141593,')
+    print("}")
+    print()
+    print("OFFSET_RAD: dict[str, float] = {")
+    for i, j in enumerate(JOINTS[:4]):
+        print(f'    "{j}": {solved_offsets[i]:.8f},')
+    print(f'    "wrist_roll": {init_wrist_roll_offset:.8f},')
+    print("}")
+    print()
+    print(f"# NOTE: ARM_RISER_HEIGHT solved as {solved_riser:.2f} cm (scene_constants.py)")
+    print()
+    return 0
+
+
 # --------------------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------------------
@@ -590,6 +718,12 @@ def main() -> int:
     a.add_argument("--csv", required=True, help="CSV file to analyse")
     a.set_defaults(func=cmd_analyse)
 
+    v = sub.add_parser("solve", help="solve optimal joint offsets and scales from touch calibration CSV")
+    v.add_argument("--csv", required=True, help="CSV file to solve from")
+    v.add_argument("--fit-scales", action="store_true", help="also fit joint scales (default: fixed nominal 1.80 deg/unit)")
+    v.add_argument("--riser", type=float, default=None, help="fixed riser height in cm (default: auto-solve near 14-15 cm)")
+    v.set_defaults(func=cmd_solve)
+
     t = sub.add_parser("selftest", help="verify FK + joint_mapping on synthetic data (no hardware)")
     t.set_defaults(func=cmd_selftest)
 
@@ -602,3 +736,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
