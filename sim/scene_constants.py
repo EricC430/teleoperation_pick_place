@@ -104,18 +104,21 @@ BIN_CENTER_Y = -(ARM_BASE_HALF_Y + BIN_GAP_FROM_ARM_BASE + _bin_max_r)   # -0.27
 #    something he said. Move it if the real layout differs.
 BIN_CENTER_X = RISER_FRONT_X - _bin_max_r
 
-# Riser footprint DERIVED to contain the arm base and the bin plus a small margin -- not measured.
-# `[Eric說]` only the HEIGHT matters, so this is sized rather than invented.
-_RISER_MARGIN = 0.02
-ARM_RISER_SIZE = (
-    (RISER_FRONT_X - min(ARM_BASE_BACK_X, BIN_CENTER_X - _bin_max_r)) + _RISER_MARGIN,
-    (ARM_BASE_HALF_Y - (BIN_CENTER_Y - _bin_max_r)) + _RISER_MARGIN,
-    ARM_RISER_HEIGHT,
-)
-ARM_RISER_CENTER = (
-    RISER_FRONT_X - ARM_RISER_SIZE[0] / 2.0 + _RISER_MARGIN / 2.0,
-    ARM_BASE_HALF_Y - ARM_RISER_SIZE[1] / 2.0 + _RISER_MARGIN / 2.0,
-)
+# the third-person camera also stands ON the riser, so its Y is needed to size the riser below
+CAM_FRONT_LEFT_LEFT_OF_ARM = 0.20     # MEASURED: left of the arm base's left edge
+CAM_FRONT_LEFT_Y_PRE = ARM_BASE_HALF_Y + CAM_FRONT_LEFT_LEFT_OF_ARM
+
+# Riser footprint DERIVED to contain the arm base, the bin AND the third-person camera.
+# `[Eric說 2026-09-21]` only the HEIGHT is measured; the footprint follows from what stands on it.
+# 🔴 The FRONT edge takes NO margin -- `[Eric說]` the arm base plate and the bin are FLUSH with it.
+#    A first version added margin on all four sides, which pushed the front edge 1 cm proud and
+#    left both of them visibly short of it on the scene plan.
+_RISER_MARGIN = 0.03            # back and far side only
+_riser_back_x = min(ARM_BASE_BACK_X, BIN_CENTER_X - _bin_max_r) - _RISER_MARGIN
+_riser_left_y = max(ARM_BASE_HALF_Y, CAM_FRONT_LEFT_Y_PRE) + _RISER_MARGIN
+_riser_right_y = BIN_CENTER_Y - _bin_max_r - _RISER_MARGIN
+ARM_RISER_SIZE = (RISER_FRONT_X - _riser_back_x, _riser_left_y - _riser_right_y, ARM_RISER_HEIGHT)
+ARM_RISER_CENTER = ((RISER_FRONT_X + _riser_back_x) / 2.0, (_riser_left_y + _riser_right_y) / 2.0)
 
 # Cup (the real manipulated object). `[Eric說 2026-09-21]` opening dia 7.5 cm, base dia 5 cm,
 # height 9.5 cm, standing UPRIGHT on the TABLE. Replaces the `trash_obj` can, which was lying on
@@ -159,13 +162,13 @@ TRASH_OBJ_SCALE = (0.01, 0.01, 0.01)
 # `[Eric說 2026-09-21]` MEASURED, in the pan-axis frame (+X ahead, +Y operator-left):
 #   * 20 cm to the LEFT of the arm base's left edge          -> y = ARM_BASE_HALF_Y + 0.20
 #   * 4.5 cm inward (-X, toward the operator) from the riser's FRONT edge
-#   * 11 cm high (above the TABLE TOP; these constants are table-relative, the render code adds
-#     TABLE_TOP_Z)                                           -> z = 0.11
+#   * 11 cm high ABOVE THE RISER, i.e. 15 + 11 = 26 cm above the table top. `[Eric說 2026-09-21]`
+#     corrected this: a first version placed it 11 cm above the TABLE, which put it below the
+#     riser it actually stands on.
 #   * aimed at the centre, 45 deg off the rightward horizontal, i.e. bearing -45 deg from +X
 #   * pitched DOWN about 10 deg
-CAM_FRONT_LEFT_LEFT_OF_ARM = 0.20     # MEASURED
 CAM_FRONT_LEFT_INSET_FROM_RISER = 0.045   # MEASURED
-CAM_FRONT_LEFT_Z = 0.11               # MEASURED, above the table top
+CAM_FRONT_LEFT_Z = ARM_RISER_HEIGHT + 0.11   # MEASURED: 11 cm above the riser top
 CAM_FRONT_LEFT_BEARING_DEG = -45.0    # MEASURED: from the rightward horizontal, turned to centre
 CAM_FRONT_LEFT_PITCH_DEG = -10.0      # MEASURED: negative = looking down
 
@@ -173,7 +176,7 @@ CAM_FRONT_LEFT_PITCH_DEG = -10.0      # MEASURED: negative = looking down
 # the camera a few cm the wrong side of the riser's front edge and inside the placement cloud.
 CAM_FRONT_LEFT_POS = (
     RISER_FRONT_X - CAM_FRONT_LEFT_INSET_FROM_RISER,
-    ARM_BASE_HALF_Y + CAM_FRONT_LEFT_LEFT_OF_ARM,
+    CAM_FRONT_LEFT_Y_PRE,
     CAM_FRONT_LEFT_Z,
 )
 # Look-at point: along the measured bearing, dropping at the measured pitch.
