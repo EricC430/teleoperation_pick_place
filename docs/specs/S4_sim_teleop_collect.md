@@ -11,7 +11,7 @@
 1. **模擬器 = Isaac Sim / Isaac Lab**（原 §3 的 MuJoCo vs Isaac 之爭已裁決，MuJoCo 出局）
 2. **D025 執行前提 3「不佔用 9/26 前的任何工時」撤銷** —— 這條前提事實上在 8/28 就已被跨過
    （`wildbot_with_omxaiarm.usd` 是那天產出的）。**模擬工作即刻可做。**
-3. **leader 臂直插跑模擬的那台 Linux 機器**（實驗室 5090 筆電），見新增的 §3.5
+3. **leader 臂直插跑模擬的那台 Linux 機器**（實驗室 4090 筆電），見新增的 §3.5
 
 **仍然有效、不要誤讀成全面放行的兩條（D025 前提 1／2）：**
 
@@ -210,7 +210,7 @@
 
 ```
 ❌ 不做：Windows 筆電(COM6, leader) --網路--> Linux(Isaac Sim)
-✅ 要做：Linux 5090 筆電 同時接 leader(/dev/ttyUSB*) 與 跑 Isaac Sim
+✅ 要做：Linux 4090 筆電 同時接 leader(/dev/ttyUSB*) 與 跑 Isaac Sim
 ```
 
 **理由（完整版見 D029）：** 有兩條迴路，**人在迴路**（sim 畫面 → 眼睛 → 手）比控制迴路更禁不起延遲，
@@ -226,7 +226,7 @@ NVIDIA 的教材用的也是直插架構（`TELEOP_PORT` USB 接在跑 `teleop-d
 
 ## 4. 架構
 
-**全部在同一台機器上（Linux 5090 筆電，見 §3.5）：**
+**全部在同一台機器上（Linux 4090 筆電，見 §3.5）：**
 
 ```
 真實 leader 臂 (OmxLeader, /dev/ttyUSB* — 不是 COM6)

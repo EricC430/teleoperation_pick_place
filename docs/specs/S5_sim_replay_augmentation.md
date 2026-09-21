@@ -242,7 +242,7 @@ step 幾次（dt=1/120）根本推不過那個週期，`camera.data.output["rgb"
 
 ### 🟡 2026-09-18 §2-B：管線本體兩階段都跑通了——但產出的東西還不是規格承諾的東西
 
-**兩階段，分工是被環境逼出來的，不是風格選擇**（`docs/environment.md`「5090 Linux 筆電：什麼裝在哪」）：
+**兩階段，分工是被環境逼出來的，不是風格選擇**（`docs/environment.md`「4090 Linux 筆電：什麼裝在哪」）：
 
 | 階段 | 腳本 | 跑在哪 | 做什麼 |
 |---|---|---|---|
@@ -541,7 +541,7 @@ gap 1 的五組 drive gain 數字、`verify_grasp_attach` 的 ep0 結果、§2-A
 | 動作來源 | leader 臂即時操作 | **已錄好的真實 `action` 欄位** |
 | 即時性需求 | 🔴 有——D029 §3 整條決策在解「人在迴路延遲」問題 | ❌ 沒有——逐幀讀取，sim 步進速度不受真人操作節奏限制 |
 | 需要 leader 硬體在場 | ✅ 要 | ❌ 不要 |
-| 需要人到實驗室 | ✅ 要（leader 必須插在 5090 Linux 筆電） | 🟡 只有缺口 4（相機量測）要，其餘不要（前提：那台機器能遠端存取，`[未確認]`——見 §9） |
+| 需要人到實驗室 | ✅ 要（leader 必須插在 4090 Linux 筆電） | 🟡 只有缺口 4（相機量測）要，其餘不要（前提：那台機器能遠端存取，`[未確認]`——見 §9） |
 | 產出的是 | 全新的 sim demo | **既有 demo 的視覺變體**，動作標籤不變 |
 | 買到的變因掃描 | 有，但每次要重蒐集 | 有，而且**同一組動作可以重複套用無限組 DR 參數** |
 
@@ -700,7 +700,7 @@ LeRobotDataset.add_frame(...) → save_episode()　（repo_id 帶 sim_ 前綴＋
 ## 11. 2026-09-18 四個缺口的準備工作（`[柏宇說]`「做s5的四個準備」）
 
 **範圍：只做「準備」——工具與離線分析，不是開始 §4 的 `sim_replay_augment.py` 本體。** §0 的「是否要做 S5」仍待 Eric 裁決。
-**這台是 Windows 筆電，沒有 Isaac Sim：** 標 `未在模擬器執行` 的腳本只過了語法檢查（`py_compile`），第一次在 5090 容器上跑很可能要修。
+**這台是 Windows 筆電，沒有 Isaac Sim：** 標 `未在模擬器執行` 的腳本只過了語法檢查（`py_compile`），第一次在 4090 容器上跑很可能要修。
 
 | 缺口 | 產出 | 跑過了嗎 | 結果／還缺什麼 |
 |---|---|---|---|
@@ -750,8 +750,8 @@ LeRobotDataset.add_frame(...) → save_episode()　（repo_id 帶 sim_ 前綴＋
 
 ### 11-4 下一步（依賴順序）
 
-1. 5090 容器：`mimic_check.py`（gearing 1.0 與 −1.0 各一次）→ 回填 gearing
+1. 4090 容器：`mimic_check.py`（gearing 1.0 與 −1.0 各一次）→ 回填 gearing
 2. 實機或 sim：S4 §5-1 五姿態對照 → 回填 `joint_mapping.py` 的 8 個 `[未確認]` 值 → 重跑 `s5_prepare_replay.py`
-3. 5090 容器：`fit_drive_gains.py`（先 `--max-frames 60` 試跑，再全跑）→ 與 11-1 的表對照 → 人決定要不要改 `omx_constants.py`
+3. 4090 容器：`fit_drive_gains.py`（先 `--max-frames 60` 試跑，再全跑）→ 與 11-1 的表對照 → 人決定要不要改 `omx_constants.py`
 4. lab day：印 `markers`、量 `rs-intrinsics`（front-left）、`capture`＋`checkerboard`（wrist UVC）、`extrinsics`
 5. 缺口 3 選項裁決
