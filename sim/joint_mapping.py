@@ -130,18 +130,24 @@ SIGN: dict[str, float] = {name: 1.0 for name in LEROBOT_NAMES}
 # both produce confident, wrong numbers: the first frame with action-state < -1.0 lands on an OPEN
 # gripper (58.75) because that signal also fires on follower lag, and the episode's lowest EE point
 # lands 21.5 cm away from the cup, on a parked pose.
+# [已查證 2026-09-22] MEASURED per touch calibration (scripts/touch_calibrate.py solve),
+# from calibration/2026-09-22_touch_calibration.csv across 11 physical points on the placement mat.
+# Mode: nominal hardware scale (1.80 deg/unit = 0.03141593 rad/unit, matching 4096 ticks / 200 units),
+# with offsets solved via non-linear least squares against known physical table contact points (z=0).
+# This drops 3D positional error from 8.07 cm down to 1.52 cm, eliminates the 6.6 cm vertical gap,
+# and brings wrist pitch to 87.2° (within 2.8° of physical 90° vertical).
 SCALE_RAD_PER_UNIT: dict[str, float] = {
-    "shoulder_pan": 0.03104445,
-    "shoulder_lift": 0.03143896,
-    "elbow_flex": 0.03248061,
-    "wrist_flex": 0.03159506,
-    "wrist_roll": 0.03086570,
+    "shoulder_pan": 0.03141593,
+    "shoulder_lift": 0.03141593,
+    "elbow_flex": 0.03141593,
+    "wrist_flex": 0.03141593,
+    "wrist_roll": 0.03141593,
 }
 OFFSET_RAD: dict[str, float] = {
-    "shoulder_pan": 0.01592023,
-    "shoulder_lift": -0.36919370,
-    "elbow_flex": 0.44010560,
-    "wrist_flex": 1.62968550,
+    "shoulder_pan": -0.03890655,
+    "shoulder_lift": 0.08942211,
+    "elbow_flex": -0.07452414,
+    "wrist_flex": 1.53990733,
     "wrist_roll": -0.02788842,
 }
 # The gripper was measured as JAW OPENING (mm between the front edges), not as an angle: S6 §4.

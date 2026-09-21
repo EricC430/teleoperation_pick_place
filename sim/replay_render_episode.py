@@ -108,6 +108,8 @@ parser.add_argument("--warmup-steps", type=int, default=12, help="steps before t
 parser.add_argument("--stride", type=int, default=1, help="render every Nth frame (smoke tests)")
 parser.add_argument("--max-frames", type=int, default=0, help="stop after N rendered frames (0 = no limit)")
 parser.add_argument("--skip-grasp", action="store_true", help="degraded mode: no attach/detach (S5 §2 gap 3)")
+parser.add_argument("--attach-radius", type=float, default=0.09,
+                    help="grasp attach radius in meters (default 0.09 m, covers cup rim-to-centre offset)")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 
@@ -290,7 +292,7 @@ zeros = torch.zeros(1, len(joint_idx), device=sim.device)
 
 grasp = None
 if not args.skip_grasp:
-    grasp = ScriptedGraspAttach(GraspAttachConfig())
+    grasp = ScriptedGraspAttach(GraspAttachConfig(attach_radius_m=args.attach_radius))
     thr = grasp.calibrate([row[5] for row in states_deg])
     print(f"grasp attach threshold: {thr:.2f} deg (from this episode's own gripper trace)")
 
@@ -317,9 +319,6 @@ from PIL import Image  # noqa: E402, PLC0415
 
 for n, t in enumerate(frames):
     write_pose(t)
-    for _ in range(max(1, args.steps_per_frame)):
-        sim.step()
-        scene.update(sim.get_physics_dt())
 
     attached = False
     tcp_obj_dist = None
@@ -335,6 +334,11 @@ for n, t in enumerate(frames):
             obj.write_root_pose_to_sim(torch.cat([want_p, want_q]).unsqueeze(0))
             obj.write_root_velocity_to_sim(torch.zeros(1, 6, device=want_p.device))
             attached = True
+
+    scene.write_data_to_sim()
+    for _ in range(max(1, args.steps_per_frame)):
+        sim.step()
+        scene.update(sim.get_physics_dt())
 
     rec = {"frame": t, "timestamp_s": t / DATASET_FPS, "action": actions_deg[t],
            "observation_state": states_deg[t], "grasp_attached": attached,
