@@ -150,21 +150,17 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
         # pose, which put the grasp height wrong on its own (S5 §2-D).
         # ⚠️ A cylinder at the mean diameter, not a textured cup mesh: right size, right pose,
         #    placeholder appearance. Eric plans to rebuild or author the real asset.
-        spawn=sim_utils.CylinderCfg(
-            radius=S.CUP_MEAN_DIA / 2.0,
-            height=S.CUP_HEIGHT,
+        spawn=sim_utils.UsdFileCfg(
+            usd_path="/workspace/test_isaaclab/assets/paper_cup/paper_cup.usd",
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 solver_position_iteration_count=16,
                 solver_velocity_iteration_count=1,
                 max_depenetration_velocity=3.0,
                 disable_gravity=False,
             ),
-            mass_props=sim_utils.MassPropertiesCfg(mass=0.012),   # empty paper cup, [AI推論]
-            collision_props=sim_utils.CollisionPropertiesCfg(),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.90, 0.88, 0.82)),
         ),
-        # standing on the table: centre half a cup-height above the top
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.30, 0.0, S.TABLE_TOP_Z + S.CUP_HEIGHT / 2.0)),
+        # standing on table: origin of paper_cup.usd is at the base
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.30, 0.0, S.TABLE_TOP_Z)),
     )
 
     # ---- cameras, in dataset order -----------------------------------------------------

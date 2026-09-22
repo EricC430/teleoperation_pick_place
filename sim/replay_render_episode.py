@@ -265,10 +265,12 @@ if args.placements:
             raise SystemExit(f"no placement {args.place!r} in {args.placements}")
         place_source = f"--place {args.place!r}" if args.place else "first row of the CSV (arbitrary)"
     place = matches[0] if matches else placements[0]
-    # upright cup: centre half a cup-height above the table (a USD override may need its own z)
-    scene_cfg.object.init_state.pos = (place.x_m, place.y_m, S.TABLE_TOP_Z + S.CUP_HEIGHT / 2.0)
+    usd_str = getattr(scene_cfg.object.spawn, "usd_path", "") or ""
+    is_paper_cup = "paper_cup" in usd_str or args.object is None or "paper_cup" in args.object
+    cup_z = S.TABLE_TOP_Z if is_paper_cup else (S.TABLE_TOP_Z + S.CUP_HEIGHT / 2.0)
+    scene_cfg.object.init_state.pos = (place.x_m, place.y_m, cup_z)
     print(f"object placement {place.short_id} ({place.placement_id}) "
-          f"at x={place.x_m:.3f} y={place.y_m:.3f}  [{place_source}]")
+          f"at x={place.x_m:.3f} y={place.y_m:.3f} z={cup_z:.3f} [{place_source}]")
 
 sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=1.0 / 120.0, device=args.device))
 scene = InteractiveScene(scene_cfg)
@@ -411,4 +413,5 @@ for k, v in manifest["fidelity"].items():
     if not k.endswith("_note"):
         print(f"    {k} = {v}")
 print("next: scripts/sim_replay_augment.py to assemble a LeRobotDataset from this")
-simulation_app.close()
+import os
+os._exit(0)

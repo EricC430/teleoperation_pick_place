@@ -17,4 +17,5 @@ print("default prim:", stage.GetDefaultPrim().GetPath() if stage.GetDefaultPrim(
 print("bbox min:", list(rng.GetMin()), "max:", list(rng.GetMax()))
 sz = [rng.GetMax()[i]-rng.GetMin()[i] for i in range(3)]
 print("size (stage units):", sz)
-app.close()
+import os
+os._exit(0)

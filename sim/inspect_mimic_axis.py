@@ -88,5 +88,5 @@ print("follower's own axis instance, the constraint is referencing inconsistent 
 print("would explain gripper_joint_2 barely moving regardless of the gearing sign (both +1 and -1")
 print("measured ~0.1deg of joint2 motion across a 90deg sweep of joint1, see verify_mimic_gearing.py).")
 print("=" * 100)
-
-simulation_app.close()
+import os
+os._exit(0)

@@ -145,5 +145,5 @@ else:
     verdict = "🟡 MIXED: neither clearly mirrored nor clearly same-direction — look at a render before deciding"
 print(verdict)
 print("\nIf this passes: record the gearing in sim/README.md (gap #2) and re-run convert_omx_urdf.py with it.")
-print("Which j1 direction is OPEN on the real gripper is a separate question — see joint_mapping.GRIPPER_*.")
-simulation_app.close()
+import os
+os._exit(0)

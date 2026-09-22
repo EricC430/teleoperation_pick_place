@@ -204,8 +204,10 @@ CAM_FRONT_LEFT_LOOKAT = (
 )
 
 CAM_WRIST_PARENT_LINK = "link5"
-CAM_WRIST_OFFSET_POS = (0.02, 0.0, 0.03)   # PLACEHOLDER  手腕相機安裝方式 ___
-CAM_WRIST_OFFSET_ROT = (0.5, -0.5, 0.5, -0.5)  # PLACEHOLDER (ros convention)
+# Measured from CAD assembly (OMX-AI(Follower).stp: CAMERA_INNOMAKER_720P mounted on PR33_C02_F9):
+# Pitch ~38.7° downward facing the fingertips and cup
+CAM_WRIST_OFFSET_POS = (0.03121, 0.0, 0.03355)
+CAM_WRIST_OFFSET_ROT = (-0.30998, 0.63554, -0.63554, 0.30998)  # (w, x, y, z) ros convention
 
 DOME_LIGHT_INTENSITY = 1200.0   # PLACEHOLDER  光照強度 ___ lux
 

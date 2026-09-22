@@ -24,5 +24,8 @@ cp "$HERE"/*.py "$HOST_VOLUME/omx_sim/"
 cp "$HERE"/../docs/assets/placement_label_map_*.csv "$HOST_VOLUME/omx_sim/" 2>/dev/null || true
 
 SCRIPT="$1"; shift
-echo "[run_in_container] $CONTAINER : /isaac-sim/python.sh $GUEST_VOLUME/omx_sim/$SCRIPT $*"
-exec docker exec -i -e PYTHONUNBUFFERED=1 "$CONTAINER" /isaac-sim/python.sh "$GUEST_VOLUME/omx_sim/$SCRIPT" "$@"
+INTERACTIVE_FLAG=""
+if [ -t 0 ]; then
+  INTERACTIVE_FLAG="-i"
+fi
+exec docker exec $INTERACTIVE_FLAG -e PYTHONUNBUFFERED=1 "$CONTAINER" /isaac-sim/python.sh "$GUEST_VOLUME/omx_sim/$SCRIPT" "$@"

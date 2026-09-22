@@ -145,9 +145,9 @@ SCALE_RAD_PER_UNIT: dict[str, float] = {
 }
 OFFSET_RAD: dict[str, float] = {
     "shoulder_pan": -0.03890655,
-    "shoulder_lift": 0.08942211,
+    "shoulder_lift": 0.12432870,  # +2.0 deg from touch_calib baseline: brings arm reach into exact rim alignment
     "elbow_flex": -0.07452414,
-    "wrist_flex": 1.53990733,
+    "wrist_flex": 1.95878635,     # +24.0 deg: steep downward pitch into cup cavity (S6 Candidate D confirmation)
     "wrist_roll": -0.02788842,
 }
 # The gripper was measured as JAW OPENING (mm between the front edges), not as an angle: S6 §4.

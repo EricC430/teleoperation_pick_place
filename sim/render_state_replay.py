@@ -267,5 +267,5 @@ with open(os.path.join(args.out, "manifest.json"), "w") as fh:
     json.dump(meta, fh, indent=2)
 
 print(f"\nwrote {len(frames)} frame(s) x 2 cameras + manifest.json to {args.out}")
-print("next: scripts/compare_sim_real_frames.py to put these beside the real recorded video frames")
-simulation_app.close()
+import os
+os._exit(0)

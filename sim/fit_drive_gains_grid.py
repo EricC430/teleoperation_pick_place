@@ -184,5 +184,5 @@ with open(out_path, "w", encoding="utf-8") as fh:
     json.dump({"traj": args.traj, "source": str(data["source"]), "episodes": episodes, "fps": fps, "dt": args.dt,
                "mapping_note": str(data["mapping_note"]), "best_on_grid_edge": edge,
                "episodes_outside_limits": limit_hits, "ranking": results}, fh, indent=2, ensure_ascii=False)
-print(f"wrote {out_path}")
-simulation_app.close()
+import os
+os._exit(0)

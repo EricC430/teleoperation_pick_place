@@ -266,5 +266,5 @@ with open(args.out, "w") as fh:
         indent=2,
     )
 print(f"\nwrote {args.out}")
-
-simulation_app.close()
+import os
+os._exit(0)

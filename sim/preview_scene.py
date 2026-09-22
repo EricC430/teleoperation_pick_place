@@ -154,4 +154,5 @@ for idx, key in enumerate(("cam_wrist", "cam_front_left"), start=1):
 
 print("\n⚠️  This scene is NOT geometrically aligned with the real cell — experiment_spec §3 is")
 print("    still blank. See sim/scene_constants.py and S4 §5-5.")
-simulation_app.close()
+import os
+os._exit(0)

@@ -191,9 +191,9 @@ if fails:
     print(f"RESULT: 🔴 {len(fails)} mismatch(es)")
     for f in fails:
         print(f"  - {f}")
-    print("=" * 112)
-    simulation_app.close()
-    raise SystemExit(1)
+    import os
+    os._exit(1)
 print("RESULT: ✅ this USD matches sim/omx_constants.py")
 print("=" * 112)
-simulation_app.close()
+import os
+os._exit(0)

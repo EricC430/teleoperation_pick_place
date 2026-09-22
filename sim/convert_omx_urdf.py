@@ -251,5 +251,5 @@ if missing:
     print("   Do not use this asset until that is explained.")
 print("=" * 118)
 print(f"\ndone: {usd_path}")
-
-simulation_app.close()
+import os
+os._exit(0)

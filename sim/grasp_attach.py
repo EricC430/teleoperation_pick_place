@@ -85,14 +85,12 @@ def tcp_pose_w(robot):
 
 @dataclass
 class GraspAttachConfig:
-    # 0.09 m: the upright cup (height 9.5 cm, radius 3.75 cm) has its root at centre z=4.75 cm.
-    # Grasping the rim puts the TCP at sqrt(4.75^2 + 3.75^2) = 6.05 cm from root even at perfect contact.
-    # 0.05 m was too tight for the cup geometry (missed by ~2 cm). 0.09 m allows ~3 cm margin.
-    attach_radius_m: float = 0.09
+    # 0.12 m: covers distance from fingertip TCP to cup root (height 9.5 cm + rim offset)
+    attach_radius_m: float = 0.12
     close_frac: float = 0.6
-    # Snap the cup directly under the TCP upon attach so it sits squarely between the fingers
-    snap_to_tcp: bool = True
-    snap_z_offset_m: float = -0.045  # cup centre 4.5 cm below fingertips (rim at fingertips)
+    # No snap displacement: strictly preserve the exact physical relative pose at grasp instant
+    snap_to_tcp: bool = False
+    snap_z_offset_m: float = 0.0
 
 
 @dataclass
@@ -161,23 +159,10 @@ class ScriptedGraspAttach:
             dist = torch.norm(object_pos_w - tcp_pos_w).item()
             if dist <= self.cfg.attach_radius_m:
                 self.attached = True
-                if self.cfg.snap_to_tcp:
-                    # tcp_pos_w is already at the fingertips (link5 + TCP_IN_LINK5_M).
-                    # In TCP frame, +X is along the tool axis pointing into the cup.
-                    # Placing the cup centre at +4.5 cm along +X locks it dead-centre between the fingers.
-                    self._offset_pos = torch.tensor(
-                        [0.045, 0.0, 0.0],
-                        device=tcp_pos_w.device,
-                        dtype=tcp_pos_w.dtype,
-                    )
-                    # Keep cup orientation locked to link5 or upright
-                    _, self._offset_quat = _relative_pose(
-                        tcp_pos_w, tcp_quat_w, object_pos_w, object_quat_w
-                    )
-                else:
-                    self._offset_pos, self._offset_quat = _relative_pose(
-                        tcp_pos_w, tcp_quat_w, object_pos_w, object_quat_w
-                    )
+                # Strictly preserve the exact physical relative pose at the moment of grasp
+                self._offset_pos, self._offset_quat = _relative_pose(
+                    tcp_pos_w, tcp_quat_w, object_pos_w, object_quat_w
+                )
                 self.events.append(GraspEvent(frame_idx, "attach", gripper_reading_deg, dist))
 
         elif self.attached and above:

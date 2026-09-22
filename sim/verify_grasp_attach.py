@@ -200,5 +200,5 @@ with open(args.out, "w") as fh:
         indent=2,
     )
 print(f"wrote {args.out}")
-
-simulation_app.close()
+import os
+os._exit(0)

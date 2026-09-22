@@ -167,5 +167,5 @@ print(f"joint2 moved {(j2_o - j2_c)*57.2958:+.2f} deg while joint1 moved {(j1_o 
 print("expected for a working mimic: joint2's change has a fixed, consistent ratio to joint1's change")
 print("(that ratio's SIGN is the thing under test -- decide by looking at closed.png vs open.png:")
 print(" do the two fingers visibly converge/diverge together, or does one look wrong/frozen/reversed?)")
-
-simulation_app.close()
+import os
+os._exit(0)
