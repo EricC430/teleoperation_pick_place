@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grasp Result Viewer</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f7f8;
+    --panel: #ffffff;
+    --border: #d8d8dc;
+    --text: #1c1c1e;
+    --muted: #6b6b70;
+    --accent: #c0392b;
+    --success: #27ae60;
+    --fail: #e74c3c;
+    --no-grasp: #e67e22;
+    --dropped: #8e44ad;
+    --misplaced: #f39c12;
+    --unmatched: #95a5a6;
+    --grid-fine: #e6e6ea;
+    --grid-bold: #b7b7bf;
+    --sector: #9aa5b1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181a;
+      --panel: #222327;
+      --border: #3a3b40;
+      --text: #ececec;
+      --muted: #9a9aa2;
+      --accent: #ff6b5b;
+      --success: #2ecc71;
+      --fail: #ff4757;
+      --no-grasp: #ffa502;
+      --dropped: #a55eea;
+      --misplaced: #f9ca24;
+      --unmatched: #636e72;
+      --grid-fine: #2b2c30;
+      --grid-bold: #45464d;
+      --sector: #565861;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { max-width: 100%; overflow-x: hidden; }
+  body {
+    margin: 0;
+    padding: 16px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+    font-size: 14px;
+  }
+  h1 { font-size: 16px; margin: 0 0 12px; }
+  .layout {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .controls { flex: 1 1 280px; min-width: 0; max-width: 380px; display: flex; flex-direction: column; gap: 12px; }
+  .plotwrap { flex: 3 1 500px; min-width: 0; max-width: 100%; }
+  .plotwrap svg { width: 100%; max-width: 100%; height: auto; display: block; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  input[type=text], input[type=number], select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  .field { margin-bottom: 2px; }
+  button {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button:hover { background: var(--grid-fine); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  #dropzone {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+  #dropzone.drag { border-color: var(--accent); color: var(--text); }
+  #log { font-size: 11.5px; color: var(--muted); max-height: 120px; overflow-y: auto; white-space: pre-wrap; }
+  .stats-box {
+    text-align: center;
+    padding: 10px 10px 14px;
+  }
+  .stats-title { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
+  .stats-big { font-size: 42px; font-weight: 800; line-height: 1; letter-spacing: 1px; }
+  .stats-detail { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .stats-success { color: var(--success); }
+  .stats-fail { color: var(--fail); }
+  .info-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .info-table td { padding: 3px 4px; border-bottom: 1px solid var(--border); }
+  .info-table td:first-child { color: var(--muted); width: 40%; }
+  .nav { display: flex; gap: 8px; align-items: center; justify-content: center; }
+  .idx { font-size: 13px; color: var(--muted); text-align: center; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  .filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .filter-row label { display: flex; align-items: center; gap: 4px; color: var(--text); font-size: 13px; cursor: pointer; }
+  .filter-row input[type=checkbox] { cursor: pointer; }
+
+  .tooltip-box {
+    position: fixed;
+    pointer-events: none;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 999;
+    display: none;
+    max-width: 300px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<h1>Grasp Result Viewer — episode_meta/ × configs/placements/</h1>
+
+<div class="layout">
+  <div class="panel controls">
+    <div>
+      <label>① 載入 configs/placements/ 裡的 CSV (座標)</label>
+      <input type="file" id="placementInput" multiple accept=".csv,.json">
+    </div>
+    <div>
+      <label>② 載入 episode_meta/ 裡的 CSV (結果)</label>
+      <input type="file" id="resultInput" multiple accept=".csv">
+    </div>
+    <div>
+      <label>或把兩種檔案一起拖到這裡</label>
+      <div id="dropzone">把 configs/placements/ 和 episode_meta/ 的檔案拖曳到這裡</div>
+      <div id="log"></div>
+    </div>
+
+    <div class="field">
+      <label for="placementSelect">placement mat (座標)</label>
+      <select id="placementSelect">
+        <option value="">(尚未載入)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="resultSelect">episode_meta (結果)</label>
+      <select id="resultSelect">
+        <option value="">(尚未載入)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>outcome 篩選</label>
+      <div class="filter-row">
+        <label><input type="checkbox" class="outcomeFilter" value="success" checked> ✅ success</label>
+        <label><input type="checkbox" class="outcomeFilter" value="no_grasp" checked> ❌ no_grasp</label>
+        <label><input type="checkbox" class="outcomeFilter" value="failed" checked> ❌ failed</label>
+        <label><input type="checkbox" class="outcomeFilter" value="dropped" checked> 🟣 dropped</label>
+        <label><input type="checkbox" class="outcomeFilter" value="misplaced" checked> 🟡 misplaced</label>
+      </div>
+    </div>
+
+    <div class="panel stats-box" id="statsBox">
+      <div class="stats-title">成功率</div>
+      <div class="stats-big" id="statsBig">— / —</div>
+      <div class="stats-detail" id="statsDetail"></div>
+    </div>
+
+    <div class="nav">
+      <button id="prevBtn">◀ 上一個</button>
+      <button id="nextBtn">下一個 ▶</button>
+    </div>
+    <div class="idx" id="idxLabel">0 / 0</div>
+
+    <div class="panel" style="padding:8px 10px;">
+      <table class="info-table" id="infoTable">
+        <tr><td>placement_id</td><td id="infoId">—</td></tr>
+        <tr><td>short label</td><td id="infoShort">—</td></tr>
+        <tr><td>outcome</td><td id="infoOutcome">—</td></tr>
+        <tr><td>mechanism</td><td id="infoMech">—</td></tr>
+        <tr><td>notes</td><td id="infoNotes">—</td></tr>
+        <tr><td>r_cm</td><td id="infoR">—</td></tr>
+        <tr><td>theta_deg</td><td id="infoTheta">—</td></tr>
+        <tr><td>x_cm</td><td id="infoX">—</td></tr>
+        <tr><td>y_cm</td><td id="infoY">—</td></tr>
+      </table>
+    </div>
+
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--success)"></span>success</span>
+      <span><span class="swatch" style="background:var(--fail)"></span>failed / no_grasp</span>
+      <span><span class="swatch" style="background:var(--dropped)"></span>dropped</span>
+      <span><span class="swatch" style="background:var(--misplaced)"></span>misplaced</span>
+      <span><span class="swatch" style="background:var(--unmatched)"></span>無結果</span>
+      <span><span class="swatch" style="background:var(--accent)"></span>目前點</span>
+    </div>
+  </div>
+
+  <div class="panel plotwrap">
+    <svg id="plot" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+</div>
+
+<div class="tooltip-box" id="tooltip"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  const PX_PER_CM = 10;
+  const PREFIX_TO_LETTER = { "train": "t", "eval-open": "o", "eval-close": "c" };
+  const LETTER_TO_PREFIX = { "t": "train", "o": "eval-open", "c": "eval-close" };
+
+  // "eval-close_001" -> "c1"
+  function shortLabel(placementId) {
+    const m = /_(\d+)$/.exec(placementId);
+    if (!m) return placementId;
+    const prefix = placementId.slice(0, m.index);
+    const letter = PREFIX_TO_LETTER[prefix];
+    if (!letter) return placementId;
+    return letter + String(parseInt(m[1], 10));
+  }
+
+  // "c1" -> "eval-close_001"; "t7" -> "train_007"
+  function longLabel(short) {
+    const m = /^([toc])(\d+)$/i.exec(short);
+    if (!m) return short;
+    const prefix = LETTER_TO_PREFIX[m[1].toLowerCase()];
+    if (!prefix) return short;
+    return prefix + "_" + String(parseInt(m[2], 10)).padStart(3, "0");
+  }
+
+  // ---------- state ----------
+  // placementMats[matName] = { points: [{id, split, r, theta, x, y}], meta: null|{} }
+  const placementMats = {};
+  // resultSets[name] = [{episode_index, placement_id, outcome, mechanism, notes, ...}]
+  const resultSets = {};
+  let currentMat = null;
+  let currentResult = null;
+  let lastLoadedResult = null;  // track the most recently loaded result file
+  let lastLoadedMat = null;     // track the most recently loaded placement mat
+  let mergedPoints = [];   // [{id, shortId, x, y, r, theta, outcome, mechanism, notes}]
+  let filteredPoints = [];
+  let currentIndex = -1;  // -1 = no selection
+
+  const $ = (id) => document.getElementById(id);
+  const placementInput = $("placementInput");
+  const resultInput = $("resultInput");
+  const dropzone = $("dropzone");
+  const logEl = $("log");
+  const placementSelect = $("placementSelect");
+  const resultSelect = $("resultSelect");
+  const prevBtn = $("prevBtn"), nextBtn = $("nextBtn");
+  const idxLabel = $("idxLabel");
+  const svg = $("plot");
+  const tooltip = $("tooltip");
+
+  function log(msg) {
+    logEl.textContent += msg + "\n";
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // ---------- placement CSV parsing (same as placement_viewer.html) ----------
+  const SPLITS = ["train", "eval-open", "eval-close"];
+
+  function parseFilename(filename) {
+    const dot = filename.lastIndexOf(".");
+    if (dot < 0) return null;
+    const ext = filename.slice(dot + 1).toLowerCase();
+    const stem = filename.slice(0, dot);
+    const tokens = stem.split("_");
+    if (tokens.length < 2) return null;
+    const suffix = tokens[tokens.length - 1];
+    let rest = tokens.slice(0, -1);
+    while (rest.length && /^\d{8}$/.test(rest[rest.length - 1])) {
+      rest = rest.slice(0, -1);
+    }
+    const mat = rest.join("_");
+    if (!mat) return null;
+    return { mat, suffix, ext };
+  }
+
+  function parsePlacementCsv(text) {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    if (lines.length < 2) return [];
+    const header = lines[0].split(",").map((h) => h.trim());
+    const idx = {
+      id: header.indexOf("placement_id"),
+      r: header.indexOf("r_cm"),
+      theta: header.indexOf("theta_deg"),
+      x: header.indexOf("x_cm"),
+      y: header.indexOf("y_cm"),
+    };
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",");
+      if (cols.length < header.length) continue;
+      rows.push({
+        id: cols[idx.id].trim(),
+        r: parseFloat(cols[idx.r]),
+        theta: parseFloat(cols[idx.theta]),
+        x: parseFloat(cols[idx.x]),
+        y: parseFloat(cols[idx.y]),
+      });
+    }
+    return rows;
+  }
+
+  function ensureMat(name) {
+    if (!placementMats[name]) placementMats[name] = { points: [], meta: null };
+    return placementMats[name];
+  }
+
+  // ---------- episode_meta CSV parsing ----------
+  function parseResultCsv(text) {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0 && !l.trim().startsWith("#"));
+    if (lines.length < 2) return [];
+    const header = lines[0].split(",").map((h) => h.trim());
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      // Handle CSV with possible commas in quoted fields (basic)
+      const cols = smartSplitCsv(lines[i]);
+      if (cols.length < header.length) continue;
+      const row = {};
+      header.forEach((h, j) => { row[h] = (cols[j] || "").trim(); });
+      // skip summary rows (no episode_index)
+      if (row.episode_index === "" && row.outcome && !isNaN(parseFloat(row.outcome))) continue;
+      if (row.episode_index === "" && !row.placement_id) continue;
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  function smartSplitCsv(line) {
+    const result = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === ',' && !inQuotes) {
+        result.push(current);
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current);
+    return result;
+  }
+
+  // ---------- file handling ----------
+  function handleFiles(fileList) {
+    const files = Array.from(fileList);
+    let pending = files.length;
+    if (!pending) return;
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        pending--;
+        try {
+          processFile(file.name, reader.result);
+        } catch (err) {
+          log(`讀取失敗: ${file.name} (${err.message})`);
+        }
+        if (pending === 0) onAllFilesDone();
+      };
+      reader.onerror = () => {
+        pending--;
+        log("讀取失敗: " + file.name);
+        if (pending === 0) onAllFilesDone();
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  function processFile(filename, text) {
+    const parsed = parseFilename(filename);
+    const lcName = filename.toLowerCase();
+
+    // Try to detect if it's a placement CSV (has r_cm, theta_deg headers)
+    const firstLine = text.split(/\r?\n/)[0] || "";
+    const isPlacement = firstLine.includes("r_cm") && firstLine.includes("x_cm");
+    const isEpisodeMeta = firstLine.includes("outcome") && (firstLine.includes("episode_index") || firstLine.includes("placement_id"));
+    const isMetaJson = lcName.endsWith(".json");
+
+    if (isPlacement && parsed) {
+      const rows = parsePlacementCsv(text);
+      const m = ensureMat(parsed.mat);
+      const split = SPLITS.includes(parsed.suffix) ? parsed.suffix : "unknown";
+      rows.forEach((r) => m.points.push({ ...r, split }));
+      lastLoadedMat = parsed.mat;
+      log(`載入座標: ${filename} → mat=${parsed.mat} split=${split} (${rows.length} 點)`);
+    } else if (isMetaJson && parsed) {
+      const m = ensureMat(parsed.mat);
+      m.meta = JSON.parse(text);
+      lastLoadedMat = parsed.mat;
+      log(`載入 meta: ${filename} → mat=${parsed.mat}`);
+    } else if (isEpisodeMeta) {
+      const stem = filename.replace(/\.csv$/i, "");
+      const rows = parseResultCsv(text);
+      resultSets[stem] = rows;
+      lastLoadedResult = stem;
+      log(`載入結果: ${filename} (${rows.length} 筆)`);
+    } else {
+      log("略過: " + filename);
+    }
+  }
+
+  function onAllFilesDone() {
+    refreshSelects();
+    // Auto-select the most recently loaded mat (or keep current, or pick first)
+    if (lastLoadedMat && placementMats[lastLoadedMat]) {
+      currentMat = lastLoadedMat;
+      placementSelect.value = currentMat;
+    } else if (!currentMat && Object.keys(placementMats).length) {
+      currentMat = Object.keys(placementMats).sort()[0];
+      placementSelect.value = currentMat;
+    }
+    // Auto-select the most recently loaded result (always switch to the new one)
+    if (lastLoadedResult && resultSets[lastLoadedResult]) {
+      currentResult = lastLoadedResult;
+      resultSelect.value = currentResult;
+    } else if (!currentResult && Object.keys(resultSets).length) {
+      currentResult = Object.keys(resultSets).sort()[0];
+      resultSelect.value = currentResult;
+    }
+    // Reset tracking
+    lastLoadedResult = null;
+    lastLoadedMat = null;
+    currentIndex = 0;
+    rebuildMerge();
+  }
+
+  function refreshSelects() {
+    placementSelect.innerHTML = "";
+    Object.keys(placementMats).sort().forEach((name) => {
+      const opt = document.createElement("option");
+      opt.value = name; opt.textContent = name;
+      placementSelect.appendChild(opt);
+    });
+    if (!Object.keys(placementMats).length) {
+      placementSelect.innerHTML = '<option value="">(尚未載入)</option>';
+    }
+
+    resultSelect.innerHTML = "";
+    Object.keys(resultSets).sort().forEach((name) => {
+      const opt = document.createElement("option");
+      opt.value = name; opt.textContent = name;
+      resultSelect.appendChild(opt);
+    });
+    if (!Object.keys(resultSets).length) {
+      resultSelect.innerHTML = '<option value="">(尚未載入)</option>';
+    }
+  }
+
+  // ---------- merge placement coords with episode results ----------
+  function rebuildMerge() {
+    mergedPoints = [];
+    if (!currentMat || !placementMats[currentMat]) { applyFilter(); return; }
+    const mat = placementMats[currentMat];
+    const results = currentResult && resultSets[currentResult] ? resultSets[currentResult] : [];
+
+    // Build lookup: shortLabel -> result row
+    const resultMap = {};
+    results.forEach((r) => {
+      const pid = (r.placement_id || "").trim();
+      if (!pid) return;
+      // Support both short (c1) and long (eval-close_001) format
+      const short = pid.includes("_") ? shortLabel(pid) : pid;
+      resultMap[short.toLowerCase()] = r;
+    });
+
+    mat.points.forEach((p) => {
+      const sl = shortLabel(p.id);
+      const rr = resultMap[sl.toLowerCase()];
+      mergedPoints.push({
+        id: p.id,
+        shortId: sl,
+        x: p.x,
+        y: p.y,
+        r: p.r,
+        theta: p.theta,
+        split: p.split,
+        outcome: rr ? (rr.outcome || "").toLowerCase() : null,
+        mechanism: rr ? (rr.mechanism || "") : "",
+        notes: rr ? (rr.notes || "") : "",
+        object_name: rr ? (rr.object_name || "") : "",
+      });
+    });
+
+    // Also add result rows that have no matching placement (show in log)
+    const placedShorts = new Set(mat.points.map((p) => shortLabel(p.id).toLowerCase()));
+    results.forEach((r) => {
+      const pid = (r.placement_id || "").trim();
+      if (!pid) return;
+      const short = pid.includes("_") ? shortLabel(pid) : pid;
+      if (!placedShorts.has(short.toLowerCase())) {
+        log(`⚠ 結果 ${pid} 在座標檔中找不到對應點`);
+      }
+    });
+
+    // Sort: by split order (c, o, t) then number
+    mergedPoints.sort((a, b) => {
+      const sa = SPLITS.indexOf(a.split), sb = SPLITS.indexOf(b.split);
+      if (sa !== sb) return sb - sa; // eval-close first
+      return naturalCompare(a.id, b.id);
+    });
+
+    applyFilter();
+  }
+
+  function naturalCompare(a, b) {
+    const re = /(\d+)|(\D+)/g;
+    const ax = a.match(re) || [];
+    const bx = b.match(re) || [];
+    const n = Math.max(ax.length, bx.length);
+    for (let i = 0; i < n; i++) {
+      const as = ax[i] ?? "", bs = bx[i] ?? "";
+      const an = /^\d+$/.test(as), bn = /^\d+$/.test(bs);
+      if (an && bn) {
+        const d = parseInt(as, 10) - parseInt(bs, 10);
+        if (d) return d;
+      } else if (as !== bs) {
+        return as < bs ? -1 : 1;
+      }
+    }
+    return 0;
+  }
+
+  function activeOutcomes() {
+    const checked = [];
+    document.querySelectorAll(".outcomeFilter:checked").forEach((cb) => checked.push(cb.value));
+    return checked;
+  }
+
+  function applyFilter() {
+    const outcomes = activeOutcomes();
+    filteredPoints = mergedPoints.filter((p) => {
+      if (p.outcome === null) return true; // unmatched always shown
+      return outcomes.includes(p.outcome);
+    });
+    if (currentIndex >= filteredPoints.length) currentIndex = -1;
+    updateStats();
+    render();
+  }
+
+  function updateStats() {
+    const total = mergedPoints.filter((p) => p.outcome !== null).length;
+    const successes = mergedPoints.filter((p) => p.outcome === "success").length;
+    const fails = total - successes;
+    if (total > 0) {
+      const pct = ((successes / total) * 100).toFixed(1);
+      $("statsBig").innerHTML = `<span class="stats-success">${successes}</span> / <span>${total}</span>`;
+      $("statsDetail").textContent = `成功率 ${pct}%　(失敗 ${fails})`;
+    } else {
+      $("statsBig").textContent = "— / —";
+      $("statsDetail").textContent = "";
+    }
+  }
+
+  // ---------- outcome -> color ----------
+  function outcomeColor(outcome) {
+    switch ((outcome || "").toLowerCase()) {
+      case "success": return "var(--success)";
+      case "failed": case "no_grasp": return "var(--fail)";
+      case "dropped": return "var(--dropped)";
+      case "misplaced": return "var(--misplaced)";
+      default: return "var(--unmatched)";
+    }
+  }
+
+  function outcomeSymbol(outcome) {
+    switch ((outcome || "").toLowerCase()) {
+      case "success": return "✓";
+      case "failed": case "no_grasp": return "✗";
+      case "dropped": return "↓";
+      case "misplaced": return "⇄";
+      default: return "?";
+    }
+  }
+
+  // ---------- geometry / drawing (from placement_viewer.html) ----------
+  function sectorBBox(rMax, thetaMin, thetaMax) {
+    const angles = [thetaMin, thetaMax];
+    [-180, -90, 0, 90, 180].forEach((a) => { if (a > thetaMin && a < thetaMax) angles.push(a); });
+    const xs = [0], ys = [0];
+    angles.forEach((a) => {
+      const rad = (a * Math.PI) / 180;
+      xs.push(rMax * Math.cos(rad));
+      ys.push(rMax * Math.sin(rad));
+    });
+    return { xMin: Math.min(...xs), xMax: Math.max(...xs), yMin: Math.min(...ys), yMax: Math.max(...ys) };
+  }
+
+  function computeGeometry() {
+    let rMax = 40, rInner = 0, thetaMin = -90, thetaMax = 90;
+    if (currentMat && placementMats[currentMat].meta && placementMats[currentMat].meta.sector_used) {
+      const s = placementMats[currentMat].meta.sector_used;
+      rMax = s.r_outer; rInner = s.r_inner || 0;
+      thetaMin = s.theta_min; thetaMax = s.theta_max;
+    } else if (currentMat) {
+      placementMats[currentMat].points.forEach((p) => { if (p.r > rMax) rMax = p.r; });
+    }
+    let bb = sectorBBox(rMax, thetaMin, thetaMax);
+    (currentMat ? placementMats[currentMat].points : []).forEach((p) => {
+      bb.xMin = Math.min(bb.xMin, p.x); bb.xMax = Math.max(bb.xMax, p.x);
+      bb.yMin = Math.min(bb.yMin, p.y); bb.yMax = Math.max(bb.yMax, p.y);
+    });
+    const padX = Math.max(2, (bb.xMax - bb.xMin) * 0.08);
+    const padY = Math.max(2, (bb.yMax - bb.yMin) * 0.08);
+    return {
+      rMax, rInner, thetaMin, thetaMax,
+      xMin: bb.xMin - padX, xMax: bb.xMax + padX,
+      yMin: bb.yMin - padY, yMax: bb.yMax + padY,
+    };
+  }
+
+  function frange(a, b, step) {
+    const out = [];
+    let v = Math.ceil(a / step) * step;
+    while (v <= b + 1e-9) { out.push(Math.round(v * 1e6) / 1e6); v += step; }
+    return out;
+  }
+
+  const NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function render() {
+    svg.innerHTML = "";
+    const g = computeGeometry();
+
+    const dataW = g.xMax - g.xMin, dataH = g.yMax - g.yMin;
+    const rotate = dataH > dataW;
+    const W = (rotate ? dataH : dataW) * PX_PER_CM;
+    const H = (rotate ? dataW : dataH) * PX_PER_CM;
+    function proj(x, y) {
+      return rotate
+        ? [(g.yMax - y) * PX_PER_CM, (g.xMax - x) * PX_PER_CM]
+        : [(x - g.xMin) * PX_PER_CM, (g.yMax - y) * PX_PER_CM];
+    }
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+    function gridLine(fromXY, toXY, color, width, dash) {
+      const [x1, y1] = proj(fromXY[0], fromXY[1]);
+      const [x2, y2] = proj(toXY[0], toXY[1]);
+      const attrs = { x1, y1, x2, y2, stroke: color, "stroke-width": width };
+      if (dash) attrs["stroke-dasharray"] = dash;
+      svg.appendChild(el("line", attrs));
+    }
+
+    // cartesian grid
+    frange(g.xMin, g.xMax, 1).forEach((x) => gridLine([x, g.yMin], [x, g.yMax], "var(--grid-fine)", 0.5));
+    frange(g.yMin, g.yMax, 1).forEach((y) => gridLine([g.xMin, y], [g.xMax, y], "var(--grid-fine)", 0.5));
+    frange(g.xMin, g.xMax, 5).forEach((x) => {
+      gridLine([x, g.yMin], [x, g.yMax], "var(--grid-bold)", 0.8);
+      const [lx, ly] = proj(x, g.yMin);
+      const t = el("text", { x: lx + 2, y: ly - 4, fill: "var(--muted)", "font-size": 6 });
+      t.textContent = "x=" + x; svg.appendChild(t);
+    });
+    frange(g.yMin, g.yMax, 5).forEach((y) => {
+      gridLine([g.xMin, y], [g.xMax, y], "var(--grid-bold)", 0.8);
+      const [lx, ly] = proj(g.xMin, y);
+      const t = el("text", { x: lx + 2, y: ly - 2, fill: "var(--muted)", "font-size": 6 });
+      t.textContent = "y=" + y; svg.appendChild(t);
+    });
+
+    // polar rings
+    const step = 1;
+    function ringPolyline(r) {
+      const pts = [];
+      for (let a = g.thetaMin; a <= g.thetaMax + 1e-6; a += step) {
+        const rad = (a * Math.PI) / 180;
+        pts.push(proj(r * Math.cos(rad), r * Math.sin(rad)).join(","));
+      }
+      return pts.join(" ");
+    }
+    for (let r = 5; r <= g.rMax + 1e-6; r += 5) {
+      svg.appendChild(el("polyline", { points: ringPolyline(r), fill: "none", stroke: "var(--sector)", "stroke-width": 0.6 }));
+    }
+    if (g.rInner > 0) {
+      svg.appendChild(el("polyline", { points: ringPolyline(g.rInner), fill: "none", stroke: "var(--sector)", "stroke-width": 1, "stroke-dasharray": "3,2" }));
+    }
+
+    // rays every 15deg
+    const rays = new Set(frange(g.thetaMin, g.thetaMax, 15));
+    rays.add(g.thetaMin); rays.add(g.thetaMax);
+    rays.forEach((a) => {
+      const rad = (a * Math.PI) / 180;
+      const isZero = Math.abs(a) < 1e-6;
+      const [ox, oy] = proj(0, 0);
+      const [ex, ey] = proj(g.rMax * Math.cos(rad), g.rMax * Math.sin(rad));
+      svg.appendChild(el("line", {
+        x1: ox, y1: oy, x2: ex, y2: ey,
+        stroke: isZero ? "var(--text)" : "var(--sector)", "stroke-width": isZero ? 1.2 : 0.6,
+      }));
+      const t = el("text", { x: ex + 2, y: ey, fill: "var(--muted)", "font-size": 6 });
+      t.textContent = Math.round(a) + "°"; svg.appendChild(t);
+    });
+
+    // origin
+    gridLine([-1, 0], [1, 0], "var(--text)", 1.2);
+    gridLine([0, -1], [0, 1], "var(--text)", 1.2);
+    const [oxl, oyl] = proj(0, 0);
+    const originLabel = el("text", { x: oxl + 3, y: oyl - 3, fill: "var(--muted)", "font-size": 6.5 });
+    originLabel.textContent = "(0,0) 底座旋轉軸";
+    svg.appendChild(originLabel);
+
+    // ---------- points ----------
+    const current = currentIndex >= 0 ? filteredPoints[currentIndex] : null;
+    filteredPoints.forEach((p, i) => {
+      const isCurrent = currentIndex >= 0 && i === currentIndex;
+      const [cx, cy] = proj(p.x, p.y);
+      const color = outcomeColor(p.outcome);
+      const radius = 7;
+
+      if (isCurrent) {
+        gridLine([p.x, g.yMin], [p.x, p.y], "var(--accent)", 0.7, "3,2");
+        gridLine([g.xMin, p.y], [p.x, p.y], "var(--accent)", 0.7, "3,2");
+      }
+
+      // White outline behind every point for contrast against grid
+      svg.appendChild(el("circle", {
+        cx, cy, r: radius + 2,
+        fill: "var(--panel)",
+        opacity: 0.85,
+      }));
+
+      const c = el("circle", {
+        cx, cy, r: radius,
+        fill: color,
+        opacity: 1,
+        stroke: isCurrent ? "var(--text)" : "var(--panel)",
+        "stroke-width": isCurrent ? 2.5 : 1,
+        style: "cursor:pointer",
+      });
+
+      // Click to toggle select
+      c.addEventListener("click", (e) => {
+        e.stopPropagation();
+        currentIndex = (currentIndex === i) ? -1 : i;
+        render();
+      });
+
+      // Hover tooltip
+      c.addEventListener("mouseenter", (e) => {
+        const outcomeText = p.outcome || "無結果";
+        let html = `<b>${p.shortId}</b> (${p.id})<br>`;
+        html += `outcome: <b style="color:${outcomeColor(p.outcome)}">${outcomeText}</b>`;
+        if (p.mechanism) html += `<br>mechanism: ${p.mechanism}`;
+        if (p.notes) html += `<br>notes: ${p.notes}`;
+        html += `<br>r=${p.r.toFixed(1)} cm, θ=${p.theta.toFixed(1)}°`;
+        tooltip.innerHTML = html;
+        tooltip.style.display = "block";
+      });
+      c.addEventListener("mousemove", (e) => {
+        tooltip.style.left = (e.clientX + 12) + "px";
+        tooltip.style.top = (e.clientY + 12) + "px";
+      });
+      c.addEventListener("mouseleave", () => {
+        tooltip.style.display = "none";
+      });
+      svg.appendChild(c);
+
+      // Symbol inside (✓ or ✗)
+      const sym = el("text", {
+        x: cx, y: cy + 2.8,
+        fill: "white",
+        "font-size": 8,
+        "font-weight": "bold",
+        "text-anchor": "middle",
+        "pointer-events": "none",
+      });
+      sym.textContent = outcomeSymbol(p.outcome);
+      svg.appendChild(sym);
+
+      // Label (short id, e.g. c1, c2...)
+      const t = el("text", {
+        x: cx + 9, y: cy - 3,
+        fill: "var(--text)",
+        "font-size": 7,
+        "font-weight": "bold",
+        opacity: 0.9,
+        "pointer-events": "none",
+      });
+      t.textContent = p.shortId;
+      svg.appendChild(t);
+    });
+
+    // info panel
+    idxLabel.textContent = current ? `${currentIndex + 1} / ${filteredPoints.length}` : `${filteredPoints.length} 點`;
+    $("infoId").textContent = current ? current.id : "—";
+    $("infoShort").textContent = current ? current.shortId : "—";
+    $("infoOutcome").textContent = current ? (current.outcome || "—") : "—";
+    $("infoOutcome").style.color = current ? outcomeColor(current.outcome) : "";
+    $("infoOutcome").style.fontWeight = current ? "bold" : "normal";
+    $("infoMech").textContent = current ? (current.mechanism || "—") : "—";
+    $("infoNotes").textContent = current ? (current.notes || "—") : "—";
+    $("infoR").textContent = current ? current.r.toFixed(2) : "—";
+    $("infoTheta").textContent = current ? current.theta.toFixed(2) : "—";
+    $("infoX").textContent = current ? current.x.toFixed(2) : "—";
+    $("infoY").textContent = current ? current.y.toFixed(2) : "—";
+    prevBtn.disabled = nextBtn.disabled = filteredPoints.length === 0;
+  }
+
+  function step(delta) {
+    if (!filteredPoints.length) return;
+    if (currentIndex < 0) {
+      currentIndex = delta > 0 ? 0 : filteredPoints.length - 1;
+    } else {
+      currentIndex = (currentIndex + delta + filteredPoints.length) % filteredPoints.length;
+    }
+    render();
+  }
+
+  // ---------- wiring ----------
+  placementInput.addEventListener("change", (e) => handleFiles(e.target.files));
+  resultInput.addEventListener("change", (e) => handleFiles(e.target.files));
+
+  ["dragenter", "dragover"].forEach((ev) =>
+    dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add("drag"); })
+  );
+  ["dragleave", "drop"].forEach((ev) =>
+    dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.remove("drag"); })
+  );
+
+  function readEntries(reader) {
+    return new Promise((resolve) => {
+      let all = [];
+      (function next() {
+        reader.readEntries((batch) => {
+          if (!batch.length) { resolve(all); return; }
+          all = all.concat(batch);
+          next();
+        });
+      })();
+    });
+  }
+  async function collectEntry(entry, out) {
+    if (entry.isFile) {
+      out.push(await new Promise((resolve) => entry.file(resolve)));
+    } else if (entry.isDirectory) {
+      for (const e of await readEntries(entry.createReader())) await collectEntry(e, out);
+    }
+  }
+  async function filesFromDrop(dataTransfer) {
+    if (dataTransfer.items && dataTransfer.items.length && dataTransfer.items[0].webkitGetAsEntry) {
+      const out = [];
+      for (const item of Array.from(dataTransfer.items)) {
+        const entry = item.webkitGetAsEntry && item.webkitGetAsEntry();
+        if (entry) await collectEntry(entry, out);
+      }
+      return out;
+    }
+    return Array.from(dataTransfer.files);
+  }
+  dropzone.addEventListener("drop", async (e) => {
+    const files = await filesFromDrop(e.dataTransfer);
+    if (files.length) handleFiles(files);
+    else log("拖曳的項目裡沒有讀到檔案");
+  });
+
+  placementSelect.addEventListener("change", () => {
+    currentMat = placementSelect.value;
+    currentIndex = 0;
+    rebuildMerge();
+  });
+  resultSelect.addEventListener("change", () => {
+    currentResult = resultSelect.value;
+    currentIndex = 0;
+    rebuildMerge();
+  });
+
+  document.querySelectorAll(".outcomeFilter").forEach((cb) =>
+    cb.addEventListener("change", applyFilter)
+  );
+
+  prevBtn.addEventListener("click", () => step(-1));
+  nextBtn.addEventListener("click", () => step(1));
+  document.addEventListener("keydown", (e) => {
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "select" || tag === "textarea") return;
+    if (e.key === "ArrowRight") step(1);
+    if (e.key === "ArrowLeft") step(-1);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
