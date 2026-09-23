@@ -1,0 +1,37 @@
+﻿episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
+0,plastic bottle,stand,c1,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away,,1,,,20260921_101157,
+1,plastic bottle,stand,c2,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away,,1,,,20260921_101314,
+2,plastic bottle,stand,c3,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,success,,,1,,,20260921_101424,
+3,plastic bottle,stand,c4,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,other,,1,,,20260921_101525,bad aim
+4,plastic bottle,stand,c5,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away,,1,,,20260921_101640,
+5,plastic bottle,stand,c6,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,other,,1,,,20260921_101746,bad aim
+6,plastic bottle,stand,c7,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,other,,1,,,20260921_101859,bad aim
+7,plastic bottle,stand,c8,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,other,,1,,,20260921_102011,bad aim
+8,plastic bottle,stand,c9,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,other,,1,,,20260921_102123,bad aim
+9,plastic bottle,stand,c10,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,other,,1,,,20260921_102238,bad aim
+10,plastic bottle,stand,c11,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away,,1,,,20260921_102339,
+11,plastic bottle,stand,c12,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away;other,,1,,,20260921_102447,bad aim
+12,plastic bottle,stand,c13,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away;other,,1,,,20260921_102609,bad aim
+13,plastic bottle,stand,c14,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away,,1,,,20260921_102719,
+14,plastic bottle,stand,c15,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away,,1,,,20260921_102811,
+15,plastic bottle,stand,c16,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,,,,0,out of camera sight,,20260921_102909,
+16,plastic bottle,stand,c17,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away,,1,,,20260921_103027,
+17,plastic bottle,stand,c18,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away;other,,1,,,20260921_103138,bad aim
+18,plastic bottle,stand,c19,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,other,,1,,,20260921_103228,bad aim
+19,plastic bottle,stand,c20,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away,,1,,,20260921_103345,
+20,plastic bottle,stand,c21,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,success,,,1,,,20260921_103506,
+21,plastic bottle,stand,c22,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,other,,1,,,20260921_103606,
+22,plastic bottle,stand,c23,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away;other,,1,,,20260921_103718,bad aim
+23,plastic bottle,stand,c24,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away,,1,,,20260921_103832,
+24,plastic bottle,stand,c25,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away,,1,,,20260921_103921,
+25,plastic bottle,stand,c26,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,other,,1,,,20260921_104010,bad aim
+26,plastic bottle,stand,c27,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,success,,,1,,,20260921_104124,
+27,plastic bottle,stand,c28,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,other,,1,,,20260921_104223,bad aim
+28,plastic bottle,stand,c29,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,success,,,1,,,20260921_104337,
+29,plastic bottle,stand,c30,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away,,1,,,20260921_104435,
+30,plastic bottle,stand,c31,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away;other,,1,,,20260921_104519,bad aim;too close
+31,plastic bottle,stand,c32,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away;other,,1,,,20260921_104557,bad aim;too close
+32,plastic bottle,stand,c33,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away;other,,1,,,20260921_104638,too close
+33,plastic bottle,stand,c34,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away;other,,1,,,20260921_104715,too close
+34,plastic bottle,stand,c35,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away;other,,1,,,20260921_104810,bad aim;too close
+35,plastic bottle,stand,c36,宿舍大燈、檯燈、窗簾拉上,木紋桌面、白色牆面、窗簾、窗戶,no_grasp,pushed_away;other,,1,,,20260921_104561,bad aim;too close
