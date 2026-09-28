@@ -25,9 +25,14 @@ ap.add_argument("--renders", nargs="+", required=True)
 ap.add_argument("--camera", default="front-left")
 ap.add_argument("--out", required=True)
 ap.add_argument("--height", type=int, default=360)
+ap.add_argument("--labels", nargs="+", default=None,
+                help="one panel label per render (default: 'DR seed N'); e.g. to compare constant sets")
 a = ap.parse_args()
 
 mans = [json.loads((Path(r) / "manifest.json").read_text()) for r in a.renders]
+labels = a.labels or [f"DR seed {m['dr'].get('seed')}" for m in mans]
+if len(labels) != len(mans):
+    raise SystemExit(f"--labels has {len(labels)} entries for {len(mans)} renders")
 eps = {m["source_episode_id"] for m in mans}
 if len(eps) != 1:
     raise SystemExit(f"renders are from different episodes {eps} -- the whole point is one episode")
@@ -60,7 +65,7 @@ for n_i, rec in enumerate(mans[0]["frames"]):
     panels.append(("REAL", Image.open(real_p).convert("RGB")))
     for r, m in zip(a.renders, mans):
         img = Image.open(Path(r) / m["frames"][n_i][f"image_{a.camera}"]).convert("RGB")
-        panels.append((f"DR seed {m['dr'].get('seed')}", img))
+        panels.append((labels[len(panels) - 1], img))
     panels = [(lab, im.resize((round(im.width * a.height / im.height), a.height))) for lab, im in panels]
     W = sum(im.width for _, im in panels)
     canvas = Image.new("RGB", (W, a.height + band), (14, 14, 16))
@@ -78,4 +83,5 @@ subprocess.run(["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-framerate", 
                 "-pattern_type", "glob", "-i", str(tmp / "c*.png"), "-c:v", "libx264",
                 "-pix_fmt", "yuv420p", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", str(a.out)], check=True)
 print(f"\nwrote {a.out} @ {fps:g} fps (real time)")
-print("If the arm differs between DR panels, that is a BUG -- they replay one fixed trajectory.")
+if not a.labels:
+    print("If the arm differs between DR panels, that is a BUG -- they replay one fixed trajectory.")

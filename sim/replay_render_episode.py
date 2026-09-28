@@ -38,6 +38,9 @@ the flag, not to quietly pick something plausible:
    episodes drops it). Residual scatter (p50 9 cm after removing a constant +10 cm offset) is
    attributable to the crude grasp-frame pick and to `end_effector_link` not being the grasp
    centre -- not to the mapping. Without the flag, `--place` is a choice, not a reconstruction.
+   🔴 [已查證 2026-09-29] EXCEPT the back third: docs/meeting/2026-09-13.md item 4, "t41 重錄後排在
+   最後一集" -- ep0-39 = t1-t40, ep40-58 = t42-t60, ep59 = t41. The plain `t{i+1}` rule put ep40-58
+   one placement off and ep59 at t60 (23-52 cm grasp "errors"); `uvc60_short_id()` below has the fix.
 3. **`geometry_aligned`** -- always false until S5 gap 4's T1/T2 land. `scene_constants.py`'s
    camera pose is PLACEHOLDER (S4 §5-5).
 
@@ -247,6 +250,13 @@ if args.object:
 # wrist camera is parented to link5, so its DR jitter is a local offset tweak, pre-build
 scene_cfg.cam_wrist.offset.pos = tuple(p + d for p, d in zip(S.CAM_WRIST_OFFSET_POS, cam_dpos))
 
+
+
+def uvc60_short_id(episode: int) -> str:
+    """uvc_60 episode -> campA_136sym short id. t41 was re-recorded and appended as episode 59."""
+    return f"t{41 if episode == 59 else episode + 1 if episode < 40 else episode + 2}"
+
+
 place = None
 place_source = "default (omx_scene_cfg.py), NOT the source episode's placement"
 if args.placements:
@@ -254,11 +264,12 @@ if args.placements:
     if args.place_from_episode:
         if args.place:
             raise SystemExit("--place and --place-from-episode are mutually exclusive")
-        want = f"t{args.episode + 1}"
+        want = uvc60_short_id(args.episode)
         matches = [p for p in placements if p.short_id == want]
         if not matches:
             raise SystemExit(f"--place-from-episode wanted {want!r}, not in {args.placements}")
-        place_source = f"episode {args.episode} -> {want} [Eric說 2026-09-21], t1..t60 in order"
+        place_source = (f"episode {args.episode} -> {want} [Eric說 2026-09-21] t1..t60 in order, "
+                        f"t41 re-recorded as the last episode [2026-09-13.md]")
     else:
         matches = [p for p in placements if p.short_id == args.place or p.placement_id == args.place]
         if args.place and not matches:
