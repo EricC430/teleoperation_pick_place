@@ -124,7 +124,12 @@ def fingertip_pitch_deg(joint_rad_5: list[float]) -> float:
     """
     t5 = fk.link5_transform(joint_rad_5)
     v = t5[:3, 0]  # link5's +X axis (finger extension direction)
-    return math.degrees(math.asin(float(np.clip(-v[2], -1.0, 1.0))))
+    # atan2 against the component ALONG the reach direction, not asin(-v_z): asin tops out at 90 and
+    # folds a gripper tipped 23 deg PAST vertical (113) onto one 23 deg short of it (67). That fold
+    # made a wrong constant set read as "pitch 66.7, just a bit short" on 2026-09-29.
+    # >90 now means tipped back past vertical, toward the base.
+    along = v[0] * math.cos(joint_rad_5[0]) + v[1] * math.sin(joint_rad_5[0])
+    return math.degrees(math.atan2(-float(v[2]), float(along)))
 
 
 # --------------------------------------------------------------------------------------
@@ -234,7 +239,15 @@ def read_csv(path: Path) -> list[dict]:
 # --------------------------------------------------------------------------------------
 
 def analyse_csv(path: Path) -> None:
-    """Print residual statistics, pitch alignment, and per-point details from a recorded CSV."""
+    """Print residual statistics, pitch alignment, and per-point details from a recorded CSV.
+
+    🔴 Re-prints the fk_* / error_* / pitch_deg columns AS STORED when the session was recorded.
+    It does NOT re-run FK with the constants now in joint_mapping.py -- so after the constants
+    change, this output describes the OLD constants. On 2026-09-29 that was mistaken for a test of the
+    current constants. To score the current (or any) constants against this CSV, use
+    `scripts/eval_joint_calibration.py`, which recomputes from the state_* columns."""
+    print("⚠️  values below are AS RECORDED at session time, not recomputed with the current joint_mapping.")
+    print("    To score the current constants: python3 scripts/eval_joint_calibration.py\n")
     rows = read_csv(path)
     if not rows:
         print(f"no data in {path}")
