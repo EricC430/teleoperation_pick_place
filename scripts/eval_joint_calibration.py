@@ -1,37 +1,53 @@
 #!/usr/bin/env python
 """Score candidate joint-mapping constant sets against every PHYSICAL ground truth we have.
 
-No camera anywhere in this: recorded joint readings -> `joint_mapping` -> FK -> fingertip, compared
-with positions known from the physical cell. That is deliberate. Until the front-left camera's pose
-is ArUco-calibrated (S4 §5-5 T2), judging calibration by eye on a render mixes camera error into
-arm error -- and tuning the arm until the render looks right writes camera error into joint
-constants.
+No camera anywhere in this: recorded joint readings -> `joint_mapping` -> FK -> gripper points,
+compared with positions known from the physical cell. That is deliberate. Until the front-left
+camera's pose is ArUco-calibrated (S4 §5-5 T2), judging calibration by eye on a render mixes camera
+error into arm error -- and tuning the arm until the render looks right writes camera error into
+joint constants.
+
+Gripper geometry (link5 frame, jaws closed), from the CAD meshes follower_06/07/08 -- not from
+TCP_IN_LINK5 = 8.0 cm, which is one tape measurement from link5's origin, a point that is not
+visible on the real arm:
+  crotch  x = 3.9 cm   inner end of the jaw gap (palm face 3.95 cm); where a cup rim stops
+  pinch   x = 8.8 cm   where the two jaws meet
+  tip     x = 9.45 cm  outermost fingertip; the lowest point when the gripper points down
+[推論, two sources agree] 9.45 is what touched the mat: refitting the touch points with the riser
+free lands on 14.84 cm with the 9.45 tip (Eric measured 15, spacer swapped once, <1 cm change),
+but on 13.05 cm with 8.0 -- the committed "touch LSQ" constants were solved at that 13.05.
 
 Three ground truths, three different kinds of arm pose:
 
   touch    calibration/2026-09-22_touch_calibration.csv. 11 points where the fingertip physically
            touched a known mat coordinate with the gripper held VERTICAL. Torque off, arm
-           supported by hand. Truth: (x, y, 0) and pitch 90 deg.
-  grasp    uvc_60, each episode's first sustained gripper close. Torque on, arm carrying itself.
-           Truth: the cup's placement (x, y). Height has no exact truth -- it is reported against
-           the 9.5 cm rim for reference only. Episodes 0 and 1 were used to hand-tune and to
-           eyeball-check the current constants, so they are reported separately and kept out of
-           the held-out score.
-           🔴 [已查證 2026-09-29] grasp xy does NOT currently measure joint calibration: its residual
-           is a ~10 deg azimuth offset that depends on the placement angle (about -12 deg for
-           theta > -25, about +3 deg for theta < -30), while touch points at the SAME theta agree
-           within +-3 deg. Approach direction does not change it (CW -10.4 / CCW -10.0 deg), so it
-           is not pan backlash. Something differed between the 9/13 recording and the 9/22 touch
-           session (mat origin/0-deg line vs the arm is the [推論] suspect). Fitting pan to it drags
-           pan ~7 deg off what touch says. Read 'g-az' before reading 'GRASP xy'.
+           supported by hand. Truth: tip at (x, y, 0), pitch 90 deg.
+  grasp    uvc_60 (9/13), each episode's first sustained gripper close. Torque on, arm carrying
+           itself. Episodes 0 and 1 were used to hand-tune the current constants and are not scored.
+           xy: [已查證 2026-09-29] the gripper PINCHES THE CUP WALL, one jaw inside, one outside --
+             at grasp the gripper reads ~52 vs 50.21 fingers-touching (a 6-7.5 cm cup cannot fit
+             between the jaws), and the wrist frames of ep2/3/11/37 show the rim between the jaws.
+             So the pinch point sits on the cup's left or right wall, one radius from the
+             placement point: the raw residual splits into two groups 8.1 cm apart (rim diameter
+             7.5), constant in cm, not in degrees. 'wall-xy' scores against the nearer wall.
+             ⚠️ A common tangential offset of ~-2.5 cm remains ('g-tan'). Constant-cm and
+             constant-degree (pan-like, ~-5 deg) explain it equally well (sd 1.68 vs 1.71 cm);
+             [未確認] which.
+           z: [Eric說 2026-09-29] mostly jaws fully inserted -- crotch at the rim, tips at about
+             half the cup height; some pinch only the rim. So for every grasp
+             pinch z <= rim (9.5 cm) <= crotch z, and crotch-rim ~0 for most ('crotch-rim').
+             Frame check: ep3 (front-left) shows the palm at the rim.
   release  uvc_60, the frame of the episode's FINAL gripper opening. Arm raised over the bin.
-           Truth: inside the bin opening, above its rim. Only usable if the releases actually
-           cluster over the bin -- the script prints that check and says so if they do not.
+           Truth: pinch point inside the bin opening.
 
     python3 scripts/eval_joint_calibration.py
 
-A candidate that improves grasp while making touch worse has not been calibrated. The summary flags
-that -- and, while g-az stays ~-10 deg, it also says grasp xy is not usable evidence either way.
+[已查證 2026-09-29] No constant-offset set satisfies touch AND grasp height: fitting touch puts the
+crotch ~5 cm above the rim at grasp; fitting the grasps puts the touch points ~10 cm off with the
+gripper tipped 32 deg past vertical. The per-joint readings of the grasps lie inside the touch
+range (wrist_flex 0% outside), so this is not extrapolation of one joint. Whether it is load droop
+(torque on vs off) or an arm-model error cannot be told from this data -- the height gap fits a
+constant, ~r and ~r^2 model equally well (held-out 1.16-1.23 cm). That needs the lab test.
 """
 from __future__ import annotations
 
@@ -43,13 +59,11 @@ from pathlib import Path
 import numpy as np
 
 _REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_REPO))
 sys.path.insert(0, str(_REPO / "sim"))
-sys.path.insert(0, str(_REPO / "scripts"))
+sys.path.insert(0, str(_REPO))   # first: the repo-root reach_logger/ package, not scripts/reach_logger.py
 
 import joint_mapping as JM  # noqa: E402
 import scene_constants as S  # noqa: E402
-import touch_calibrate as TC  # noqa: E402
 from reach_logger import fk  # noqa: E402
 
 TOUCH_CSV = _REPO / "calibration/2026-09-22_touch_calibration.csv"
@@ -57,20 +71,25 @@ UVC60 = sorted((_REPO / "data/huggingface/lerobot/ericc430/omx_pick_place_pilot_
 # [Eric說 2026-09-21] uvc_60 walked campA_136sym's t1..t60 in order, BUT [已查證 2026-09-29]
 # docs/meeting/2026-09-13.md item 4: "t41 重錄後排在最後一集" -> ep0-39 = t1-t40, ep40-58 = t42-t60,
 # ep59 = t41. Reading it as plain i -> t{i+1} put ep40-58 one placement off (23-52 cm "errors").
-# The per-episode record the S6 notes used (episode_meta/..._paper_cup.csv) was never committed.
 PLACEMENTS = _REPO / "configs/placements/campA_136sym_20260908_20260908_train.csv"
 TUNED_EPISODES = {0, 1}
+
+JOINTS = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper")
+NOMINAL = 0.03141593   # 1.80 deg/unit: 4096 ticks / 200 units
+
+X_CROTCH, X_PINCH, X_TIP = 0.039, 0.088, 0.0945   # m along link5 +X, CAD meshes (see docstring)
+TCP_Y = -0.00165                                  # midline between the finger pivots
+CUP_R_AT_PINCH = 3.4                              # cm; cup radius 2.5 (base) .. 3.75 (rim)
 
 
 def placement_of(ep: int) -> str:
     return f"train_{41 if ep == 59 else ep + 1 if ep < 40 else ep + 2:03d}"
 
-JOINTS = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper")
-NOMINAL = 0.03141593   # 1.80 deg/unit: 4096 ticks / 200 units
-
 
 def candidates() -> dict[str, tuple[dict, dict]]:
     cur_s, cur_o = dict(JM.SCALE_RAD_PER_UNIT), dict(JM.OFFSET_RAD)
+    nom = {k: NOMINAL for k in cur_s}
+    roll = cur_o["wrist_roll"]
     touch_o = dict(cur_o)
     touch_o["shoulder_lift"] -= math.radians(2.0)    # undo the 2026-09 hand-tune
     touch_o["wrist_flex"] -= math.radians(24.0)
@@ -80,16 +99,17 @@ def candidates() -> dict[str, tuple[dict, dict]]:
              "wrist_flex": 0.03159506, "wrist_roll": 0.03086570},
             {"shoulder_pan": 0.01592023, "shoulder_lift": -0.36919370, "elbow_flex": 0.44010560,
              "wrist_flex": 1.62968550, "wrist_roll": -0.02788842}),
-        "touch LSQ (before hand-tune)": ({k: NOMINAL for k in cur_s}, touch_o),
-        # Same 11 touch points, same objective, but riser FIXED at the measured 15 cm. `touch_calibrate
-        # solve` leaves the riser free with a prior at 14 cm and landed on 13.05 cm -- the committed
-        # offsets above were solved for a riser 2 cm lower than the real one. Identical touch residual
-        # (1.52 cm) with lift/elbow 7.1/4.4 deg different: vertical-gripper touches at one height
-        # barely constrain riser vs lift vs elbow. [已查證 2026-09-29, scratch refit]
-        "touch LSQ, riser 15 fixed": ({k: NOMINAL for k in cur_s},
-                                      {"shoulder_pan": -0.03881857, "shoulder_lift": 0.21252320,
-                                       "elbow_flex": -0.15140055, "wrist_flex": 1.44494233,
-                                       "wrist_roll": cur_o["wrist_roll"]}),
+        # `touch_calibrate solve` as committed: TCP 8.0 cm, riser free -> 13.05 cm.
+        "touch LSQ (committed)": (nom, touch_o),
+        # T: same 11 touches, tip at the CAD 9.45 cm, riser fixed at the measured 15 cm.
+        "T: touch refit, CAD tip": (nom, {"shoulder_pan": -0.03886218, "shoulder_lift": 0.11817732,
+                                          "elbow_flex": -0.08640457, "wrist_flex": 1.51261340,
+                                          "wrist_roll": roll}),
+        # K: fitted on the EVEN grasp episodes only (crotch@rim + wall-pinch xy, soft_l1), touch
+        # not used. Scored below on everything, so odd episodes and release are held out for it.
+        "K: task-pose fit (even eps)": (nom, {"shoulder_pan": 0.01878756, "shoulder_lift": 0.22986734,
+                                              "elbow_flex": -0.02231385, "wrist_flex": 1.95185293,
+                                              "wrist_roll": roll}),
         "current joint_mapping.py": (cur_s, cur_o),
     }
 
@@ -103,9 +123,15 @@ def q5(pos6) -> list[float]:
     return JM.row_to_sim_rad([float(v) for v in pos6])[:5]
 
 
+def point_cm(q, x_link5: float) -> np.ndarray:
+    """A point on the gripper's midline, in cm above the TABLE (arm base on the riser)."""
+    p = fk.link5_transform(q) @ np.array([x_link5, TCP_Y, 0.0, 1.0])
+    return np.array([p[0] * 100, p[1] * 100, p[2] * 100 + S.ARM_RISER_HEIGHT * 100])
+
+
 def pitch_deg(q) -> float:
-    """90 = straight down; >90 = tipped back past vertical. Unlike touch_calibrate's asin-based
-    version this does not fold 113 deg onto 67 deg -- that fold hid the result once already."""
+    """90 = straight down; >90 = tipped back past vertical. atan2 along the reach direction:
+    an asin(-v_z) version folds 113 deg onto 67 deg -- that fold hid a result once already."""
     v = fk.link5_transform(q)[:3, 0]
     along = v[0] * math.cos(q[0]) + v[1] * math.sin(q[0])
     return math.degrees(math.atan2(-v[2], along))
@@ -136,20 +162,30 @@ def grasp_and_release(st: np.ndarray, hold: int = 15) -> tuple[int | None, int |
     return grasp, (opens[-1] if opens else None)                # final opening = drop into the bin
 
 
+def wall_residual(pinch_xy: np.ndarray, cup_xy: np.ndarray) -> tuple[float, float]:
+    """(radial, tangential) error of the pinch point against the NEARER side wall of the cup."""
+    u = cup_xy / np.linalg.norm(cup_xy); w = np.array([-u[1], u[0]])
+    d = pinch_xy - cup_xy
+    tan = d @ w
+    side = min((1.0, -1.0), key=lambda s: abs(tan - s * CUP_R_AT_PINCH))
+    return float(d @ u), float(tan - side * CUP_R_AT_PINCH)
+
+
 def main() -> int:
     touch = list(csv.DictReader(TOUCH_CSV.open(encoding="utf-8")))
-    place = {r["placement_id"]: (float(r["x_cm"]), float(r["y_cm"]))
+    place = {r["placement_id"]: np.array([float(r["x_cm"]), float(r["y_cm"])])
              for r in csv.DictReader(PLACEMENTS.open(encoding="utf-8"))}
     eps = load_uvc60()
     bin_xy = np.array([S.BIN_CENTER_X, S.BIN_CENTER_Y]) * 100
-    bin_r, rim_z = S.BIN_OPENING_DIA / 2 * 100, (S.ARM_RISER_HEIGHT + S.BIN_HEIGHT) * 100
-    cup_rim = S.CUP_HEIGHT * 100
+    bin_r, bin_rim = S.BIN_OPENING_DIA / 2 * 100, (S.ARM_RISER_HEIGHT + S.BIN_HEIGHT) * 100
+    rim = S.CUP_HEIGHT * 100
+    frames = {e: grasp_and_release(st) for e, st in eps.items()}
     saved = (dict(JM.SCALE_RAD_PER_UNIT), dict(JM.OFFSET_RAD))
 
-    print(f"touch {len(touch)} pts | uvc_60 {len(eps)} episodes, grasp scored on ep2-59 | "
-          f"bin centre ({bin_xy[0]:.1f}, {bin_xy[1]:.1f}) cm r={bin_r:.0f} rim {rim_z:.0f} cm | cup rim {cup_rim:.1f} cm\n")
-    hdr = (f"{'candidate':<30}| {'TOUCH 3D':>8} {'z':>6} {'pitch':>6} | {'g-az':>6} {'GRASP xy':>8} {'z':>6} "
-           f"{'ep0/1 xy':>9} | {'RELEASE in-bin':>14} {'d':>6} {'z-rim':>6}")
+    print(f"touch {len(touch)} pts (tip x={X_TIP*100:.2f}) | grasp ep2-59 (pinch x={X_PINCH*100:.1f}, crotch "
+          f"x={X_CROTCH*100:.1f}, cup rim {rim:.1f}) | release -> bin r={bin_r:.0f} rim {bin_rim:.0f} cm\n")
+    hdr = (f"{'candidate':<28}| {'TOUCH 3D':>8} {'z':>6} {'pitch':>6} | {'crotch-rim':>10} {'h-ok':>5} "
+           f"{'wall-xy':>7} {'g-tan':>6} | {'in-bin':>6} {'d':>6}")
     print(hdr); print("-" * len(hdr))
 
     results = {}
@@ -158,45 +194,39 @@ def main() -> int:
         t3, tz, tp = [], [], []
         for r in touch:
             q = q5([r[f"state_{j}"] for j in JOINTS])
-            x, y, z = TC.fingertip_above_table_cm(q)
-            t3.append(math.dist((x, y, z), (float(r["target_x_cm"]), float(r["target_y_cm"]), 0.0)))
-            tz.append(z); tp.append(pitch_deg(q))
+            p = point_cm(q, X_TIP)
+            t3.append(np.linalg.norm(p - [float(r["target_x_cm"]), float(r["target_y_cm"]), 0.0]))
+            tz.append(p[2]); tp.append(pitch_deg(q))
 
-        gxy, gz, gaz, tuned, rd, rz = [], [], [], [], [], []
+        cr, hok, wxy, gtan, rd = [], [], [], [], []
         for e, st in eps.items():
-            gi, ri = grasp_and_release(st)
-            if gi is not None:
-                x, y, z = TC.fingertip_above_table_cm(q5(st[gi]))
-                px, py = place[placement_of(e)]
-                d = math.dist((x, y), (px, py))
-                if e in TUNED_EPISODES:
-                    tuned.append(d)
-                else:
-                    gxy.append(d); gz.append(z)
-                    gaz.append(math.degrees(math.atan2(y, x) - math.atan2(py, px)))
+            gi, ri = frames[e]
+            if gi is not None and e not in TUNED_EPISODES:
+                q = q5(st[gi])
+                zc, pp = point_cm(q, X_CROTCH)[2], point_cm(q, X_PINCH)
+                cr.append(zc - rim); hok.append(pp[2] <= rim + 1.0 and zc >= rim - 1.0)
+                rad, tan = wall_residual(pp[:2], place[placement_of(e)])
+                wxy.append(math.hypot(rad, tan)); gtan.append(tan)
             if ri is not None:
-                x, y, z = TC.fingertip_above_table_cm(q5(st[ri]))
-                rd.append(math.dist((x, y), bin_xy)); rz.append(z - rim_z)
+                rd.append(np.linalg.norm(point_cm(q5(st[ri]), X_PINCH)[:2] - bin_xy))
 
         med = lambda a: float(np.median(a))
-        inbin = sum(d <= bin_r for d in rd)
-        results[name] = dict(touch=med(t3), grasp=med(gxy))
-        print(f"{name:<30}| {med(t3):7.1f}c {med(tz):+5.1f}c {med(tp):5.1f}° | {med(gaz):+5.1f}° {med(gxy):7.1f}c {med(gz):5.1f}c "
-              f"{'/'.join(f'{v:.1f}' for v in tuned):>9} | {inbin:>6}/{len(rd):<3}     {med(rd):5.1f}c {med(rz):+5.1f}c")
+        results[name] = dict(touch=med(t3), height=abs(med(cr)))
+        print(f"{name:<28}| {med(t3):7.1f}c {med(tz):+5.1f}c {med(tp):5.1f}° | {med(cr):+9.1f}c {np.mean(hok):5.0%} "
+              f"{med(wxy):6.1f}c {med(gtan):+5.1f}c | {sum(d <= bin_r for d in rd):>3}/{len(rd):<2} {med(rd):5.1f}c")
     use(*saved)
 
-    print("\nhow to read: TOUCH truth is z=0 and pitch 90 deg. g-az is the grasp azimuth error (see docstring: a")
-    print("session-frame offset, not calibration). GRASP xy is distance to the cup; its z has no exact")
-    print("truth (rim is %.1f cm). RELEASE 'd' is distance from the bin axis (inside if <= %.0f), z-rim > 0 = above rim." % (cup_rim, bin_r))
+    print("\nhow to read: TOUCH truth is z=0, pitch 90. crotch-rim should be ~0 for most grasps; h-ok = share with")
+    print("pinch <= rim <= crotch (1 cm slack). wall-xy = pinch point to the nearer cup wall; g-tan = its signed")
+    print("tangential part (the unexplained common offset). in-bin: releases whose pinch point is over the opening.")
 
-    names = list(results)
-    base, cur = results[names[1]], results[names[-1]]
-    print()
-    if cur["grasp"] < base["grasp"] and cur["touch"] > base["touch"]:
-        print(f"🔴 '{names[-1]}' vs '{names[1]}': grasp {base['grasp']:.1f}->{cur['grasp']:.1f} cm better, "
-              f"touch {base['touch']:.1f}->{cur['touch']:.1f} cm WORSE.")
-        print("   But grasp xy carries the ~10 deg session-frame offset (g-az), so a grasp-xy gain is not calibration")
-        print("   evidence. Judge candidates on TOUCH and RELEASE until the 9/13 mat frame is resolved.")
+    best_t = min(results, key=lambda n: results[n]["touch"])
+    best_h = min(results, key=lambda n: results[n]["height"])
+    if best_t != best_h:
+        a, b = results[best_t], results[best_h]
+        print(f"\n🔴 best touch '{best_t}' ({a['touch']:.1f} cm) leaves crotch-rim at {a['height']:+.1f} cm; best grasp height "
+              f"'{best_h}' ({b['height']:+.1f} cm) costs touch {b['touch']:.1f} cm.")
+        print("   No offset set satisfies both -> touch poses and grasp poses disagree (droop or arm model; see docstring).")
     return 0
 
 
