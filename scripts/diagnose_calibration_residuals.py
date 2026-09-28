@@ -12,7 +12,12 @@ that episode was recorded against. So the residual
 
     fingertip(FK, this calibration) - cup centre
 
-is an error signal with no camera in it at all. 60 episodes span a range of reach distances and
+is an error signal with no camera in it at all.
+
+🔴 [已查證 2026-09-29] For uvc_60's paper cup that premise is off by one cup radius: the gripper
+pinches the cup WALL (one jaw inside), so the fingertip sits on the left or right wall, ~3.4 cm
+tangentially from the centre, and which side varies per episode. Read the TANGENTIAL rows below
+with that in mind; `scripts/eval_joint_calibration.py` scores against the nearer wall instead. 60 episodes span a range of reach distances and
 azimuths, and HOW the residual varies across them says which parameter is wrong:
 
     radial residual, flat vs reach distance   -> an OFFSET is wrong (a constant push in/out)
@@ -53,6 +58,7 @@ sys.path.insert(0, _REPO)
 sys.path.insert(0, os.path.join(_REPO, "sim"))
 
 import joint_mapping as JM          # noqa: E402
+import omx_constants as K           # noqa: E402
 import scene_constants as SC        # noqa: E402
 from reach_logger import fk         # noqa: E402
 
@@ -60,8 +66,8 @@ DEFAULT_DATASET = os.path.join(
     _REPO, "data/huggingface/lerobot/ericc430/omx_pick_place_pilot_uvc_60")
 DEFAULT_PLACEMENTS = os.path.join(
     _REPO, "docs/assets/placement_label_map_campA_136sym_20260908.csv")
-# omx_constants.TCP_IN_LINK5_M -- the MEASURED fingertip, not link6/link7's pivots.
-TCP_IN_LINK5 = np.array([0.08, -0.00165, 0.0, 1.0])
+# omx_constants.TCP_IN_LINK5_M -- the pinch point (CAD, 8.8 cm since 2026-09-29), not link6/link7's pivots.
+TCP_IN_LINK5 = np.array([*K.TCP_IN_LINK5_M, 1.0])
 # The placement CSV gives each cup BOTH ways: from the pan axis and in the printed mat's own
 # frame. The two differ by this much in x, which is the size of the frame error to look for.
 MAT_PAN_DX_CM = 7.13

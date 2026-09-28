@@ -7,15 +7,10 @@ camera's pose is ArUco-calibrated (S4 §5-5 T2), judging calibration by eye on a
 error into arm error -- and tuning the arm until the render looks right writes camera error into
 joint constants.
 
-Gripper geometry (link5 frame, jaws closed), from the CAD meshes follower_06/07/08 -- not from
-TCP_IN_LINK5 = 8.0 cm, which is one tape measurement from link5's origin, a point that is not
-visible on the real arm:
-  crotch  x = 3.9 cm   inner end of the jaw gap (palm face 3.95 cm); where a cup rim stops
-  pinch   x = 8.8 cm   where the two jaws meet
-  tip     x = 9.45 cm  outermost fingertip; the lowest point when the gripper points down
-[推論, two sources agree] 9.45 is what touched the mat: refitting the touch points with the riser
-free lands on 14.84 cm with the 9.45 tip (Eric measured 15, spacer swapped once, <1 cm change),
-but on 13.05 cm with 8.0 -- the committed "touch LSQ" constants were solved at that 13.05.
+Gripper geometry (link5 frame, jaws closed): omx_constants.GRIPPER_{CROTCH,PINCH,TIP}_X_M, from the
+CAD meshes -- crotch 3.9 cm (a pinched rim stops here), pinch 8.8 cm (jaws meet), tip 9.45 cm (the
+lowest point when the gripper points down). Provenance and checks are next to the constants. The
+committed "touch LSQ" constants were solved with the old 8.0 cm tip and a 13.05 cm riser.
 
 Three ground truths, three different kinds of arm pose:
 
@@ -25,8 +20,10 @@ Three ground truths, three different kinds of arm pose:
   grasp    uvc_60 (9/13), each episode's first sustained gripper close. Torque on, arm carrying
            itself. Episodes 0 and 1 were used to hand-tune the current constants and are not scored.
            xy: [已查證 2026-09-29] the gripper PINCHES THE CUP WALL, one jaw inside, one outside --
-             at grasp the gripper reads ~52 vs 50.21 fingers-touching (a 6-7.5 cm cup cannot fit
-             between the jaws), and the wrist frames of ep2/3/11/37 show the rim between the jaws.
+             at grasp the gripper reads ~52, i.e. jaws ~10 mm apart by joint_mapping's S6 jaw
+             calibration (50.21 = touching) -- the jaws open to 150 mm, but here they are far
+             narrower than the 6-7.5 cm cup -- and the wrist frames of ep2/3/11/37 show the rim
+             between the jaws.
              So the pinch point sits on the cup's left or right wall, one radius from the
              placement point: the raw residual splits into two groups 8.1 cm apart (rim diameter
              7.5), constant in cm, not in degrees. 'wall-xy' scores against the nearer wall.
@@ -63,6 +60,7 @@ sys.path.insert(0, str(_REPO / "sim"))
 sys.path.insert(0, str(_REPO))   # first: the repo-root reach_logger/ package, not scripts/reach_logger.py
 
 import joint_mapping as JM  # noqa: E402
+import omx_constants as K  # noqa: E402
 import scene_constants as S  # noqa: E402
 from reach_logger import fk  # noqa: E402
 
@@ -77,8 +75,8 @@ TUNED_EPISODES = {0, 1}
 JOINTS = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper")
 NOMINAL = 0.03141593   # 1.80 deg/unit: 4096 ticks / 200 units
 
-X_CROTCH, X_PINCH, X_TIP = 0.039, 0.088, 0.0945   # m along link5 +X, CAD meshes (see docstring)
-TCP_Y = -0.00165                                  # midline between the finger pivots
+X_CROTCH, X_PINCH, X_TIP = K.GRIPPER_CROTCH_X_M, K.GRIPPER_PINCH_X_M, K.GRIPPER_TIP_X_M
+TCP_Y = K.GRIPPER_MIDLINE_Y_M
 CUP_R_AT_PINCH = 3.4                              # cm; cup radius 2.5 (base) .. 3.75 (rim)
 
 

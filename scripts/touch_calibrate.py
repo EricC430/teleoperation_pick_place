@@ -66,6 +66,7 @@ sys.path.insert(0, os.path.join(_REPO, "sim"))
 import numpy as np
 
 import joint_mapping as JM
+import omx_constants as K
 from reach_logger import fk
 
 # --------------------------------------------------------------------------------------
@@ -84,8 +85,11 @@ FIELDS = (
     "note",
 ) + tuple(f"state_{j}" for j in JOINTS)
 
-# The TCP offset in the link5 frame — the MEASURED fingertip, same as omx_constants.
-TCP_IN_LINK5 = np.array([0.08, -0.00165, 0.0, 1.0])
+# The point that touches the mat: the OUTERMOST fingertip (CAD, jaws closed -- every 9/22 touch was
+# taken with the gripper reading 50.06-50.40 = fingers touching). Not omx_constants.TCP_IN_LINK5_M:
+# that is the pinch point (8.8 cm), where an object is held, 0.65 cm short of the tip. Until
+# 2026-09-29 this was 8.0 cm, and the free-riser solve absorbed the difference as a 13.05 cm riser.
+TCP_IN_LINK5 = np.array([K.GRIPPER_TIP_X_M, K.GRIPPER_MIDLINE_Y_M, 0.0, 1.0])
 
 # Riser height (arm base above the table surface).
 ARM_RISER_HEIGHT_M = 0.15  # [Eric said 2026-09-21], matches scene_constants.py
@@ -605,6 +609,7 @@ def cmd_solve(args: argparse.Namespace) -> int:
     init_wrist_roll_offset = JM.OFFSET_RAD["wrist_roll"]
 
     fixed_riser = float(args.riser) if args.riser is not None else None
+    RISER_PRIOR_CM = ARM_RISER_HEIGHT_M * 100.0   # measured (was an unsourced 14.0 before 2026-09-29)
 
     def eval_points(scales_4, offsets_4, riser):
         tips, pitches = [], []
@@ -617,7 +622,8 @@ def cmd_solve(args: argparse.Namespace) -> int:
             tip_cm = np.array([tip_m[0] * 100.0, tip_m[1] * 100.0, tip_m[2] * 100.0 + riser])
             v = t5[:3, 0]
             tips.append(tip_cm)
-            pitches.append(float(np.degrees(np.arcsin(np.clip(-v[2], -1.0, 1.0)))))
+            along = v[0] * math.cos(rad_5[0]) + v[1] * math.sin(rad_5[0])
+            pitches.append(math.degrees(math.atan2(-float(v[2]), float(along))))   # no fold at 90
         return np.array(tips), np.array(pitches)
 
     # Initial baseline
@@ -635,10 +641,10 @@ def cmd_solve(args: argparse.Namespace) -> int:
             err_pitch = (pitches - 90.0) * 0.1
             res = [err_pos, err_pitch]
             if fixed_riser is None:
-                res.append([(r - 14.0) * 0.2])
+                res.append([(r - RISER_PRIOR_CM) * 0.2])
             return np.concatenate(res)
 
-        p0 = np.concatenate([init_offsets, [14.0] if fixed_riser is None else []])
+        p0 = np.concatenate([init_offsets, [RISER_PRIOR_CM] if fixed_riser is None else []])
         res = least_squares(obj_fn, p0)
         solved_offsets = res.x[:4]
         solved_riser = float(res.x[4]) if fixed_riser is None else fixed_riser
@@ -654,10 +660,10 @@ def cmd_solve(args: argparse.Namespace) -> int:
             reg_scales = (sc - nom_scales_4) / nom_scales_4 * 0.5
             res = [err_pos, err_pitch, reg_scales]
             if fixed_riser is None:
-                res.append([(r - 14.0) * 0.2])
+                res.append([(r - RISER_PRIOR_CM) * 0.2])
             return np.concatenate(res)
 
-        p0 = np.concatenate([nom_scales_4, init_offsets, [14.0] if fixed_riser is None else []])
+        p0 = np.concatenate([nom_scales_4, init_offsets, [RISER_PRIOR_CM] if fixed_riser is None else []])
         res = least_squares(obj_fn, p0)
         solved_scales = res.x[:4]
         solved_offsets = res.x[4:8]
@@ -734,7 +740,7 @@ def main() -> int:
     v = sub.add_parser("solve", help="solve optimal joint offsets and scales from touch calibration CSV")
     v.add_argument("--csv", required=True, help="CSV file to solve from")
     v.add_argument("--fit-scales", action="store_true", help="also fit joint scales (default: fixed nominal 1.80 deg/unit)")
-    v.add_argument("--riser", type=float, default=None, help="fixed riser height in cm (default: auto-solve near 14-15 cm)")
+    v.add_argument("--riser", type=float, default=None, help="fixed riser height in cm (default: auto-solve, weak prior at the measured 15 cm)")
     v.set_defaults(func=cmd_solve)
 
     t = sub.add_parser("selftest", help="verify FK + joint_mapping on synthetic data (no hardware)")

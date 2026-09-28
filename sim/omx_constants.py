@@ -102,19 +102,36 @@ SITE_R_OUTER_M = 0.41
 # --------------------------------------------------------------------------------------
 # Gripper contact point (the TCP)
 # --------------------------------------------------------------------------------------
-# `[柏宇說 2026-09-21]` MEASURED: the fingertips are 8 cm from link5's origin, along link5's +X.
+# Three points on the gripper midline, link5 +X, jaws CLOSED -- from the ROBOTIS CAD meshes
+# (follower_06_pan_Revised / 07_gripper_motorized / 08_gripper_gear, placed at the URDF joint
+# origins with gripper_joint_1 = 0). [已查證 2026-09-29, mesh read]
+#   crotch 3.9 cm   inner end of the jaw gap (palm face 3.95); a pinched cup rim stops here
+#   pinch  8.8 cm   where the two jaws meet (gap 0.0 mm at x = 88 mm)
+#   tip    9.45 cm  outermost fingertip = the lowest point when the gripper points straight down
+# Mesh joint 0 IS the closed gripper: joint_mapping puts "fingers touching" (50.21) at +0.7 deg.
+# At a grasp (~52, jaws ~10 mm apart) the fingers swing ~7 deg, which moves the tip back ~0.5 mm.
+#
+# 🔴 These REPLACE `[柏宇說 2026-09-21]` "fingertips 8 cm from link5's origin". link5's origin is on
+# the wrist_roll axis, not a visible point; [推論] 8.0 cm from the gripper part's REAR face (x =
+# 0.89 cm) lands at 8.9 -- the pinch point. Two checks favour the CAD numbers over 8.0 as a
+# link5-frame value: (1) the 9/22 touch points were touched with the gripper closed (readings
+# 50.06-50.40) and, with the riser left free, `touch_calibrate solve` lands on 14.6 cm using the
+# 9.45 tip -- Eric measured 15 -- but on 13.05 cm using 8.0 (the riser prior moves it < 0.1 cm).
+# (2) The cup is held where the jaws meet, not 8 mm short of it.
+# Still to confirm on the real arm: wrist_flex axis (servo horn centre) -> jaw tip should be
+# 2.87 + 9.45 = 12.3 cm.
+#
 # The y term is the midline between the two finger pivots (URDF gripper_joint_1 y=+0.0075,
 # gripper_joint_2 y=-0.0108) -- the same midline end_effector_link uses.
-#
-# 🔴 This REPLACES "the midpoint of link6/link7's body frames" as the TCP. Those two are the
-# finger PIVOTS, only 2.95 cm from link5, i.e. 4.5 cm short of where the fingers actually touch.
-# Measured on uvc_60 episode 0 against that episode's recorded cup placement, the pivot choice
-# alone accounted for 4.5 cm of the 14.9 cm TCP-to-object gap (S5 §2-G).
-#
-# ⚠️ [未確認] this is ONE measurement, taken at one gripper opening. The fingers swing about
-# link6/link7's Z axes, so the tip's x in link5's frame shrinks as the gripper opens. How much is
-# not measured; at the grasp the gripper is nearly closed, which is the case this value is for.
-TCP_IN_LINK5_M = (0.08, -0.00165, 0.0)
+GRIPPER_CROTCH_X_M = 0.039
+GRIPPER_PINCH_X_M = 0.088
+GRIPPER_TIP_X_M = 0.0945
+GRIPPER_MIDLINE_Y_M = -0.00165
+
+# The TCP is the PINCH point: where the jaws close on an object (uvc_60's paper cup is pinched by
+# its wall, one jaw inside -- see scripts/eval_joint_calibration.py). Not link6/link7's body
+# frames: those are the finger PIVOTS, 2.95 cm from link5.
+TCP_IN_LINK5_M = (GRIPPER_PINCH_X_M, GRIPPER_MIDLINE_Y_M, 0.0)
 
 SPEC_FULL_REACH_M = 0.40
 
