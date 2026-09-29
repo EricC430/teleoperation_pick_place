@@ -285,6 +285,25 @@ if args.placements:
 
 sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=1.0 / 120.0, device=args.device))
 scene = InteractiveScene(scene_cfg)
+
+# 🔴 2026-09-29: no contact between the object and the two jaws (link6/link7). With both jaws written
+# kinematically, ep0 (current constants) attached the cup with its wall over the mimic jaw; the
+# object's pose is forced every frame, so each physics step shoved that undriven jaw open before the
+# camera captured it. Toggling the object's collisionEnabled at attach/detach instead crashed GPU
+# PhysX (illegal memory access in the GPU narrowphase) -- a filtered pair is set once, at parse time.
+# Cost: before the attach, a jaw passes through the cup instead of knocking it; the rest of the arm
+# still collides.
+from pxr import Usd, UsdPhysics  # noqa: E402, PLC0415
+
+_jaws = [q.GetPath() for root in sim_utils.find_matching_prims(scene_cfg.robot.prim_path)
+         for q in Usd.PrimRange(root) if q.GetName() in ("link6", "link7") and q.HasAPI(UsdPhysics.RigidBodyAPI)]
+for _o in sim_utils.find_matching_prims(scene_cfg.object.prim_path):
+    _rel = UsdPhysics.FilteredPairsAPI.Apply(_o).CreateFilteredPairsRel()
+    for _j in _jaws:
+        _rel.AddTarget(_j)
+print(f"object <-> jaw contact filtered: {[str(j) for j in _jaws]}")
+if len(_jaws) != 2:
+    raise SystemExit(f"expected link6 and link7 as rigid bodies under the robot, found {_jaws}")
 sim.reset()
 
 # front-left camera: look-at, with the DR jitter applied to both endpoints (translation) and the
@@ -300,8 +319,19 @@ scene["cam_front_left"].set_world_poses_from_view(eye + lift, tgt + lift)
 robot = scene["robot"]
 obj = scene["object"]
 joint_names = [j.urdf_name for j in K.JOINTS]
-joint_idx = [robot.joint_names.index(n) for n in joint_names]
+# 🔴 2026-09-29: the mimic jaw is WRITTEN too, not left to the PhysX mimic constraint. That constraint
+# is soft and nearly undamped (naturalFrequency 25, dampingRatio 0.005; gripper_joint_2 has no drive
+# of its own, sim/README "Two gaps" §2) and reaches only ~50% amplitude. Under a kinematic replay --
+# arm teleported every frame, attached object pose-forced into the jaws -- it oscillated: in the
+# 9/23 ep0 render one jaw swung open mid-carry while the recording holds 49.9 (closed) from frame 230
+# to 370. Writing it as K.MIMIC_JOINT's multiplier x its master (URDF: -1) keeps the constraint
+# satisfied, so nothing fights it.
+_mimic, _mimic_src, _mimic_mult = K.MIMIC_JOINT
+_write_mimic = _mimic in robot.joint_names
+joint_idx = [robot.joint_names.index(n) for n in joint_names + ([_mimic] if _write_mimic else [])]
 zeros = torch.zeros(1, len(joint_idx), device=sim.device)
+if not _write_mimic:
+    print(f"⚠️  {_mimic} not in the articulation -- the mimic jaw is left to the physics constraint")
 
 grasp = None
 if not args.skip_grasp:
@@ -311,9 +341,10 @@ if not args.skip_grasp:
 
 os.makedirs(args.out, exist_ok=True)
 
-
 def write_pose(t: int) -> torch.Tensor:
-    rad = JM.row_to_sim_rad(states_deg[t])
+    rad = list(JM.row_to_sim_rad(states_deg[t]))
+    if _write_mimic:
+        rad.append(_mimic_mult * rad[joint_names.index(_mimic_src)])
     pos = torch.tensor([rad], device=sim.device, dtype=torch.float32)
     robot.write_joint_state_to_sim(pos, zeros, joint_ids=joint_idx)
     robot.set_joint_position_target(robot.data.joint_pos.clone())
@@ -326,6 +357,14 @@ write_pose(frames[0])
 for _ in range(args.warmup_steps):
     sim.step()
     scene.update(sim.get_physics_dt())
+
+# 🔴 2026-09-29: one carry per episode. ep0 (current constants) released the cup into the bin at
+# frame 382, then the gripper closed again at 401 with the cup inside the 14 cm attach radius, and
+# the cup was "picked up" out of the bin. A regrasp at the pick site (a real behaviour in some
+# episodes) is still allowed: attaching stops only once the object was released away from its start.
+REGRASP_MAX_M = 0.10
+obj_start = obj.data.root_pos_w[0].clone()
+grasp_done = False
 
 records = []
 from PIL import Image  # noqa: E402, PLC0415
@@ -342,11 +381,17 @@ for n, t in enumerate(frames):
         # matters is "how close did the TCP actually get to the object", and guessing at it (too
         # tight a radius? object rolled? wrong TCP frame?) wasted a cycle on 2026-09-21.
         tcp_obj_dist = float(torch.norm(obj_p - tcp).item())
-        want_p, want_q = grasp.step(t, states_deg[t][5], tcp, tcp_q, obj_p, obj.data.root_quat_w[0])
-        if grasp.attached:
-            obj.write_root_pose_to_sim(torch.cat([want_p, want_q]).unsqueeze(0))
-            obj.write_root_velocity_to_sim(torch.zeros(1, 6, device=want_p.device))
-            attached = True
+        if not grasp_done:
+            want_p, want_q = grasp.step(t, states_deg[t][5], tcp, tcp_q, obj_p, obj.data.root_quat_w[0])
+            if grasp.attached:
+                obj.write_root_pose_to_sim(torch.cat([want_p, want_q]).unsqueeze(0))
+                obj.write_root_velocity_to_sim(torch.zeros(1, 6, device=want_p.device))
+                attached = True
+            elif (grasp.events and grasp.events[-1].kind == "detach"
+                  and float(torch.norm(obj_p[:2] - obj_start[:2])) > REGRASP_MAX_M):
+                grasp_done = True
+                print(f"  frame {t}: released {float(torch.norm(obj_p[:2] - obj_start[:2]))*100:.0f} cm from the "
+                      f"pick site -- no further attaches this episode")
 
     scene.write_data_to_sim()
     for _ in range(max(1, args.steps_per_frame)):
@@ -400,7 +445,10 @@ manifest = {
         "placement_id": None if place is None else place.placement_id,
         "placement_short_id": None if place is None else place.short_id,
         "gripper_amplitude_verified": False,
-        "gripper_note": "mimic constraint reaches ~half the intended amplitude (gap 2 residual)",
+        "gripper_note": ("both jaws written kinematically (mimic jaw = -1 x master), so the mimic "
+                         "constraint's ~50% amplitude no longer applies; the units->angle conversion "
+                         "itself is still unverified (joint_mapping GRIPPER_ZERO_DEG)"
+                         if _write_mimic else "mimic constraint reaches ~half the intended amplitude (gap 2 residual)"),
     },
     "frames": records,
 }

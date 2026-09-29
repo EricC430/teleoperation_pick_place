@@ -282,6 +282,14 @@ one probably does need an actuator entry.
    amplitude. Scope: closer to gap 1 (gain calibration) than gap 2 (direction) — tracked separately.
    Full detail: `docs/specs/S5_sim_replay_augmentation.md` §2's 2026-09-18 update.
 
+   🔴 **2026-09-29: `replay_render_episode.py` no longer depends on this constraint.** The soft,
+   nearly undamped constraint (dampingRatio 0.005) made the undriven jaw swing open and shut during
+   the carry under a kinematic replay (9/23 ep0 render; the recording holds 49.9 = closed from frame
+   230 to 370). The replay now writes `gripper_joint_2 = -1 × gripper_joint_1` directly, and filters
+   contact between the object and link6/link7 so a pose-forced object cannot shove the jaw open
+   (a runtime `collisionEnabled` toggle was tried first and crashed GPU PhysX). The ~50% amplitude
+   above still applies to anything that drives the gripper through PD targets instead.
+
 ## 🔴 `simulation_app.close()` does not reliably end the process
 
 Observed 2026-09-18 across multiple scripts (`fit_drive_gains.py`, `verify_grasp_attach.py`, and
