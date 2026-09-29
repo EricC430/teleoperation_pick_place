@@ -42,8 +42,9 @@
 | `docs/conventions.md` | commit / branch / tag 慣例 |
 | `docs/pipeline_validation.md` | 管線驗證資料的處理原則 |
 | `docs/exp_a3_recovery_ablation.md` | A3 recovery 消融實驗設計 |
-| `docs/meeting/` | 會議與現場工作紀錄（最新：`2026-08-24.md` 現場、`2026-08-18.md` 老師會議）|
+| `docs/meeting/` | 會議與現場工作紀錄（最新：`2026-09-29.md` open-loop × 推論間隔；最近一次老師會議 `2026-09-18.md`） |
 | `eval/README.md` | 評估記錄規格（outcome/mechanism 兩軸） |
+| `docs/models.md` | 模型對照表：權重 hash ↔ 本機 run/step ↔ Hub repo ↔ 物品 ↔ 閉環用過哪次 |
 
 ### B 線與 C 線 — **正本在 Claude Project「推甄與大專生計畫」的專案知識庫**
 
