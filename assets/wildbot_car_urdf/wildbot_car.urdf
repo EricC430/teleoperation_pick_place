@@ -1,0 +1,837 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="wildbot_car">
+  <material name="silver">
+    <color rgba="0.700 0.700 0.700 1.000" />
+  </material>
+  <transmission name="wheel_2_joint_tran">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="wheel_2_joint">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="wheel_2_joint_actr">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="wheel_4_joint_tran">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="wheel_4_joint">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="wheel_4_joint_actr">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="wheel_1_joint_tran">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="wheel_1_joint">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="wheel_1_joint_actr">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="wheel_3_joint_tran">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="wheel_3_joint">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="wheel_3_joint_actr">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="arm_1_joint_tran">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="arm_1_joint">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="arm_1_joint_actr">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="arm_2_joint_tran">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="arm_2_joint">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="arm_2_joint_actr">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="gripper_joint_tran">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="gripper_joint">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="gripper_joint_actr">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="gripper_joint_2_tran">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="gripper_joint_2">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="gripper_joint_2_actr">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <gazebo>
+    <plugin filename="libgazebo_ros_control.so" name="control" />
+  </gazebo>
+  <gazebo reference="base_link">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+    <gravity>true</gravity>
+  </gazebo>
+  <gazebo reference="upper_blue_v1_1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="upper_silver_v1_1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="Side_U_Bracket_Component1_v2_1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="new_motor_v2_1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="car_stand_v2_1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="car_stand_2_v2_v1_1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="new_wheel_v1_1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="car_stand_v2__1__1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="car_stand_2_v2_v1__1__1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="new_wheel_v1__1__1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="car_stand_v2__2__1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="car_stand_2_v2_v1__2__1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="new_wheel_v1__2__1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="car_stand_v2__2___1__1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="car_stand_2_v2_v1__2___1__1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="new_wheel_v1__2___1__1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="big_U_self_v2_1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="small_U_self_v3_v2_1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="new_motor_v2__1__1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="big_U_self_v2__1__1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="grap_base_v1_1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="grap2_v2_1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <gazebo reference="grap2_v2_Mirror__1">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+  <link name="base_link">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.001968878031808465 2.27033960993624e-11 0.0621009874068824" />
+      <mass value="37.56290080252228" />
+      <inertia ixx="0.155633" ixy="-0.0" ixz="0.000286" iyy="0.297492" iyz="0.0" izz="0.386843" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/base_link.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/base_link.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="upper_blue_v1_1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.0009561330152049116 0.0018927007584315797 -0.005546368824775341" />
+      <mass value="2.711654241548037" />
+      <inertia ixx="0.029512" ixy="4.7e-05" ixz="-1.7e-05" iyy="0.020937" iyz="-2e-05" izz="0.049756" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.000503 0.0 -0.110913" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/upper_blue_v1_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.000503 0.0 -0.110913" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/upper_blue_v1_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="upper_silver_v1_1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.053971064798242596 0.128655741098627 0.06340297559246161" />
+      <mass value="0.5824308278195107" />
+      <inertia ixx="0.00486" ixy="0.0" ixz="2.4e-05" iyy="0.001444" iyz="-0.0" izz="0.004712" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="-0.134497 0.127581 -0.110239" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/upper_silver_v1_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-0.134497 0.127581 -0.110239" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/upper_silver_v1_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="Side_U_Bracket_Component1_v2_1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.002196115549073424 -1.819958498391772e-13 -8.398858180329316e-05" />
+      <mass value="0.02951040982880665" />
+      <inertia ixx="1.1e-05" ixy="0.0" ixz="-0.0" iyy="4e-06" iyz="-0.0" izz="7e-06" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.150487 -0.0 -0.074934" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/Side_U_Bracket_Component1_v2_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.150487 -0.0 -0.074934" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/Side_U_Bracket_Component1_v2_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="new_motor_v2_1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.007328806264328608 -0.02242672801197056 0.017705283950517604" />
+      <mass value="0.2036448419526595" />
+      <inertia ixx="5.1e-05" ixy="-0.0" ixz="-0.0" iyy="3.5e-05" iyz="-0.0" izz="3e-05" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.1578 -0.02025 -0.057401" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/new_motor_v2_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.1578 -0.02025 -0.057401" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/new_motor_v2_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="car_stand_v2_1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.03989021343828694 -0.002500000000016281 -0.017953891628121006" />
+      <mass value="0.06574803361092448" />
+      <inertia ixx="1.6e-05" ixy="0.0" ixz="1.6e-05" iyy="5.4e-05" iyz="0.0" izz="3.7e-05" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="-0.078857 0.1 -0.052597" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_v2_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-0.078857 0.1 -0.052597" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_v2_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="car_stand_2_v2_v1_1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.008839050543168414 0.0024999999999838624 -0.008838742405981079" />
+      <mass value="0.025649195499023388" />
+      <inertia ixx="1e-06" ixy="0.0" ixz="0.0" iyy="3e-06" iyz="-0.0" izz="1e-06" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="-0.152469 0.1 -0.017587" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_2_v2_v1_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-0.152469 0.1 -0.017587" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_2_v2_v1_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="new_wheel_v1_1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-3.798922625364298e-07 -0.03633713970800313 1.709065836286855e-06" />
+      <mass value="2.7644063382593123" />
+      <inertia ixx="0.002173" ixy="-0.0" ixz="0.0" iyy="0.003475" iyz="-0.0" izz="0.002173" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="-0.14363 0.105 -0.008748" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/new_wheel_v1_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-0.14363 0.105 -0.008748" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/new_wheel_v1_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="car_stand_v2__1__1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.0398902134382917 0.002499999999984945 -0.017953891628120985" />
+      <mass value="0.06574803361092448" />
+      <inertia ixx="1.6e-05" ixy="-0.0" ixz="1.6e-05" iyy="5.4e-05" iyz="0.0" izz="3.7e-05" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="-0.078857 -0.1 -0.052597" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_v2__1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-0.078857 -0.1 -0.052597" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_v2__1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="car_stand_2_v2_v1__1__1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.008839050543163723 -0.002500000000015004 -0.008838742405981063" />
+      <mass value="0.025649195499023388" />
+      <inertia ixx="1e-06" ixy="-0.0" ixz="0.0" iyy="3e-06" iyz="0.0" izz="1e-06" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="-0.152469 -0.1 -0.017587" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_2_v2_v1__1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-0.152469 -0.1 -0.017587" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_2_v2_v1__1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="new_wheel_v1__1__1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-3.7989225781798197e-07 0.036337139707971935 -1.1938777992881455e-06" />
+      <mass value="2.7644063382593123" />
+      <inertia ixx="0.002173" ixy="0.0" ixz="-0.0" iyy="0.003475" iyz="-0.0" izz="0.002173" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="-0.14363 -0.105 -0.008748" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/new_wheel_v1__1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-0.14363 -0.105 -0.008748" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/new_wheel_v1__1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="car_stand_v2__2__1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.03989016647626693 -0.0025000000000133388 -0.017953891628124302" />
+      <mass value="0.06574803361092448" />
+      <inertia ixx="1.6e-05" ixy="0.0" ixz="-1.6e-05" iyy="5.4e-05" iyz="-0.0" izz="3.7e-05" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.079811 0.1 -0.052597" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_v2__2__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.079811 0.1 -0.052597" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_v2__2__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="car_stand_2_v2_v1__2__1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00883909750515982 0.002499999999986749 -0.008838742405986312" />
+      <mass value="0.025649195499023388" />
+      <inertia ixx="1e-06" ixy="0.0" ixz="0.0" iyy="3e-06" iyz="0.0" izz="1e-06" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.153423 0.1 -0.017587" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_2_v2_v1__2__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.153423 0.1 -0.017587" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_2_v2_v1__2__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="new_wheel_v1__2__1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-2.3184393260766711e-07 -0.03633713970800016 1.7090658330255748e-06" />
+      <mass value="2.7644063382593123" />
+      <inertia ixx="0.002173" ixy="-0.0" ixz="0.0" iyy="0.003475" iyz="-0.0" izz="0.002173" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.144584 0.105 -0.008748" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/new_wheel_v1__2__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.144584 0.105 -0.008748" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/new_wheel_v1__2__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="car_stand_v2__2___1__1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.02389016647626288 0.002499999999988678 -0.0179538916281246" />
+      <mass value="0.06574803361092448" />
+      <inertia ixx="1.6e-05" ixy="0.0" ixz="-1.6e-05" iyy="5.4e-05" iyz="-0.0" izz="3.7e-05" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.095811 -0.1 -0.052597" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_v2__2___1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.095811 -0.1 -0.052597" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_v2__2___1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="car_stand_2_v2_v1__2___1__1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.008839097505163956 -0.00250000000001116 -0.008838742405986616" />
+      <mass value="0.025649195499023388" />
+      <inertia ixx="1e-06" ixy="-0.0" ixz="0.0" iyy="3e-06" iyz="-0.0" izz="1e-06" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.153423 -0.1 -0.017587" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_2_v2_v1__2___1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.153423 -0.1 -0.017587" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/car_stand_2_v2_v1__2___1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="new_wheel_v1__2___1__1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-2.318439285275975e-07 0.03633713970797574 -1.1938778029067787e-06" />
+      <mass value="2.7644063382593123" />
+      <inertia ixx="0.002173" ixy="0.0" ixz="-0.0" iyy="0.003475" iyz="-0.0" izz="0.002173" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.144584 -0.105 -0.008748" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/new_wheel_v1__2___1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.144584 -0.105 -0.008748" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/new_wheel_v1__2___1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="big_U_self_v2_1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.024237289025415026 -9.32453658557264e-13 -8.85366035015267e-06" />
+      <mass value="0.041847447766480805" />
+      <inertia ixx="2.4e-05" ixy="0.0" ixz="-0.0" iyy="1.1e-05" iyz="-0.0" izz="3.2e-05" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.165112 -0.0005 -0.085006" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/big_U_self_v2_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.165112 -0.0005 -0.085006" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/big_U_self_v2_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="small_U_self_v3_v2_1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.00928726249731096 -0.000538358303513857 -3.114320741209875e-06" />
+      <mass value="0.025534175468152884" />
+      <inertia ixx="9e-06" ixy="-0.0" ixz="-0.0" iyy="3e-06" iyz="-0.0" izz="1e-05" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.205112 -0.0005 -0.084991" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/small_U_self_v3_v2_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.205112 -0.0005 -0.084991" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/small_U_self_v3_v2_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="new_motor_v2__1__1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.002653207304358196 0.022426750348416305 -0.007555050277332123" />
+      <mass value="0.20364393858439991" />
+      <inertia ixx="3e-05" ixy="-0.0" ixz="-0.0" iyy="3.5e-05" iyz="-0.0" izz="5.1e-05" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.232615 0.01975 -0.092481" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/new_motor_v2__1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.232615 0.01975 -0.092481" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/new_motor_v2__1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="big_U_self_v2__1__1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-8.740197789319781e-06 -1.621160263180718e-11 0.02423711740499139" />
+      <mass value="0.04184744776647988" />
+      <inertia ixx="3.2e-05" ixy="0.0" ixz="0.0" iyy="1.1e-05" iyz="-0.0" izz="2.4e-05" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.245112 0.0 -0.084977" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/big_U_self_v2__1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.245112 0.0 -0.084977" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/big_U_self_v2__1__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="grap_base_v1_1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="5.099119417856235e-05 -1.1672328080342198e-11 0.015748678654163878" />
+      <mass value="0.16096668074514336" />
+      <inertia ixx="6.6e-05" ixy="-0.0" ixz="-0.0" iyy="9.8e-05" iyz="-0.0" izz="9.8e-05" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.245127 0.0 -0.124977" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/grap_base_v1_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.245127 0.0 -0.124977" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/grap_base_v1_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="grap2_v2_1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.0011007743527067515 0.005587070582692526 0.032837608166100346" />
+      <mass value="0.040626783640930766" />
+      <inertia ixx="2.7e-05" ixy="0.0" ixz="-2e-06" iyy="2.6e-05" iyz="0.0" izz="3e-06" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.24514 -0.0125 -0.160477" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/grap2_v2_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.24514 -0.0125 -0.160477" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/grap2_v2_1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="grap2_v2_Mirror__1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.0011007743577237106 -0.0055870706034536685 0.032837608166898485" />
+      <mass value="0.04062678364093079" />
+      <inertia ixx="2.7e-05" ixy="-0.0" ixz="-2e-06" iyy="2.6e-05" iyz="-0.0" izz="3e-06" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.24514 0.0125 -0.160477" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/grap2_v2_Mirror__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.24514 0.0125 -0.160477" />
+      <geometry>
+        <mesh filename="wildbot_car_description/meshes/grap2_v2_Mirror__1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="Rigid 1" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.000503 0.0 0.110913" />
+    <parent link="base_link" />
+    <child link="upper_blue_v1_1" />
+  </joint>
+  <joint name="Rigid 2" type="fixed">
+    <origin rpy="0 0 0" xyz="0.135 -0.127581 -0.000674" />
+    <parent link="upper_blue_v1_1" />
+    <child link="upper_silver_v1_1" />
+  </joint>
+  <joint name="Rigid 3" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.150487 0.0 0.074934" />
+    <parent link="base_link" />
+    <child link="Side_U_Bracket_Component1_v2_1" />
+  </joint>
+  <joint name="Rigid 16" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.007313 0.02025 -0.017533" />
+    <parent link="Side_U_Bracket_Component1_v2_1" />
+    <child link="new_motor_v2_1" />
+  </joint>
+  <joint name="Rigid 27" type="fixed">
+    <origin rpy="0 0 0" xyz="0.078857 -0.1 0.052597" />
+    <parent link="base_link" />
+    <child link="car_stand_v2_1" />
+  </joint>
+  <joint name="Rigid 28" type="fixed">
+    <origin rpy="0 0 0" xyz="0.073612 0.0 -0.03501" />
+    <parent link="car_stand_v2_1" />
+    <child link="car_stand_2_v2_v1_1" />
+  </joint>
+  <joint name="wheel_2_joint" type="continuous">
+    <origin rpy="0 0 0" xyz="0.064773 -0.005 -0.043849" />
+    <parent link="car_stand_v2_1" />
+    <child link="new_wheel_v1_1" />
+    <axis xyz="-0.0 1.0 0.0" />
+  </joint>
+  <joint name="Rigid 30" type="fixed">
+    <origin rpy="0 0 0" xyz="0.078857 0.1 0.052597" />
+    <parent link="base_link" />
+    <child link="car_stand_v2__1__1" />
+  </joint>
+  <joint name="Rigid 31" type="fixed">
+    <origin rpy="0 0 0" xyz="0.073612 0.0 -0.03501" />
+    <parent link="car_stand_v2__1__1" />
+    <child link="car_stand_2_v2_v1__1__1" />
+  </joint>
+  <joint name="wheel_4_joint" type="continuous">
+    <origin rpy="0 0 0" xyz="0.064773 0.005 -0.043849" />
+    <parent link="car_stand_v2__1__1" />
+    <child link="new_wheel_v1__1__1" />
+    <axis xyz="-0.0 1.0 0.0" />
+  </joint>
+  <joint name="Rigid 33" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.079811 -0.1 0.052597" />
+    <parent link="base_link" />
+    <child link="car_stand_v2__2__1" />
+  </joint>
+  <joint name="Rigid 34" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.073612 0.0 -0.03501" />
+    <parent link="car_stand_v2__2__1" />
+    <child link="car_stand_2_v2_v1__2__1" />
+  </joint>
+  <joint name="wheel_1_joint" type="continuous">
+    <origin rpy="0 0 0" xyz="-0.064773 -0.005 -0.043849" />
+    <parent link="car_stand_v2__2__1" />
+    <child link="new_wheel_v1__2__1" />
+    <axis xyz="0.0 -1.0 -0.0" />
+  </joint>
+  <joint name="Rigid 36" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.095811 0.1 0.052597" />
+    <parent link="base_link" />
+    <child link="car_stand_v2__2___1__1" />
+  </joint>
+  <joint name="Rigid 37" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.057612 0.0 -0.03501" />
+    <parent link="car_stand_v2__2___1__1" />
+    <child link="car_stand_2_v2_v1__2___1__1" />
+  </joint>
+  <joint name="wheel_3_joint" type="continuous">
+    <origin rpy="0 0 0" xyz="-0.048773 0.005 -0.043849" />
+    <parent link="car_stand_v2__2___1__1" />
+    <child link="new_wheel_v1__2___1__1" />
+    <axis xyz="-0.0 1.0 0.0" />
+  </joint>
+  <joint name="arm_1_joint" type="continuous">
+    <origin rpy="3.14159265 1.04719755 -3.14159265" xyz="-0.007312 -0.01975 0.027605" />
+    <parent link="new_motor_v2_1" />
+    <child link="big_U_self_v2_1" />
+    <axis xyz="0.0 -1.0 0.0" />
+  </joint>
+  <joint name="Rigid 42" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.04 0.0 -1.5e-05" />
+    <parent link="big_U_self_v2_1" />
+    <child link="small_U_self_v3_v2_1" />
+  </joint>
+  <joint name="Rigid 43" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.027503 -0.02025 0.00749" />
+    <parent link="small_U_self_v3_v2_1" />
+    <child link="new_motor_v2__1__1" />
+  </joint>
+  <joint name="arm_2_joint" type="continuous">
+    <origin rpy="0 0.523598776 0" xyz="-0.012497 0.01975 -0.007504" />
+    <parent link="new_motor_v2__1__1" />
+    <child link="big_U_self_v2__1__1" />
+    <axis xyz="0.0 -1.0 -0.0" />
+  </joint>
+  <joint name="Rigid 45" type="fixed">
+    <origin rpy="0 0 0" xyz="-1.5e-05 0.0 0.04" />
+    <parent link="big_U_self_v2__1__1" />
+    <child link="grap_base_v1_1" />
+  </joint>
+  <joint name="gripper_joint" type="continuous">
+    <origin rpy="2.87979321 -0.00072739252 9.57630656e-05" xyz="-1.3e-05 0.0125 0.0355" />
+    <parent link="grap_base_v1_1" />
+    <child link="grap2_v2_1" />
+    <axis xyz="-1.0 -0.0 -0.00037" />
+  </joint>
+  <joint name="gripper_joint_2" type="continuous">
+    <origin rpy="-2.87979321 -0.00072739252 -9.57630656e-05" xyz="-1.3e-05 -0.0125 0.0355" />
+    <parent link="grap_base_v1_1" />
+    <child link="grap2_v2_Mirror__1" />
+    <axis xyz="1.0 0.0 0.00037" />
+  </joint>
+</robot>

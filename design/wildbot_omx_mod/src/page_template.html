@@ -1,0 +1,350 @@
+<title>Wildbot × OMX 改裝藍圖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: drafting-sheet review page. Title block on top, verdict table, then the live 3D model as the centre of gravity, evidence below. */
+:root{
+  --paper:#f2f4f3; --sheet:#ffffff; --ink:#18222c; --ink-2:#4a5866; --rule:#d5dcdf; --grid:#e6ebec;
+  --accent:#1f5fbf; --accent-soft:#e3ecfa;
+  --ok:#1d7a52; --ok-bg:#e1f2e9; --warn:#a8650b; --warn-bg:#fbefd9; --bad:#b3261e; --bad-bg:#fbe3e1; --todo:#5b5f97; --todo-bg:#e9e9f6;
+  --viewer-bg:#eef1f0;
+  --f-display:"IBM Plex Sans Condensed","Noto Sans TC",system-ui,sans-serif;
+  --f-body:"Noto Sans TC","IBM Plex Sans",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#11171c; --sheet:#182128; --ink:#e7edf0; --ink-2:#a3b1bb; --rule:#2c3a44; --grid:#22303a;
+  --accent:#7fb0ff; --accent-soft:#1d2d47;
+  --ok:#6fd3a2; --ok-bg:#163327; --warn:#f0b35c; --warn-bg:#3a2a12; --bad:#ff8f86; --bad-bg:#3d1c1a; --todo:#b3b6f0; --todo-bg:#25264a;
+  --viewer-bg:#1c252c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#11171c; --sheet:#182128; --ink:#e7edf0; --ink-2:#a3b1bb; --rule:#2c3a44; --grid:#22303a;
+  --accent:#7fb0ff; --accent-soft:#1d2d47;
+  --ok:#6fd3a2; --ok-bg:#163327; --warn:#f0b35c; --warn-bg:#3a2a12; --bad:#ff8f86; --bad-bg:#3d1c1a; --todo:#b3b6f0; --todo-bg:#25264a;
+  --viewer-bg:#1c252c; color-scheme:dark}
+html,body{background:var(--paper);color:var(--ink)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.65;padding-inline:16px;padding-block:24px 64px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:28px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:clamp(26px,4vw,36px);font-weight:600;letter-spacing:.01em}
+h2{font-size:21px;font-weight:600;display:flex;gap:10px;align-items:baseline}
+h2 .tag{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);font-weight:400;letter-spacing:.06em}
+h3{font-size:16px;font-weight:600}
+p{margin:0;max-width:72ch}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+section{display:grid;gap:14px;min-width:0}
+.titleblock{display:grid;grid-template-columns:1fr auto;gap:18px;border:1.5px solid var(--ink);background:var(--sheet);padding:20px 22px}
+.titleblock .meta{display:grid;grid-template-columns:auto auto;gap:2px 14px;font-size:12.5px;align-content:start;border-left:1px solid var(--rule);padding-left:18px}
+.titleblock .meta dt{color:var(--ink-2);letter-spacing:.06em}
+.titleblock .meta dd{margin:0;font-family:var(--f-mono)}
+.lede{color:var(--ink-2);margin-top:8px}
+@media (max-width:720px){.titleblock{grid-template-columns:1fr}.titleblock .meta{border-left:0;padding-left:0;border-top:1px solid var(--rule);padding-top:10px}}
+.verdict{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:2px 9px;border-radius:999px;font-weight:500;white-space:nowrap}
+.chip::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.ok{color:var(--ok);background:var(--ok-bg)} .warn{color:var(--warn);background:var(--warn-bg)} .bad{color:var(--bad);background:var(--bad-bg)} .todo{color:var(--todo);background:var(--todo-bg)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--rule);background:var(--sheet)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:720px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--rule)}
+th{font-weight:500;color:var(--ink-2);font-size:12px;letter-spacing:.06em;background:var(--paper)}
+tr:last-child td{border-bottom:0}
+td .num{white-space:nowrap}
+.viewer{position:relative;background:var(--viewer-bg);border:1px solid var(--rule);aspect-ratio:1.5697;width:100%;max-width:100%;overflow:hidden;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+.viewer canvas{display:block;width:100%!important;height:100%!important}
+.hud{font-size:12px;color:var(--ink-2);margin-top:-6px;overflow-wrap:anywhere}
+.viewer .pick{position:absolute;right:10px;top:10px;max-width:min(320px,calc(100% - 20px));font-size:12.5px;background:var(--sheet);border:1px solid var(--rule);padding:8px 10px}
+.viewer .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink-2);font-size:13px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--rule);background:var(--sheet);flex-wrap:wrap}
+.seg button,.btn{font:inherit;font-size:13px;border:0;background:transparent;color:var(--ink);padding:6px 11px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--sheet)}
+.seg button:focus-visible,.btn:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+label.tg{display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+details.joints{border:1px solid var(--rule);background:var(--sheet);padding:8px 12px}
+details.joints summary{cursor:pointer;font-size:13px;color:var(--ink-2)}
+.sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px 18px;margin-top:8px}
+.sliders label{display:grid;grid-template-columns:5.5em 1fr 3.6em;gap:8px;align-items:center;font-size:12.5px}
+.sliders input{width:100%;min-width:0}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--ink-2)}
+.legend i{display:inline-block;width:11px;height:11px;margin-right:5px;vertical-align:-1px;border:1px solid #0002}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px}
+figure{margin:0;display:grid;gap:6px;min-width:0}
+figure img{width:100%;border:1px solid var(--rule);background:#f4f2ee}
+figcaption{font-size:12.5px;color:var(--ink-2)}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;font-size:13.5px}
+.kill{display:grid;gap:10px}
+.kill li{margin-left:1.1em}
+ul,ol{margin:0;padding-left:1.2em;display:grid;gap:4px}
+.small{font-size:12.5px;color:var(--ink-2)}
+.ev{font-size:12px;color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+
+<div class="wrap">
+<header class="titleblock">
+  <div>
+    <h1>Wildbot × OMX 改裝藍圖</h1>
+    <p class="lede">把實驗室 wildbot 改成「停車後用 OMX-F 撿地面垃圾」的平台。這頁回答一件事：照這個配置改，核心需求能不能同時成立。所有數字都是用 URDF 幾何跑出來的模擬結果，還沒上實車量過。</p>
+    <div class="verdict" id="verdict"></div>
+  </div>
+  <dl class="meta">
+    <dt>版本</dt><dd>v0.1 概念</dd>
+    <dt>日期</dt><dd>2026-10-03</dd>
+    <dt>車體</dt><dd>wildbot_car.urdf</dd>
+    <dt>手臂</dt><dd>omx_f.urdf</dd>
+    <dt>限位</dt><dd>sim/omx_constants.py</dd>
+    <dt>座標</dt><dd>地面 z=0，車頭 −x，右 +y</dd>
+  </dl>
+</header>
+
+<section>
+  <h2>可行性總表 <span class="tag">REQ → 判定</span></h2>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th style="width:15%">需求</th><th style="width:11%">判定</th><th style="width:34%">怎麼做</th><th>證據（模擬）</th></tr></thead>
+    <tbody id="reqs"></tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>概念圖 <span class="tag">示意 · 編號對應改裝清單</span></h2>
+  <figure><img src="renders/concept_sheet.png" alt="改裝後的 wildbot 立體示意圖，標出座板、OMX、垃圾袋撐環、D455 桅桿、光達、運算盒、配電盒、電源站與行車托塊"><figcaption>手臂在「夾正前方」姿態。盒狀零件是佔位尺寸。</figcaption></figure>
+</section>
+
+<section>
+  <h2>3D 模型 <span class="tag">拖曳旋轉 · 滾輪縮放 · 點零件看規格</span></h2>
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="手臂姿態" id="poses"></div>
+    <div class="seg" role="group" aria-label="視角" id="views">
+      <button type="button" data-view="orbit" aria-pressed="true">自由視角</button>
+      <button type="button" data-view="cam">D455 看到的畫面</button>
+      <button type="button" data-view="top">俯視</button>
+      <button type="button" data-view="side">側視</button>
+    </div>
+  </div>
+  <div class="toolbar">
+    <label class="tg"><input type="checkbox" id="tg-reach" checked> 地面可夾範圍</label>
+    <label class="tg"><input type="checkbox" id="tg-mods" checked> 改裝件</label>
+    <label class="tg"><input type="checkbox" id="tg-removed"> 顯示拆除件（紅）</label>
+    <label class="tg"><input type="checkbox" id="tg-fov" checked> 相機視錐</label>
+  </div>
+  <div class="viewer" id="viewer"><div class="loading" id="loading">載入模型中…</div><div class="pick" id="pick" hidden></div></div>
+  <div class="hud mono" id="hud"></div>
+  <div class="legend">
+    <span><i style="background:#1f8a70"></i>可夾（夾爪近垂直）</span><span><i style="background:#7fc8a9"></i>可夾（斜夾 45–75°）</span><span><i style="background:#e8a33d"></i>幾何可達但會撞車</span>
+    <span><i style="background:#b0b4ba"></i>鋁件</span><span><i style="background:#f0962a"></i>3D 列印件</span><span><i style="background:#2e8c5a"></i>運算</span><span><i style="background:#dc463c"></i>電源</span><span><i style="background:#9650c8"></i>IMU</span>
+  </div>
+  <details class="joints"><summary>手動調關節（不做碰撞檢查，只用來看姿態）</summary><div class="sliders" id="sliders"></div></details>
+</section>
+
+<section>
+  <h2>相機看到什麼 <span class="tag">D455 RGB 90°×65°</span></h2>
+  <div class="grid3">
+    <figure><img src="renders/campov_grasp_front.png" alt="D455 視角，手臂夾正前方地面"><figcaption>夾正前方（38 cm）。手臂佔畫面 <span class="num" id="af-front"></span></figcaption></figure>
+    <figure><img src="renders/campov_grasp_right.png" alt="D455 視角，手臂夾左前方"><figcaption>夾左前方。手臂佔畫面 <span class="num" id="af-right"></span></figcaption></figure>
+    <figure><img src="renders/campov_bag.png" alt="D455 視角，手臂投放到垃圾袋"><figcaption>投放進垃圾袋。手臂佔畫面 <span class="num" id="af-bag"></span></figcaption></figure>
+  </div>
+  <p class="note" id="cam-note"></p>
+  <h3>相機位置的取捨</h3>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>方案</th><th>可夾面積</th><th>可夾區在視野內</th><th>實際看得到（手臂收納）</th><th>不算手臂</th><th>最遠處解析度（640 寬）</th><th>斜撐以上懸臂</th></tr></thead>
+    <tbody id="camalt"></tbody>
+  </table></div>
+  <p class="small">看不到的部分集中在前伸座板正前方約 8 cm 的地面帶，是座板本身擋住的。相機越高越往前，盲區越小，但桅桿越長越晃，往前放也會吃掉一點左側工作空間。最後一段靠腕上相機補。</p>
+</section>
+
+<section>
+  <h2>地面可夾範圍 <span class="tag">物體中心高 3 cm · 1.5° 取樣 · 含車體碰撞</span></h2>
+  <div class="grid2">
+    <figure><img src="renders/reach_map.png" alt="俯視圖，綠色為可夾範圍，紅叉為第三視角看不到的格子"><figcaption>綠色格子是手臂能用夾爪往下夾到、且不撞車體的地面。紅叉是 D455 在手臂收納時被擋住的格子。</figcaption></figure>
+    <div style="display:grid;gap:12px;align-content:start;min-width:0">
+      <h3>手臂座為什麼要外伸</h3>
+      <div class="tbl-wrap"><table style="min-width:420px">
+        <thead><tr><th>手臂座位置</th><th>地面可夾</th><th>近垂直</th><th>正前方可夾帶</th></tr></thead>
+        <tbody id="mounts"></tbody>
+      </table></div>
+      <p class="small">底座放在甲板上時，前輪和底盤擋在手臂和地面之間，幾乎夾不到地面。座板外伸 12 cm 是本案。再下沉 5 cm 面積多約兩成，但投放到垃圾袋要更斜的姿態，座板也要做成階梯，先不採用。表中數字用 3 cm 格點估算，和左圖（2 cm 格點）略有差異。</p>
+      <h3>代表姿態</h3>
+      <div class="tbl-wrap"><table style="min-width:420px">
+        <thead><tr><th>姿態</th><th>J1–J4（°）</th><th>夾爪俯角</th><th>碰撞</th></tr></thead>
+        <tbody id="posetbl"></tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>改裝清單 <span class="tag">BOM 概念版 · 尺寸 mm</span></h2>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>#</th><th>零件</th><th>規格／尺寸</th><th>位置</th><th>為什麼這樣放</th></tr></thead>
+    <tbody id="bom"></tbody>
+  </table></div>
+  <h3>拆除</h3>
+  <ul>
+    <li>車頂 A 字斜架（upper_silver）。騰出後半甲板給運算盒、配電盒和光達。若想省工，它也可以留著當相機桅桿的底座，但相機會變成在正後方，被手臂擋的機率較高。</li>
+    <li>原車前方的二軸小手臂與夾爪（Side_U_Bracket、兩顆馬達、U 型件、夾爪共 9 件）。它的位置正好是 OMX 座板要用的地方。</li>
+    <li>保留：底盤、四輪、藍色甲板（當作所有改裝件的安裝面）。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>放棄條件與檢查點 <span class="tag">KILL CRITERIA</span></h2>
+  <div class="grid2">
+    <div class="kill">
+      <h3>出現這些就停，換路</h3>
+      <ul>
+        <li>實車量到的甲板高度或前輪位置和 URDF 差超過 2 cm，正前方可夾帶會整段移位。先量再加工。</li>
+        <li>座板外伸後，手臂全速擺動時座板前緣上下晃超過 3 mm（貼一張 ArUco 用 D455 量）。代表需要改階梯座或加第二組肋。</li>
+        <li>wildbot 原廠載重（未查到）小於約 10 kg。改裝件估重已到 <span class="num" id="payload"></span> kg，電源站獨佔 4.2 kg。改用小顆 12 V 電池，放棄 AC 插孔。</li>
+        <li>夾 30 次正前方物體，第三視角畫面裡物體被座板或手臂擋住而 ACT 成功率明顯低於桌面基準。加第二台相機（右側），或接受更高的桅桿。</li>
+        <li>垃圾袋擺動碰到前輪（設計間隙約 17 mm）。改成硬殼小桶加袋。</li>
+      </ul>
+    </div>
+    <div class="kill">
+      <h3>檢查點</h3>
+      <ol>
+        <li><b>不加工先驗證：</b>用現有 C 形夾把 OMX 和一塊木板臨時固定成座板外伸 12 cm，量可夾帶的前後緣是不是落在前輪外約 9–30 cm。</li>
+        <li><b>相機：</b>用現有魔術手臂把 D455 先夾在左前角 70 cm 高，錄 10 段，確認畫面和本頁模擬圖一致後才做 2020 桅桿。</li>
+        <li><b>電源：</b>實量 OMX＋Jetson＋D455＋光達同時運作的電流，再決定電源站或電池。</li>
+        <li><b>交付前：</b>照現在進度，交付那天是「車停好→夾一個罐子→丟進袋子」一次成功的影片就夠，光達與 IMU 可以只裝不跑。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>假設與還沒驗證的 <span class="tag">ASSUMPTIONS</span></h2>
+  <ul class="small" style="font-size:13.5px;color:var(--ink)">
+    <li>車體尺寸全部取自 wildbot_car.urdf，沒有實車量測。地面高度以輪子最低點為 0。</li>
+    <li>OMX 關節限位用 sim/omx_constants.py 的原廠值（J2、J3 −120…90°，J4 ±100°）。J1 方向正負號在專案裡仍標為未確認，本頁只用到幾何，不受影響。</li>
+    <li>夾取點（TCP）用 link5 前方 8 cm（柏宇 9/21 實測）。物體中心高設 3 cm，相當於躺著的鋁罐。</li>
+    <li>碰撞只檢查手臂和車體、改裝件、地面。沒有檢查手臂自撞、線材和垃圾袋（軟）。</li>
+    <li>相機只算 RGB 幾何視野，沒算曝光、陽光、晃動。解析度以 640 寬估算。</li>
+    <li>零件盒子（運算盒、配電盒、電源站）是佔位尺寸，不是型號外型。C300 有 AC 插孔、C300 DC 沒有，買之前要確認型號。</li>
+    <li>wildbot 已送廠加裝 IMU（hardware.md 8/31）。若廠商裝好了就沿用，本頁的 IMU 位置是備案。</li>
+  </ul>
+  <p class="small">產生方式：<span class="mono">design/wildbot_omx_mod/src/</span> 下的 Python 腳本（參數集中在 design.py 的 P），改參數後重跑 run_all.py 就會重算所有數字與圖。</p>
+</section>
+</div>
+
+<script type="importmap">{"imports":{"three":"./lib/three/build/three.module.min.js","three/addons/":"./lib/three/examples/jsm/"}}</script>
+<script>window.DATA=__DATA__;</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const D=window.DATA, R=D.results;
+const $=s=>document.querySelector(s);
+const pct=v=>(v*100).toFixed(0)+'%';
+// ---------- tables ----------
+const chip=(k,t)=>`<span class="chip ${k}">${t}</span>`;
+$('#verdict').innerHTML=D.reqs.map(r=>chip(r.k,r.name)).join('');
+$('#reqs').innerHTML=D.reqs.map(r=>`<tr><td><b>${r.name}</b></td><td>${chip(r.k,r.label)}</td><td>${r.how}</td><td>${r.ev}</td></tr>`).join('');
+$('#bom').innerHTML=D.bom.map((b,i)=>`<tr><td class="num">${i+1}</td><td><b>${b[0]}</b></td><td>${b[1]}</td><td>${b[2]}</td><td>${b[3]}</td></tr>`).join('');
+$('#mounts').innerHTML=D.mounts.map(m=>`<tr><td>${m[0]}</td><td class="num">${m[1]} cm²</td><td class="num">${m[2]} cm²</td><td>${m[3]}</td></tr>`).join('');
+const PN={stow:'行車收納',grasp_front:'夾正前方',grasp_left:'夾右前方',grasp_right:'夾左前方',grasp_near:'夾最近點',bag_drop:'投放垃圾袋'};
+$('#posetbl').innerHTML=Object.entries(R.poses).map(([k,p])=>`<tr><td>${PN[k]||k}</td><td class="num">${['joint1','joint2','joint3','joint4'].map(j=>p.deg[j].toFixed(0)).join(' / ')}</td><td class="num">${p.pitch==null||isNaN(p.pitch)?'—':p.pitch.toFixed(0)+'°'}</td><td>${p.collisions.length?chip('bad','有'):chip('ok','無')}</td></tr>`).join('');
+$('#camalt').innerHTML=Object.entries(D.camalt).map(([k,v])=>`<tr><td>${k}</td><td class="num">${v.reach_cm2}</td><td class="num">${pct(v.in_fov)}</td><td class="num">${pct(v.visible_stow)}</td><td class="num">${pct(v.visible_no_arm)}</td><td class="num">${v.far_px_per_cm} px/cm</td><td class="num">${(v.mast_free_len_m*100).toFixed(0)} cm</td></tr>`).join('');
+const af=R.camera.arm_pixel_fraction;
+$('#af-front').textContent=pct(af.grasp_front);$('#af-right').textContent=pct(af.grasp_right);$('#af-bag').textContent=pct(af.bag_drop);
+$('#cam-note').textContent=`可夾區 ${pct(R.camera.coverage_in_fov)} 落在畫面內，手臂在任何測試姿態最多只佔畫面 ${pct(Math.max(...Object.values(af)))}。手臂收納時實際看得到 ${pct(R.camera.coverage_visible)} 的可夾地面。最遠的可夾點離相機 ${R.camera.far_dist_m} m，一個 6.6 cm 鋁罐在 640 寬的畫面上約 ${(6.6*R.camera.far_px_per_cm_at640).toFixed(0)} px 寬。`;
+$('#payload').textContent=R.mass.payload_total;
+// ---------- viewer ----------
+const box=$('#viewer');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;box.prepend(renderer.domElement);
+const scene=new THREE.Scene();THREE.Object3D.DEFAULT_UP.set(0,0,1);
+scene.add(new THREE.HemisphereLight(0xffffff,0x9a9a90,2.0));
+const sun=new THREE.DirectionalLight(0xffffff,1.6);sun.position.set(-0.8,-1.2,2.5);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-1,right:1,top:1,bottom:-1});scene.add(sun);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(4,4),new THREE.ShadowMaterial({opacity:.16}));ground.receiveShadow=true;scene.add(ground);
+const persp=new THREE.PerspectiveCamera(32,1.5697,0.01,20);persp.up.set(0,0,1);persp.position.set(-1.45,-1.3,1.15);
+const ortho=new THREE.OrthographicCamera(-0.45*1.5697,0.45*1.5697,0.45,-0.45,0.01,20);ortho.up.set(0,0,1);
+const camcam=new THREE.PerspectiveCamera(65,1.5697,0.01,20);camcam.up.set(0,0,1);
+const cp=R.camera.pos,ct=R.camera.target;camcam.position.set(...cp);camcam.lookAt(...ct);
+let active=persp;
+const controls=new OrbitControls(persp,renderer.domElement);controls.target.set(-0.02,0,0.3);controls.enableDamping=true;controls.update();
+// reach overlay
+const g=D.grid, cell=new THREE.PlaneGeometry(0.019,0.019);
+const cnt=g.cells.length, inst=new THREE.InstancedMesh(cell,new THREE.MeshBasicMaterial({transparent:true,opacity:.75,depthWrite:false}),cnt);
+const m4=new THREE.Matrix4(),col=new THREE.Color();
+g.cells.forEach(([x,y,v],i)=>{m4.makeTranslation(x,y,0.0015);inst.setMatrixAt(i,m4);col.set(v===-2?'#e8a33d':v>=75?'#1f8a70':'#7fc8a9');inst.setColorAt(i,col)});
+scene.add(inst);
+// camera frustum
+const fr=new THREE.Group();{const hf=Math.tan(45*Math.PI/180),vf=Math.tan(32.5*Math.PI/180),L=0.35;
+ const pts=[[1,1],[1,-1],[-1,-1],[-1,1]].map(([u,v])=>new THREE.Vector3(-u*hf*L,v*vf*L,L));
+ const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),pts[0],new THREE.Vector3(),pts[1],new THREE.Vector3(),pts[2],new THREE.Vector3(),pts[3],pts[0],pts[1],pts[1],pts[2],pts[2],pts[3],pts[3],pts[0]]);
+ fr.add(new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color:0x6b4fbb})));fr.position.set(...cp);fr.up.set(0,0,1);fr.lookAt(...ct);scene.add(fr);}
+// part info
+const INFO=D.partinfo;
+const loader=new GLTFLoader();
+const load=u=>new Promise((res,rej)=>loader.load(u,res,undefined,rej));
+const links={};
+const pickables=[];
+function prep(root){root.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.material.side=THREE.DoubleSide;
+  if(/trash_bag/.test(o.name)||/trash_bag/.test(o.parent?.name||'')){o.material=o.material.clone();o.material.transparent=true;o.material.opacity=.45;o.material.depthWrite=false}
+  pickables.push(o)}})}
+function nameOf(o){while(o&&!(o.name&&(/^(mod|wildbot|removed|link)/.test(o.name))))o=o.parent;return o?o.name:''}
+Promise.all([load("model/scene.json"),load("model/arm.json")]).then(([s,a])=>{
+  prep(s.scene);scene.add(s.scene);
+  s.scene.traverse(o=>{if(/^removed/.test(o.name)){o.visible=false;o.traverse(c=>{if(c.isMesh){c.material=new THREE.MeshStandardMaterial({color:0xdc3c3c,transparent:true,opacity:.55})}})}});
+  prep(a.scene);
+  const armRoot=new THREE.Group();scene.add(armRoot);
+  const found=[];a.scene.traverse(n=>{if(/^link\d$/.test(n.name))found.push(n)});found.forEach(n=>{links[n.name]=n;n.matrixAutoUpdate=false;armRoot.add(n)});
+  $('#loading').remove();setPose('stow');
+}).catch(e=>{$('#loading').textContent='模型載入失敗：'+e.message});
+const AX=D.params.arm_x,AZ=D.params.arm_z;
+const T=(x,y,z)=>new THREE.Matrix4().makeTranslation(x,y,z), Rz=a=>new THREE.Matrix4().makeRotationZ(a), Ry=a=>new THREE.Matrix4().makeRotationY(a), Rx=a=>new THREE.Matrix4().makeRotationX(a);
+let q={joint1:0,joint2:0,joint3:0,joint4:0,joint5:0};
+function fk(){const B=T(AX,0,AZ).multiply(Rz(Math.PI));
+  const L1=B.clone().multiply(T(-0.01125,0,0.034)).multiply(Rz(q.joint1));
+  const L2=L1.clone().multiply(T(0,0,0.0635)).multiply(Ry(q.joint2));
+  const L3=L2.clone().multiply(T(0.0415,0,0.11315)).multiply(Ry(q.joint3));
+  const L4=L3.clone().multiply(T(0.162,0,0)).multiply(Ry(q.joint4));
+  const L5=L4.clone().multiply(T(0.0287,0,0)).multiply(Rx(q.joint5));
+  const L6=L5.clone().multiply(T(0.0295,0.0075,0)), L7=L5.clone().multiply(T(0.0295,-0.0108,0));
+  const M={link0:B,link1:L1,link2:L2,link3:L3,link4:L4,link5:L5,link6:L6,link7:L7};
+  for(const k in M){if(links[k]){links[k].matrix.copy(M[k]);links[k].matrixWorldNeedsUpdate=true}}
+  const tcp=new THREE.Vector3(0.08,-0.00165,0).applyMatrix4(L5);
+  $('#hud').textContent=`J1 ${deg(q.joint1)}°  J2 ${deg(q.joint2)}°  J3 ${deg(q.joint3)}°  J4 ${deg(q.joint4)}°   夾取點 x ${tcp.x.toFixed(3)}  y ${tcp.y.toFixed(3)}  z ${tcp.z.toFixed(3)} m`;}
+const deg=r=>(r*180/Math.PI).toFixed(0);
+// sliders
+const LIM={joint1:[-270,360],joint2:[-120,90],joint3:[-120,90],joint4:[-100,100],joint5:[-270,270]};
+const JN={joint1:'J1 底座',joint2:'J2 肩',joint3:'J3 肘',joint4:'J4 腕俯仰',joint5:'J5 腕轉'};
+$('#sliders').innerHTML=Object.keys(LIM).map(j=>`<label for="s-${j}"><span>${JN[j]}</span><input type="range" id="s-${j}" min="${LIM[j][0]}" max="${LIM[j][1]}" step="1" value="0"><span class="num" id="v-${j}">0°</span></label>`).join('');
+Object.keys(LIM).forEach(j=>$('#s-'+j).addEventListener('input',e=>{q[j]=+e.target.value*Math.PI/180;$('#v-'+j).textContent=e.target.value+'°';fk();markPose(null)}));
+function syncSliders(){Object.keys(LIM).forEach(j=>{const v=Math.round(q[j]*180/Math.PI);$('#s-'+j).value=v;$('#v-'+j).textContent=v+'°'})}
+// poses
+const order=['stow','grasp_front','grasp_left','grasp_right','bag_drop'];
+$('#poses').innerHTML=order.map(k=>`<button type="button" data-pose="${k}" aria-pressed="false">${PN[k]}</button>`).join('');
+function markPose(k){document.querySelectorAll('#poses button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.pose===k))}
+function setPose(k){Object.assign(q,D.poses[k]);fk();syncSliders();markPose(k)}
+document.querySelectorAll('#poses button').forEach(b=>b.addEventListener('click',()=>setPose(b.dataset.pose)));
+// views
+function setView(v){document.querySelectorAll('#views button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===v));
+  controls.enabled=v==='orbit';fr.visible=$('#tg-fov').checked&&v!=='cam';
+  if(v==='orbit')active=persp;
+  if(v==='cam')active=camcam;
+  if(v==='top'){active=ortho;ortho.position.set(-0.05,0,3);ortho.up.set(-1,0,0);ortho.lookAt(-0.05,0,0)}
+  if(v==='side'){active=ortho;ortho.up.set(0,0,1);ortho.position.set(0,-3,0.33);ortho.lookAt(0,0,0.33)}
+  scene.traverse(o=>{if(o.name&&/camera_D455|wedge/.test(o.name))o.visible=v!=='cam'});}
+document.querySelectorAll('#views button').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+$('#tg-reach').addEventListener('change',e=>inst.visible=e.target.checked);
+$('#tg-fov').addEventListener('change',e=>fr.visible=e.target.checked);
+$('#tg-mods').addEventListener('change',e=>scene.traverse(o=>{if(/^mod/.test(o.name))o.visible=e.target.checked}));
+$('#tg-removed').addEventListener('change',e=>scene.traverse(o=>{if(/^removed/.test(o.name))o.visible=e.target.checked}));
+// picking
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let down=null;
+renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);
+renderer.domElement.addEventListener('pointerup',e=>{if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>4)return;
+  const r=renderer.domElement.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mouse,active);
+  const hit=ray.intersectObjects(pickables.filter(o=>{let p=o;while(p){if(!p.visible)return false;p=p.parent}return true}),false)[0];const pk=$('#pick');
+  if(!hit){pk.hidden=true;return}
+  const n=nameOf(hit.object);const key=Object.keys(INFO).find(k=>n.replace(/[^a-zA-Z0-9]/g,'').includes(k.replace(/[^a-zA-Z0-9]/g,'')));
+  pk.innerHTML=key?`<b>${INFO[key][0]}</b><br>${INFO[key][1]}`:`<b>${n.startsWith('link')?'OMX-F '+n:n.replace(/^wildbot/,'wildbot 原車 ')}</b>`;pk.hidden=false});
+function resize(){const w=box.clientWidth,h=box.clientHeight;renderer.setSize(w,h,false);[persp,camcam].forEach(c=>{c.aspect=w/h;c.updateProjectionMatrix()});
+  const k=0.45;ortho.left=-k*w/h;ortho.right=k*w/h;ortho.top=k;ortho.bottom=-k;ortho.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(box);resize();
+renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,active)});
+</script>

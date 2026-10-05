@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#f4f2ee}</style></head><body>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+const P=new URLSearchParams(location.search);
+const W=+P.get('w')||1200,H=+P.get('h')||800;
+const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setSize(W,H);r.setPixelRatio(1);
+r.shadowMap.enabled=true;document.body.appendChild(r.domElement);
+const s=new THREE.Scene();s.background=new THREE.Color(P.get('bg')||'#f4f2ee');
+s.add(new THREE.HemisphereLight(0xffffff,0x9a9a90,2.2));
+const d=new THREE.DirectionalLight(0xffffff,1.6);d.position.set(-0.8,-1.2,2.5);d.castShadow=true;d.shadow.mapSize.set(2048,2048);
+Object.assign(d.shadow.camera,{left:-1,right:1,top:1,bottom:-1});s.add(d);
+THREE.Object3D.DEFAULT_UP.set(0,0,1);
+const ortho=P.get('ortho');let cam;
+const pos=P.get('pos').split(',').map(Number),tgt=P.get('tgt').split(',').map(Number);
+if(ortho){const k=+ortho;cam=new THREE.OrthographicCamera(-k*W/H,k*W/H,k,-k,0.01,20);}else cam=new THREE.PerspectiveCamera(+P.get('fov')||35,W/H,0.01,20);
+cam.up.set(0,0,1);cam.position.set(...pos);cam.lookAt(...tgt);
+new GLTFLoader().load(P.get('glb'),g=>{const root=g.scene;
+ const hide=(P.get('hide')||'').split(',').filter(Boolean);
+ root.traverse(o=>{if(hide.some(h=>o.name.includes(h)))o.visible=false; if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material){o.material.side=THREE.DoubleSide;}}});
+ s.add(root);
+ const gp=new THREE.Mesh(new THREE.PlaneGeometry(4,4),new THREE.ShadowMaterial({opacity:0.18}));gp.position.z=+(P.get('gz')||0)+0.0005;gp.receiveShadow=true;s.add(gp);
+ if(P.get('grid')){const gr=new THREE.GridHelper(2,40,0xbbbbbb,0xdddddd);gr.rotation.x=Math.PI/2;gr.position.z=+(P.get('gz')||0)+0.001;s.add(gr);}
+ r.render(s,cam);document.title='done';});
+</script></body></html>
