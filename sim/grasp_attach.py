@@ -11,7 +11,8 @@ implementation 0.5-1 day" precisely because a decision has to exist before it ca
 **What "attach" means here, exactly:** while attached, every step, the object's world pose is
 forced to a fixed offset from the gripper TCP. 🔴 **2026-09-21: the TCP moved.** It used to be the
 midpoint of `link6`/`link7`'s body frames; those are the finger PIVOTS, 2.95 cm from link5, and the
-fingers actually touch 8 cm out (`omx_constants.TCP_IN_LINK5_M`, measured). Use `tcp_pose_w()`
+jaws close on an object 8.8 cm out (`omx_constants.TCP_IN_LINK5_M`, the CAD pinch point; it was a
+tape-measured 8.0 cm until 2026-09-29). Use `tcp_pose_w()`
 below -- it is the one definition, so the replay and the verifier cannot drift apart. The offset is
 computed once, at the instant of attach, from wherever the object actually is then. This is NOT a
 PhysX joint and it does not simulate contact, friction, or slip -- the object cannot be dropped or

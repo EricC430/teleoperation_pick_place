@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACT Policy Attention & Latent Diagnostic Inspector</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-badge">ACT DIAGNOSTICS</div>
+        <h1 class="brand-title">Attention Loss &amp; Layer Latent Visualizer</h1>
+      </div>
+      
+      <div class="header-controls">
+        <div class="load-section">
+          <label for="data-file-input" class="btn btn-secondary">
+            📂 Load Data JSON
+          </label>
+          <input type="file" id="data-file-input" accept=".json" style="display: none;">
+          <button id="btn-load-default" class="btn btn-primary">⚡ Load Phase B1 (Ep 0)</button>
+        </div>
+
+        <div class="model-info-badges">
+          <span class="badge badge-model" id="badge-checkpoint">Model: Loading...</span>
+          <span class="badge badge-dataset" id="badge-dataset">Dataset: --</span>
+          <span class="badge badge-episode" id="badge-episode">Ep: 0</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="workspace-grid">
+      <!-- Left & Center: Dual Cameras + Overlays -->
+      <section class="camera-section card">
+        <div class="section-toolbar">
+          <div class="toolbar-group">
+            <span class="group-label">Attention Layer:</span>
+            <select id="select-attn-mode" class="select-input">
+              <optgroup label="Decoder Action Chunk Queries">
+                <option value="t0" selected>Query t=0 (Immediate Action Step)</option>
+                <option value="t10">Query t=10 (Approach Intent)</option>
+                <option value="t20">Query t=20 (Trajectory Mid-step)</option>
+                <option value="t50">Query t=50 (Grasp Phase Intent)</option>
+                <option value="chunk_avg">Chunk Average (All 100 Steps)</option>
+              </optgroup>
+              <optgroup label="Encoder Latent Norms">
+                <option value="layer_0">Layer 0 (Shallow Token Norm)</option>
+                <option value="layer_1">Layer 1 Token Norm</option>
+                <option value="layer_2">Layer 2 Token Norm</option>
+                <option value="layer_3">Layer 3 (Deep Token Norm)</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="toolbar-group">
+            <span class="group-label">Heatmap Opacity:</span>
+            <input type="range" id="slider-opacity" min="0" max="100" value="55" class="slider-input">
+            <span id="label-opacity" class="val-label">55%</span>
+          </div>
+
+          <div class="toolbar-group">
+            <button id="btn-toggle-roi" class="btn btn-outline">✏️ Draw ROI (Target Box)</button>
+            <button id="btn-interpolate-roi" class="btn btn-outline" title="Interpolate keyframes across all frames">⚡ Interpolate ROI</button>
+            <button id="btn-clear-roi" class="btn btn-ghost" title="Clear ROI boxes">✖ Clear</button>
+          </div>
+        </div>
+
+        <!-- Cameras Display Row -->
+        <div class="cameras-row">
+          <!-- Front-Left Camera -->
+          <div class="camera-card" id="card-front-left">
+            <div class="card-header">
+              <span class="camera-title">🎥 Third-Person Camera (Front-Left, 480×848)</span>
+              <span class="camera-roi-badge" id="badge-roi-front">No ROI Set</span>
+            </div>
+            <div class="canvas-viewport" id="viewport-front">
+              <canvas id="canvas-front-img" width="848" height="480"></canvas>
+              <canvas id="canvas-front-overlay" width="848" height="480"></canvas>
+              <canvas id="canvas-front-roi" width="848" height="480"></canvas>
+              <div class="canvas-crosshair" id="crosshair-front"></div>
+            </div>
+            <div class="camera-footer">
+              <div class="aotr-stat">
+                <span class="stat-label">Front-Left AoTR:</span>
+                <span class="stat-value" id="val-aotr-front">--%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wrist Camera -->
+          <div class="camera-card" id="card-wrist">
+            <div class="card-header">
+              <span class="camera-title">🦾 Wrist Camera (Ego-View, 480×640)</span>
+              <span class="camera-roi-badge" id="badge-roi-wrist">No ROI Set</span>
+            </div>
+            <div class="canvas-viewport" id="viewport-wrist">
+              <canvas id="canvas-wrist-img" width="640" height="480"></canvas>
+              <canvas id="canvas-wrist-overlay" width="640" height="480"></canvas>
+              <canvas id="canvas-wrist-roi" width="640" height="480"></canvas>
+              <div class="canvas-crosshair" id="crosshair-wrist"></div>
+            </div>
+            <div class="camera-footer">
+              <div class="aotr-stat">
+                <span class="stat-label">Wrist AoTR:</span>
+                <span class="stat-value" id="val-aotr-wrist">--%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Playback Controller Bar -->
+        <div class="playback-bar">
+          <div class="playback-controls">
+            <button id="btn-step-prev" class="btn btn-icon" title="Previous Frame (Left Arrow)">⏮</button>
+            <button id="btn-play-pause" class="btn btn-icon btn-accent" title="Play / Pause (Space)">▶</button>
+            <button id="btn-step-next" class="btn btn-icon" title="Next Frame (Right Arrow)">⏭</button>
+            <div class="time-display">
+              <span id="txt-frame-counter" class="mono">Frame 0 / 0</span>
+              <span id="txt-time-counter" class="mono text-muted">(0.00s)</span>
+            </div>
+          </div>
+
+          <div class="scrubber-wrapper">
+            <input type="range" id="timeline-scrubber" min="0" max="0" value="0" class="timeline-slider">
+            <div id="timeline-markers" class="timeline-markers"></div>
+          </div>
+
+          <div class="playback-options">
+            <label for="select-fps" class="text-muted">FPS:</label>
+            <select id="select-fps" class="select-input select-sm">
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="15" selected>15</option>
+              <option value="30">30</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Action Trajectories & Error Diagnosis -->
+      <aside class="sidebar-section card">
+        <div class="sidebar-header">
+          <h2>Joint Trajectories &amp; Action Output</h2>
+          <span class="status-indicator live" id="status-live-indicator">Synced</span>
+        </div>
+
+        <div class="trajectory-chart-container">
+          <canvas id="canvas-trajectories" width="450" height="260"></canvas>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-color gt"></span> Ground Truth (Human)</span>
+            <span class="legend-item"><span class="legend-color pred"></span> ACT Prediction</span>
+          </div>
+        </div>
+
+        <!-- Joint Value Readout Table -->
+        <div class="joint-table-wrapper">
+          <table class="joint-table" id="table-joints">
+            <thead>
+              <tr>
+                <th>Joint</th>
+                <th>GT</th>
+                <th>Pred</th>
+                <th>Diff</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-joints">
+              <tr><td colspan="4" class="text-center text-muted">No episode loaded</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Real-time Diagnosis Card -->
+        <div class="diagnosis-card" id="card-alert-box">
+          <div class="alert-icon" id="alert-icon">🔍</div>
+          <div class="alert-content">
+            <div class="alert-title" id="alert-title">Visual Status: Normal</div>
+            <div class="alert-desc" id="alert-desc">Draw a target ROI box on the paper cup to begin Attention on Target Ratio (AoTR) tracking.</div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Bottom: Deep Diagnostic Tabs -->
+    <footer class="bottom-diagnostics card">
+      <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="tab-aotr">🎯 AoTR Attention Lost Timeline</button>
+        <button class="tab-btn" data-tab="tab-latents">🧬 Layer 1~4 Latent Progression</button>
+        <button class="tab-btn" data-tab="tab-chunk">⏱️ 100-step Action Chunk Preview</button>
+        <button class="tab-btn" data-tab="tab-help">💡 How to Diagnose Failure</button>
+      </div>
+
+      <div class="tabs-content">
+        <!-- Tab 1: AoTR Timeline -->
+        <div class="tab-pane active" id="tab-aotr">
+          <div class="aotr-panel">
+            <div class="aotr-chart-wrapper">
+              <canvas id="canvas-aotr-timeline" width="1200" height="180"></canvas>
+            </div>
+            <div class="aotr-summary">
+              <div class="metric-box">
+                <span class="m-label">Mean AoTR (Front-Left)</span>
+                <span class="m-val" id="val-mean-aotr-front">--%</span>
+              </div>
+              <div class="metric-box">
+                <span class="m-label">Mean AoTR (Wrist)</span>
+                <span class="m-val" id="val-mean-aotr-wrist">--%</span>
+              </div>
+              <div class="metric-box warning">
+                <span class="m-label">Attention Drop Frames</span>
+                <span class="m-val" id="val-lost-frame-count">0 frames</span>
+              </div>
+              <div class="metric-box">
+                <button id="btn-jump-first-lost" class="btn btn-danger btn-sm" disabled>Jump to Lost Frame</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Latent Layer Breakdown -->
+        <div class="tab-pane" id="tab-latents">
+          <div class="latents-panel">
+            <div class="latent-layer-card" id="latent-card-l0">
+              <div class="l-title">Layer 0 (Input Token)</div>
+              <div class="l-metric">Norm: <span id="val-l0-norm">--</span></div>
+              <div class="l-metric">CosSim: <span class="mono">1.00 (Base)</span></div>
+              <div class="l-bar"><div class="l-bar-fill" id="bar-l0" style="width: 50%;"></div></div>
+            </div>
+            <div class="latent-layer-card" id="latent-card-l1">
+              <div class="l-title">Layer 1 (Shallow Semantic)</div>
+              <div class="l-metric">Norm: <span id="val-l1-norm">--</span></div>
+              <div class="l-metric">CosSim: <span id="val-l1-cossim" class="mono">--</span></div>
+              <div class="l-bar"><div class="l-bar-fill" id="bar-l1" style="width: 50%;"></div></div>
+            </div>
+            <div class="latent-layer-card" id="latent-card-l2">
+              <div class="l-title">Layer 2 (Feature Refinement)</div>
+              <div class="l-metric">Norm: <span id="val-l2-norm">--</span></div>
+              <div class="l-metric">CosSim: <span id="val-l2-cossim" class="mono">--</span></div>
+              <div class="l-bar"><div class="l-bar-fill" id="bar-l2" style="width: 50%;"></div></div>
+            </div>
+            <div class="latent-layer-card" id="latent-card-l3">
+              <div class="l-title">Layer 3 (Deep Decoder Input)</div>
+              <div class="l-metric">Norm: <span id="val-l3-norm">--</span></div>
+              <div class="l-metric">CosSim: <span id="val-l3-cossim" class="mono">--</span></div>
+              <div class="l-bar"><div class="l-bar-fill" id="bar-l3" style="width: 50%;"></div></div>
+            </div>
+          </div>
+          <div class="latent-entropy-row">
+            <span class="entropy-title">Encoder Self-Attention Entropy (Focus vs Diffusion):</span>
+            <div class="entropy-badges" id="entropy-badges-container">
+              <span class="badge" id="badge-ent-l0">L0: --</span>
+              <span class="badge" id="badge-ent-l1">L1: --</span>
+              <span class="badge" id="badge-ent-l2">L2: --</span>
+              <span class="badge" id="badge-ent-l3">L3: --</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Action Chunk Preview -->
+        <div class="tab-pane" id="tab-chunk">
+          <div class="chunk-panel">
+            <canvas id="canvas-chunk-rollout" width="1200" height="180"></canvas>
+          </div>
+        </div>
+
+        <!-- Tab 4: Help & Diagnosis Manual -->
+        <div class="tab-pane" id="tab-help">
+          <div class="help-panel">
+            <h3>📖 如何診斷 ACT 模型為何失誤？</h3>
+            <ol>
+              <li><strong>檢查目標注意力集中度（AoTR）</strong>：點擊「✏️ Draw ROI」在第 0 幀以滑鼠框選紙杯，再跳至接觸幀框選一次，點擊「⚡ Interpolate ROI」。觀察下方曲線何時跌破 30%（紅色標記）。若接近物體時 AoTR 急遽下滑，表示模型目光被機械手臂陰影或桌面邊緣吸引。</li>
+              <li><strong>拆解 Layer Latent 特徵流動</strong>：切換至「🧬 Layer 1~4 Latent Progression」。如果 Layer 1~2 的 Cosine 相似度很高但在 Layer 3 劇烈下降，或 Layer 3 的 Attention 呈現擴散（Entropy 偏高），代表模型在深層推論時遺失了目標物空間位置。</li>
+              <li><strong>觀察 Action Chunk 未來意圖</strong>：在頂部切換「Query t=0」與「Query t=20 / t=50」。若即時動作看著杯子，但 t=50 的注意力偏離到桌面其他地方，說明模型預測的軌跡意圖本身已有先天的方向偏差。</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

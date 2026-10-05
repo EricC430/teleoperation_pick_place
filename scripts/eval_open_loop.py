@@ -8,6 +8,7 @@ Computes per-joint L1 MAE and MSE, and generates visual comparison trajectory pl
 """
 
 import argparse
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -18,6 +19,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from lerobot.configs.policies import PreTrainedConfig
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 from lerobot.policies.factory import get_policy_class, make_pre_post_processors
 
@@ -63,6 +65,14 @@ def parse_args():
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
         help="Device to run inference on (cuda / cpu).",
+    )
+    parser.add_argument(
+        "--n_action_steps",
+        type=int,
+        default=None,
+        help="Re-query the policy every N frames instead of the checkpoint's own value (ACT: 100 = "
+        "chunk_size). Must be <= chunk_size (ACT) / horizon - n_obs_steps + 1 (Diffusion). "
+        "Changes what the MAE measures -- runs with different values are not the same metric.",
     )
     parser.add_argument(
         "--save_plot_dir",
@@ -138,6 +148,9 @@ def main():
             save_plot_dir = run_root / "eval_plots"
         else:
             save_plot_dir = checkpoint_path.parent / "eval_plots"
+        # Keep an override run from overwriting the default run's metrics.json in the same dir.
+        if args.n_action_steps is not None:
+            save_plot_dir = save_plot_dir.with_name(f"{save_plot_dir.name}_nas{args.n_action_steps}")
 
     if args.policy_type:
         policy_type = args.policy_type
@@ -148,7 +161,23 @@ def main():
 
     policy_cls = get_policy_class(policy_type)
     logging.info(f"Loading {policy_cls.__name__} from {checkpoint_path} on {args.device}...")
-    policy = policy_cls.from_pretrained(str(checkpoint_path))
+    # Override on the config BEFORE the policy is built, not on policy.config afterwards: the
+    # config's __post_init__ checks don't re-run on attribute assignment, so they're repeated here.
+    policy_cfg = PreTrainedConfig.from_pretrained(str(checkpoint_path))
+    if args.n_action_steps is not None:
+        max_steps = (
+            policy_cfg.horizon - policy_cfg.n_obs_steps + 1
+            if hasattr(policy_cfg, "horizon")
+            else policy_cfg.chunk_size
+        )
+        if not 1 <= args.n_action_steps <= max_steps:
+            raise ValueError(f"--n_action_steps must be in [1, {max_steps}], got {args.n_action_steps}")
+        if getattr(policy_cfg, "temporal_ensemble_coeff", None) is not None and args.n_action_steps != 1:
+            raise ValueError("temporal ensembling requires n_action_steps == 1")
+        logging.info(f"Overriding n_action_steps: {policy_cfg.n_action_steps} -> {args.n_action_steps}")
+        policy_cfg.n_action_steps = args.n_action_steps
+    n_action_steps = policy_cfg.n_action_steps
+    policy = policy_cls.from_pretrained(str(checkpoint_path), config=policy_cfg)
     policy.eval()
     policy.to(args.device)
 
@@ -253,7 +282,7 @@ def main():
                 save_dir=save_plot_dir,
                 fps=fps,
                 dataset_label=f"{args.dataset_repo_id} Open-Loop Evaluation",
-                pred_label=f"{policy_type.upper()} Prediction",
+                pred_label=f"{policy_type.upper()} Prediction (re-query every {n_action_steps})",
             )
             saved_plots.append(plot_file)
 
@@ -270,9 +299,15 @@ def main():
     # Machine-readable copy of everything printed above, so runs can be compared later
     # (scripts/compare_open_loop.py) without scraping console logs.
     save_plot_dir.mkdir(parents=True, exist_ok=True)
+    # Join key into docs/models.md: the same weights live under a local run dir, a Hub repo and a
+    # Hub branch, and only the hash says they're the same model.
+    weights_sha256 = hashlib.sha256((checkpoint_path / "model.safetensors").read_bytes()).hexdigest()
     metrics = {
         "checkpoint": str(checkpoint_path),
+        "weights_sha256_12": weights_sha256[:12],
         "policy_type": policy_type,
+        "n_action_steps": int(n_action_steps),
+        "n_action_steps_overridden": args.n_action_steps is not None,
         "dataset_repo_id": args.dataset_repo_id,
         "dataset_root": args.dataset_root,
         "units": "LeRobot .pos (body RANGE_M100_100, gripper RANGE_0_100) -- not degrees",
@@ -294,6 +329,7 @@ def main():
     metrics_path = save_plot_dir / "metrics.json"
     metrics_path.write_text(json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8")
     print(colored(f"  Saved metrics to: {metrics_path}", "yellow"))
+    print(f"  Weights sha256[:12]: {weights_sha256[:12]}  (look up in docs/models.md)")
     print("=" * 50)
 
 
