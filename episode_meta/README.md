@@ -21,12 +21,13 @@ Without that, a dataset is 200 undifferentiated episodes and "the policy fails o
 an unanswerable question — the same failure mode `eval/` exists to prevent, one step earlier in the
 pipeline.
 
-## 🔴 `omx_pick_place_pilot_uvc_60` has no CSV yet — but its placements are known
+## `omx_pick_place_pilot_uvc_60` — placements follow `t1..t60` in order
 
 `[Eric說 2026-09-21]`: **uvc_60 was recorded walking `campA_136sym`'s `t1..t60` in order**, so
 episode *i* used short_id `t{i+1}` (episode 0 → `t1` → `train_001`). Nothing in the dataset records
-this, and there is no `episode_meta/omx_pick_place_pilot_uvc_60.csv` — until one exists, that
-mapping lives only here and in whoever remembers it.
+this. The annotations are in `episode_meta/omx_pick_place_pilot_uvc_60.csv` (60/60, `placement_id`
+= `t{i+1}` on every row) — until 2026-10-06 that file was named `omx_pick_place_pilot_paper_cup.csv`
+and saved as Big5, which is why this section used to say no CSV existed.
 
 Corroborated independently before being relied on (2026-09-21): for each episode, take the frame
 where the gripper starts closing, run `observation.state` through `reach_logger/fk.py`, and
@@ -35,18 +36,6 @@ correlate end-effector position against the claimed placement — **x r=+0.63, y
 right. The per-episode residual (p50 9 cm after removing a constant +10 cm offset) is big enough
 that this corroborates the **rule**, not any individual row — a re-recorded or aborted take would
 not show up in it.
-
-To write the CSV (one episode per call, since each row differs), after confirming no episode was
-re-shot out of order:
-
-```bash
-for i in $(seq 0 59); do
-  uv run python scripts/annotate_episodes.py \
-      --dataset ericc430/omx_pick_place_pilot_uvc_60 \
-      --root .cache/lerobot/omx_pick_place_pilot_uvc \
-      --set "placement_id=train_$(printf '%03d' $((i+1)))" --episodes "$i" --no-prompt
-done
-```
 
 `sim/replay_render_episode.py --place-from-episode` already applies the same rule directly.
 
