@@ -1,0 +1,38 @@
+# ACT on the aluminium-can 60, CORRECTED: `_fixed` (ep 49 = the re-recorded t50) minus the 4 failed demos.
+#
+# Same hyper-parameters as ericc430/act_omx_alcan60 (read off its train_config.json, 2026-09-19) --
+# the ONLY change is the data, so the two runs are directly comparable:
+#   act_omx_alcan60        ericc430/omx_pick_place_pilot_60_alcan_20260918_100719, all 60 episodes
+#                          (ep 49 misplaced, ep 8/18/22/46 failed -- docs/meeting/2026-09-18.md §1-1)
+#   this run               ericc430/omx_pick_place_pilot_60_alcan_fixed, 56 episodes
+#
+# Episodes are dropped HERE, not by rewriting the dataset, so `_fixed` keeps ep = t - 1.
+# Kept on purpose: ep 15/17/23/27/28/37/42/51 (failed-then-recovered = recovery data) and
+# ep 13/21/31 (object out of the third-person view -- still 🟡 pending in 2026-09-18.md §1-1).
+#
+# 2026-09-19 open-loop result that motivates checking the data: alcan60 reaches MAE 0.84 on its own
+# training episodes but ~8.0 on the eval-open placements at 20k/40k/100k alike
+# (outputs/open_loop_alcan_*alcan60/comparison.md). Cleaning 4/60 episodes is NOT expected to close
+# that gap [AI推論]; image_transforms (off here, as in alcan60) is the separate knob for that.
+#
+#   lerobot-train --config_path configs/train_omx_alcan60_fixed.yaml
+dataset:
+  repo_id: ericc430/omx_pick_place_pilot_60_alcan_fixed   # private
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_60_alcan_fixed
+  exclude_episodes: [8, 18, 22, 46]   # failed demos -> 56 of 60 remain (lerobot datasets/utils.py:107)
+  eval_split: 0.0
+policy:
+  type: act
+  push_to_hub: false
+output_dir: /workspace/data/train/alcan60_fixed
+job_name: act_omx_alcan60_fixed
+steps: 100000
+batch_size: 32
+save_freq: 20000
+eval_steps: 0
+log_freq: 50
+seed: 1000
+num_workers: 4
+wandb:
+  enable: true
+  project: teleoperation_pick_place
