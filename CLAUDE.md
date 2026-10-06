@@ -42,7 +42,7 @@
 | `docs/conventions.md` | commit / branch / tag 慣例 |
 | `docs/pipeline_validation.md` | 管線驗證資料的處理原則 |
 | `docs/exp_a3_recovery_ablation.md` | A3 recovery 消融實驗設計 |
-| `docs/meeting/` | 會議與現場工作紀錄（最新：`2026-09-29.md` open-loop × 推論間隔；最近一次老師會議 `2026-09-18.md`） |
+| `docs/meeting/` | 會議與現場工作紀錄（最新：`2026-10-06.md` 紙杯 100k 閉環 N=30 17/32 與依位置分組的開環 MAE；`2026-10-05.md` 閉環 N=30 起始姿勢偏移與 `--goto-home`；`2026-10-04.md` 寶特瓶 100k 開環 N=30；`2026-09-29.md` open-loop × 推論間隔；最近一次老師會議 `2026-09-18.md`） |
 | `eval/README.md` | 評估記錄規格（outcome/mechanism 兩軸） |
 | `docs/models.md` | 模型對照表：權重 hash ↔ 本機 run/step ↔ Hub repo ↔ 物品 ↔ 閉環用過哪次 |
 
