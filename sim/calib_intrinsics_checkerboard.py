@@ -14,11 +14,19 @@ Opens the camera at the SAME index/backend/resolution/fourcc as the given lerobo
 id on Windows (configs/teleoperate_omx.yaml's own warning) -- run `uv run lerobot-find-cameras
 opencv` first if unsure which index is the wrist camera today.
 
-🔴 The interactive capture loop (cv2.VideoCapture / imshow) has NOT been run against the real
-camera in the environment this was written in -- no camera attached here. The
-calibrateCamera/undistortPoints math below WAS self-tested against synthetic data (see the
-conversation this was written in). Run this on the lab machine and report back anything that
-breaks. `[AI推論，互動迴圈未實測]`
+🔴 **The board does not need to see the table, and the arm does not need any particular pose.**
+This calibrates the LENS, not the scene -- hold the board close to wherever the lens is actually
+pointing and move IT through different angles/distances/tilts. If the wrist camera's mount means
+it stares inward at the arm in its home pose, either jog the arm so it looks outward, or just chase
+the lens with the board from whatever angle it happens to be at -- both work equally.
+
+🔴 2026-10-06: real run on the lab Windows machine hit `cv2.error: ... highgui ... not
+implemented` from `cv2.imshow` (opencv-python-headless shadowing the GUI build, likely from the
+conda base env + .venv both being active) -- added an auto-capture fallback (see capture_loop)
+that needs no GUI. The calibrateCamera/undistortPoints math was self-tested against synthetic
+data; the capture loop itself (both the original interactive path and this new headless
+fallback) has now been exercised for real once, interactive path failed, fallback not yet
+confirmed working end to end -- report back if it still misbehaves.
 """
 
 from __future__ import annotations
@@ -26,6 +34,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import time
 from pathlib import Path
 
 import cv2
@@ -54,37 +63,76 @@ def object_points(cols: int, rows: int, square_mm: float) -> np.ndarray:
     return objp
 
 
-def capture_loop(cap, cols: int, rows: int, square_mm: float, n_captures: int):
+def capture_loop(cap, cols: int, rows: int, square_mm: float, n_captures: int, auto_interval_s: float = 2.5):
+    """Interactive (SPACE to capture) when cv2's highgui has a GUI backend; auto-capture on a
+    timer otherwise. Some opencv-python builds (notably opencv-python-headless, or a conda/.venv
+    mix shadowing the GUI-enabled wheel) raise cv2.error out of imshow/waitKey -- rather than
+    require fixing that install mid-lab-day, this falls back to capturing automatically whenever
+    a board is detected and the interval has elapsed, with a print instead of a visual cue."""
     objp = object_points(cols, rows, square_mm)
     objpoints, imgpoints = [], []
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-    print(f"live preview: SPACE to capture when the board is highlighted green, ESC to stop early (need >= 8), q to abort")
+    gui_ok = True
+    try:
+        cv2.namedWindow("calib_intrinsics_checkerboard")
+    except cv2.error:
+        gui_ok = False
+
+    if gui_ok:
+        print("live preview: SPACE to capture when the board is highlighted green, ESC to stop early (need >= 8), q to abort")
+    else:
+        print(
+            "cv2 has no GUI backend on this install (imshow/namedWindow unimplemented) -- auto-capture mode:\n"
+            f"  hold the board in front of the camera; a new pose is captured automatically every "
+            f"{auto_interval_s:g}s once a board is detected. MOVE IT to a new angle/distance between captures "
+            "(a pose repeated by holding still just wastes a capture slot, it is not wrong). Ctrl+C to abort."
+        )
+
+    last_capture_t = 0.0
     while len(objpoints) < n_captures:
         ok, frame = cap.read()
         if not ok:
             raise SystemExit("camera read failed -- check --index / --backend")
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         found, corners = cv2.findChessboardCorners(gray, (cols, rows), None)
-        vis = frame.copy()
         if found:
             corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-            cv2.drawChessboardCorners(vis, (cols, rows), corners, found)
-        cv2.putText(vis, f"captured {len(objpoints)}/{n_captures}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0) if found else (0, 0, 255), 2)
-        cv2.imshow("calib_intrinsics_checkerboard", vis)
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord(" ") and found:
-            objpoints.append(objp)
-            imgpoints.append(corners)
-            print(f"  captured {len(objpoints)}/{n_captures}")
-        elif key == 27:  # ESC
-            if len(objpoints) < 8:
-                print(f"only {len(objpoints)} captures, calibration needs >= 8 for a stable solve -- keep going")
-                continue
-            break
-        elif key == ord("q"):
-            raise SystemExit("aborted")
-    cv2.destroyAllWindows()
+
+        key = -1
+        if gui_ok:
+            vis = frame.copy()
+            if found:
+                cv2.drawChessboardCorners(vis, (cols, rows), corners, found)
+            cv2.putText(vis, f"captured {len(objpoints)}/{n_captures}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0) if found else (0, 0, 255), 2)
+            try:
+                cv2.imshow("calib_intrinsics_checkerboard", vis)
+                key = cv2.waitKey(1) & 0xFF
+            except cv2.error:
+                gui_ok = False
+                print("GUI failed mid-run -- switching to headless auto-capture (see message above)")
+
+        if gui_ok:
+            if key == ord(" ") and found:
+                objpoints.append(objp)
+                imgpoints.append(corners)
+                print(f"  captured {len(objpoints)}/{n_captures}")
+            elif key == 27:  # ESC
+                if len(objpoints) < 8:
+                    print(f"only {len(objpoints)} captures, calibration needs >= 8 for a stable solve -- keep going")
+                    continue
+                break
+            elif key == ord("q"):
+                raise SystemExit("aborted")
+        elif found:
+            now = time.monotonic()
+            if now - last_capture_t >= auto_interval_s:
+                objpoints.append(objp)
+                imgpoints.append(corners)
+                last_capture_t = now
+                print(f"  captured {len(objpoints)}/{n_captures} -- move the board to a new angle now")
+    if gui_ok:
+        cv2.destroyAllWindows()
     return objpoints, imgpoints
 
 
@@ -106,6 +154,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--rows", type=int, default=6, help="inner corners, vertical")
     ap.add_argument("--square-mm", type=float, required=True, help="MEASURED printed square edge length, not the requested one")
     ap.add_argument("--captures", type=int, default=15)
+    ap.add_argument("--auto-interval-s", type=float, default=2.5, help="headless fallback only: seconds between auto-captures, give yourself time to move the board")
     ap.add_argument("--max-accept-px", type=float, default=5.0)
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args(argv)
@@ -125,7 +174,7 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"could not open camera index {index} with backend {args.backend or block.get('backend')}")
 
     try:
-        objpoints, imgpoints = capture_loop(cap, args.cols, args.rows, args.square_mm, args.captures)
+        objpoints, imgpoints = capture_loop(cap, args.cols, args.rows, args.square_mm, args.captures, args.auto_interval_s)
     finally:
         cap.release()
 
