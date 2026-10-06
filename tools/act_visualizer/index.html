@@ -15,7 +15,7 @@
     <header class="app-header">
       <div class="header-brand">
         <div class="brand-badge">ACT DIAGNOSTICS</div>
-        <h1 class="brand-title">Attention Loss &amp; Layer Latent Visualizer</h1>
+        <h1 class="brand-title">Attention &amp; Layer Latent Visualizer</h1>
       </div>
       
       <div class="header-controls">
@@ -190,7 +190,7 @@
     <!-- Bottom: Deep Diagnostic Tabs -->
     <footer class="bottom-diagnostics card">
       <div class="tabs-nav">
-        <button class="tab-btn active" data-tab="tab-aotr">🎯 AoTR Attention Lost Timeline</button>
+        <button class="tab-btn active" data-tab="tab-aotr">🎯 ROI Attention Mass Timeline</button>
         <button class="tab-btn" data-tab="tab-latents">🧬 Layer 1~4 Latent Progression</button>
         <button class="tab-btn" data-tab="tab-chunk">⏱️ 100-step Action Chunk Preview</button>
         <button class="tab-btn" data-tab="tab-help">💡 How to Diagnose Failure</button>
@@ -213,11 +213,11 @@
                 <span class="m-val" id="val-mean-aotr-wrist">--%</span>
               </div>
               <div class="metric-box warning">
-                <span class="m-label">Attention Drop Frames</span>
+                <span class="m-label">Frames with ROI (Wrist)</span>
                 <span class="m-val" id="val-lost-frame-count">0 frames</span>
               </div>
               <div class="metric-box">
-                <button id="btn-jump-first-lost" class="btn btn-danger btn-sm" disabled>Jump to Lost Frame</button>
+                <button id="btn-jump-first-lost" class="btn btn-outline btn-sm" disabled>Lowest Front ROI Mass</button>
               </div>
             </div>
           </div>
@@ -274,9 +274,9 @@
           <div class="help-panel">
             <h3>📖 如何診斷 ACT 模型為何失誤？</h3>
             <ol>
-              <li><strong>檢查目標注意力集中度（AoTR）</strong>：點擊「✏️ Draw ROI」在第 0 幀以滑鼠框選紙杯，再跳至接觸幀框選一次，點擊「⚡ Interpolate ROI」。觀察下方曲線何時跌破 30%（紅色標記）。若接近物體時 AoTR 急遽下滑，表示模型目光被機械手臂陰影或桌面邊緣吸引。</li>
-              <li><strong>拆解 Layer Latent 特徵流動</strong>：切換至「🧬 Layer 1~4 Latent Progression」。如果 Layer 1~2 的 Cosine 相似度很高但在 Layer 3 劇烈下降，或 Layer 3 的 Attention 呈現擴散（Entropy 偏高），代表模型在深層推論時遺失了目標物空間位置。</li>
-              <li><strong>觀察 Action Chunk 未來意圖</strong>：在頂部切換「Query t=0」與「Query t=20 / t=50」。若即時動作看著杯子，但 t=50 的注意力偏離到桌面其他地方，說明模型預測的軌跡意圖本身已有先天的方向偏差。</li>
+              <li><strong>比較 ROI 注意力比例</strong>：只在杯子可見時框選 ROI，再補接近與接觸階段的框。比例以原始 attention 權重計算，會受 ROI 面積影響；沒有固定的失敗門檻。舊版分析資料需重新匯出。</li>
+              <li><strong>觀察 Layer Latent</strong>：Cosine 相似度與 entropy 可以協助挑出變化大的片段，但不能單獨證明模型遺失物體位置。Encoder 已混合相機與關節資訊，decoder 的 token 權重也不等於相機的因果重要性。</li>
+              <li><strong>比較 Action Chunk</strong>：Query t=0 / t=20 / t=50 是預測序列中的偏移量。此工具每幀重新推論；曲線不是 N=30 或 N=100 真機實際執行的 action。判斷腕部影像是否有幫助，需再做凍結／替換影像的對照實驗。</li>
             </ol>
           </div>
         </div>
