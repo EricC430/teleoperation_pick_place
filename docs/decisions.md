@@ -16,7 +16,7 @@ tell at a glance which entries still govern current state.
 | Status | Entries |
 |---|---|
 | 🔴 **Superseded — do not read as current state** | **D002** (platform: SO-ARM) → superseded by **D021** |
-| 🟡 **Open / proposed — not decided** | **D019** (action representation), **D020** (mobile base & XLeRobot — *2026-09-01: candidate list expanded (七 chassis options with pricing), still not scored against the 七判準 table*), **D027** (IK / traditional-method fallback when ACT plateaus — approved in principle, unscoped), **D028** (3-phase state machine wrapping ACT — approved in principle, execution gated on B2) |
+| 🟡 **Open / proposed — not decided** | **D019** (action representation), **D020** (mobile base & XLeRobot — *2026-09-01: candidate list expanded (七 chassis options with pricing), still not scored against the 七判準 table*), **D027** (IK / traditional-method fallback when ACT plateaus — approved in principle, unscoped), **D028** (3-phase state machine wrapping ACT — approved in principle, execution gated on B2), **D031** (*2026-09-20: open-loop MAE 在 held-out 示範上**已飽和** — policy 7.35 已優於「事後挑最合的人類示範」7.51，comparison.md 裡 5–8% 的差異低於指標雜訊底線；訓練集 0.84 確為軌跡記憶，但由此推論「泛化不好」不成立。提議：先補同點重複示範定住下限，`image_transforms` 降級——皆 `[AI提議]`，未裁決*), **D032** (*2026-09-20: 首次真機閉環讀數，`act_omx_alcan60_fixed_40k` **6/36 = 16.7%**，**72% 是 `pushed_away`**（接觸後推開，不是找不到）。已否證「沒在看相機」（跨集姿態散布與示範相當、R²=0.752）；量出方位偏差中位 4.58° vs 人類 1.88°、徑向 2.20cm vs 1.49cm。§7 全為 `[AI推論]` 並附反證條件；尚**不**觸發 D001 反轉（資料側手段未窮盡）*) |
 | ✅ **Resolved 2026-08-27** | **D025** → do it, but only after Phase B real data exists (complement to D007, not a reversal). **D021** → 甲: OMX to the end, SO-ARM is a spare. **D022** single-camera verified + 3-config recording plan; **2026-09-01 `[Eric決定]`: D405 is the interim wrist camera until the UVC module arrives OR Phase C is reached** — interim config = D405 wrist + D455 third-person; D405→UVC swap and Phase C are both re-record boundaries. **2026-09-13: UVC module (Innomaker U20CAM-720P) is on the wrist → the D405 interim period has ended (end condition 1); "proves usable" still 🟡 pending an arm-on teleop run — see D022 §2026-09-13.** **D024** → 60 per campaign, position-OOD cancelled, training positions seeded, closed-loop 30 is in-distribution, uniform sampling replaces the 3×3 grid. |
 | 🔴 **D023 — status changed 2026-08-31** | Cable resolved **by RE-ROUTING the existing cable, not replacement** (`[Eric說]`; lab had no spare). **The 2026-08-27 conservative-workspace exemption is VOID** (a re-route is not a monotone relaxation); A7's original gate is back. **Tape measurement (FK failed → D026):** `r_outer` top-down ≈ **41 cm**, side-only ≈ 49, `r_inner` ≈ **22** (all + `d_offset` 5 cm, pan axis → chassis edge). Azimuth sector ≈ **135°** (`theta ∈ [−90°, +45°]`), edge = **arm body physically hits the third-person camera mount** if rotated past — a hard mechanical limit, not FOV, not the cable. **Scope: Phase-A pilot layout only; Phase B on the vehicle re-runs S1/S2 from scratch** (`[Eric說]`). Next: S2 `--dry-run` feasibility. See D023 §2026-08-31 points 5–6. **2026-08-31 (earlier):** the 33–43 cm figure disambiguated (grasp-approach band); `r_max` verdict logic dropped. |
 | ✅ **Resolved 2026-08-31** | **D026** → reach logger measures by FK from the `omx_f` URDF (placo, LeRobot-native); tape measure is the fallback. `placo` enters the pinned env. |
@@ -1176,6 +1176,9 @@ poolable. `pilot` / `pilot_2` are left untouched.
      `--dataset.root` it resolves to the 4090's `.../lerobot/EricC430/...` directory (`[AI推論]`, not run on the 4090).
      `verify_dataset.py` check 2 rewritten for v3 (per video file, via `meta/episodes`); the old filename matching had also
      **silently skipped** front-left `file-001` of `uvc_60`.
+     **Object:** `[柏宇說]` 2026-09-14 「那個模型是抓紙杯的」 → `uvc_60` (t1–t60) is **paper cup** (not recorded anywhere before;
+     `single_task` only says "the object"). Model trained on it: `ericc430/act_omx_b1_uvc60` (20000 steps, all 60 episodes,
+     no held-out split per its `train_config.json`); deploy config `configs/rollout_omx_b1_uvc60.yaml`.
    - `[柏宇說]` 2026-09-13: 「第三視角應該要看的到」 → start-pose visibility applies to the third-person camera only,
      not the wrist. `experiment_spec.md` §1-1 and `field_manual.md` §階段 B ⑥ unified accordingly.
    - `[柏宇說]` 2026-09-13: arm connected but 「先不要測試因為環境目前不穩定」 → no hardware test was run for (c).
@@ -2049,62 +2052,379 @@ S4 §3 當初主張 MuJoCo 的理由是「Isaac 上手成本高、沒有現成 O
 
 ---
 
-## D030 — campA_136sym: 18 near-field points added by hand; D023's `r_inner=22cm` no longer holds for the elevated base
+## D030 — campA_136sym：手動加入 18 個近場點；架高基座後，D023 的 `r_inner=22cm` 不再成立
 
-> 🔴 **Renumbered from D029 to D030 during the 2026-09-13 merge** — `origin/main` and local `main` had
-> independently used `D029` for two unrelated decisions (this one, and the 2026-09-03 Isaac Sim choice
-> above). The Isaac Sim D029 has ~12 existing cross-references across `sim/`, `docs/environment.md`,
-> `docs/experiment_spec.md`, `docs/specs/`, `docs/execution_plan.md` and meeting notes, all specifically
-> about simulation — it kept the number. This placement entry had zero existing cross-references
-> (checked `configs/placements/`, `docs/assets/`, `docs/specs/S2_placement_sampler.md`,
-> `docs/specs/S3_placement_mat.md`) so it was the one renumbered. Content below is otherwise unchanged
-> from the `origin/main` version.
+> 🔴 **2026-09-13 合併時由 D029 改號為 D030**——`origin/main` 與本地 `main` 各自把 `D029` 用在兩個不相干的
+> 決策上（本條，以及上面 2026-09-03 的 Isaac Sim 決策）。Isaac Sim 那條 D029 在 `sim/`、`docs/environment.md`、
+> `docs/experiment_spec.md`、`docs/specs/`、`docs/execution_plan.md` 與會議紀錄中已有約 12 處交叉引用，
+> 且全部與模擬相關——所以它保留原編號。本條擺放決策沒有任何既有交叉引用
+> （已查 `configs/placements/`、`docs/assets/`、`docs/specs/S2_placement_sampler.md`、
+> `docs/specs/S3_placement_mat.md`），因此改號的是本條。除此之外，以下內容與 `origin/main` 版本一致。
 
 - **Date:** 2026-09-13
-- **Decision:** Add 18 hand-placed points (train_051–060, eval-open_011–012, eval-close_031–036) to the
-  frozen `campA_136sym_20260908` placement set, at `r ≈ 12.65–21.21 cm` — inside the annulus the 2026-08-31
-  S2 sampling run (D023) deliberately excluded (`sector_used.r_inner = 22.0 cm`). Source CSVs
-  (`configs/placements/campA_136sym_20260908_20260908_{train,eval-open,eval-close}.csv`), `meta.json`,
-  the single-page mat PDF, and `docs/assets/placement_label_map_campA_136sym_20260908.csv` were all
-  regenerated together from `scripts/make_placement_mat.py` so there is one source of truth again — a
-  same-day hand-edit of the label-map CSV alone (adding the 18 rows with a corrupted header and blank
-  `x_mat_cm`/`y_mat_cm`) is what surfaced this and was superseded by the regeneration.
-- **Why:** `[Eric說]` (2026-09-13) — "是現場使用手臂演示發現可以伸到的區域（因為目前手臂基座有架高，近的地方也很好夾）" — the
-  arm base is now physically elevated compared to the 2026-08-31 tape-measurement configuration that
-  produced `r_inner ≈ 22 cm` (D023 §2026-08-31 point 5), and hands-on demonstration shows the near field
-  is reachable and easy to grasp at the new base height. **This is a live-demonstration finding, not a
-  re-run of the D026 FK/tape measurement protocol** — treat `r_inner` as open again for this geometry,
-  not as re-measured and re-frozen.
-- **🔴 Known exception accepted, not fixed:** re-checking pairwise separation across all 108 points
-  (`[AI推論]`, computed 2026-09-13 from the regenerated CSVs) found 3 pairs below the campaign's
-  `d_min = 2.0 cm` guarantee (D023/D024 §2026-08-31, "three lists, `eval-close` shared, `d_min` is a
-  global minimum"):
+- **Decision:** 在已凍結的 `campA_136sym_20260908` 擺放點集合中，手動加入 18 個點（train_051–060、
+  eval-open_011–012、eval-close_031–036），位於 `r ≈ 12.65–21.21 cm`——正是 2026-08-31 S2 取樣（D023）
+  刻意排除的環狀區域（`sector_used.r_inner = 22.0 cm`）。來源 CSV
+  （`configs/placements/campA_136sym_20260908_20260908_{train,eval-open,eval-close}.csv`）、`meta.json`、
+  單頁擺放墊 PDF，以及 `docs/assets/placement_label_map_campA_136sym_20260908.csv`，全部一起由
+  `scripts/make_placement_mat.py` 重新產生，恢復單一真相來源——起因是同一天有人只手改了 label-map CSV
+  （加了 18 列，但表頭損壞、`x_mat_cm`/`y_mat_cm` 空白），這次重新產生取代了那份手改。
+- **Why:** `[Eric說]`（2026-09-13）——「是現場使用手臂演示發現可以伸到的區域（因為目前手臂基座有架高，近的地方也很好夾）」——
+  相較於 2026-08-31 用捲尺量出 `r_inner ≈ 22 cm` 的配置（D023 §2026-08-31 第 5 點），手臂基座現在實體上架高了，
+  現場演示顯示在新的基座高度下，近場區域伸得到、也好夾。**這是現場演示的發現，不是重跑 D026 的 FK／捲尺量測協定**
+  ——對這個幾何配置，應把 `r_inner` 視為重新開放的問題，而不是已重新量測並再次凍結。
+- **🔴 已知例外，接受但不修正：** 對全部 108 個點重新檢查兩兩間距（`[AI推論]`，2026-09-13 由重新產生的 CSV 計算），
+  有 3 對低於本輪 campaign 保證的 `d_min = 2.0 cm`（D023/D024 §2026-08-31：「三份清單，`eval-close` 共用，
+  `d_min` 是全域最小值」）：
 
-  | pair | distance |
+  | 點對 | 距離 |
   |---|---|
   | `eval-close_031` ↔ `train_054` | 1.000 cm |
   | `eval-close_036` ↔ `train_060` | 1.221 cm |
-  | `eval-close_032` ↔ `train_040` (one of the original 90) | 1.518 cm |
+  | `eval-close_032` ↔ `train_040`（原本 90 點之一） | 1.518 cm |
 
-  `[Eric決定]` (2026-09-13, asked directly, chose "全部 18 個照原樣加入，先不管這個限制"): keep all 18 points
-  as-is; do **not** nudge, drop, or otherwise enforce `d_min` against these 3 pairs. Recorded in
-  `meta.json` under `manual_additions.d_min_violations` / `d_min_violations_accepted`.
-- **Alternatives considered:** drop the 3 violating points (kept the other 15); nudge the 3 to ≥2cm
-  away from their nearest neighbour. Both offered, neither chosen.
-- **Accepted costs:** `eval-close_031/032/036` are not reliably "a different placement" from a training
-  point by this campaign's own distinguishability argument — any downstream analysis that assumes
-  `eval-close` is uniformly ≥2cm from `train` must special-case these 3 ids or exclude them.
-  `meta.json`'s `per_list`/`feasibility` (KS-test, nearest-neighbour stats) still describe only the
-  original 90-point stratified sample and were **not** recomputed against the full 108 — recomputing
-  those against a mixed stratified+hand-placed set would need the actual S2 methodology, not just arithmetic.
-- **Reverse if:** a future S1/D026-style re-measurement of the elevated-base geometry gives a different
-  `r_inner`, or the 3 flagged pairs turn out to matter for a specific analysis (e.g. a model conflates
-  those `eval-close` ids with the nearby `train` id) — at that point drop or re-place those 3 specifically
-  rather than the whole batch.
-- **Status:** ✅ decided (`[Eric決定]`) for this campaign; `r_inner` reopened for future campaigns pending
-  a real re-measurement.
-- **Cross-reference:** D023 (source of the superseded `r_inner=22cm`), D024 (`d_min` as a global minimum),
-  D026 (the FK/tape measurement protocol this finding did *not* go through).
+  `[Eric決定]`（2026-09-13，直接詢問後選擇「全部 18 個照原樣加入，先不管這個限制」）：18 個點全部照原樣保留；
+  **不**微調、不刪除，也不對這 3 對強制套用 `d_min`。已記錄於 `meta.json` 的
+  `manual_additions.d_min_violations` / `d_min_violations_accepted`。
+- **Alternatives considered:** 刪掉 3 個違規點（保留其餘 15 個）；把這 3 個點微調到距最近鄰點 ≥2cm。
+  兩者都有提出，都沒被選。
+- **Accepted costs:** 依本輪 campaign 自己的「可區辨性」論證，`eval-close_031/032/036` 不能可靠地算作與訓練點
+  「不同的擺放位置」——任何假設 `eval-close` 與 `train` 一律相距 ≥2cm 的後續分析，都必須對這 3 個 id 特別處理或排除。
+  `meta.json` 的 `per_list`/`feasibility`（KS 檢定、最近鄰統計）仍只描述原本 90 點的分層抽樣，
+  **沒有**對完整 108 點重算——要對「分層抽樣＋手動擺放」的混合集合重算，需要真正的 S2 方法論，不是單純算術。
+- **Reverse if:** 未來以 S1/D026 方式重新量測架高基座的幾何，得出不同的 `r_inner`；或這 3 對被標記的點在某個特定分析中
+  確實造成影響（例如模型把這些 `eval-close` id 與附近的 `train` id 混淆）——屆時只針對這 3 個點刪除或重新擺放，
+  而不是整批處理。
+- **Status:** ✅ 本輪 campaign 已決定（`[Eric決定]`）；`r_inner` 對未來 campaign 重新開放，待真正重新量測。
+- **Cross-reference:** D023（被取代的 `r_inner=22cm` 出處）、D024（`d_min` 作為全域最小值）、
+  D026（本發現*沒有*經過的 FK／捲尺量測協定）。
+
+---
+
+## D031 — 🟡 提議（未裁決）：在這個設定下 open-loop MAE 已經**飽和**，不能用來判斷泛化
+
+> **2026-09-20 修訂兩次。** 第一次：本條最初寫成「落差是軌跡記憶，不是位置 OOD」，把一個 `[AI推論]` 寫得像結論。
+> 第二次：eval-open ep4 查出是失敗示範，全部數字重算——見 §6，結論方向不變但更強。
+> 補測「人類示範之間的誤差下限」後，該結論**過度延伸**：見 §3。原始推論保留在 §2，但降級為「可能之一」。
+
+- **Date:** 2026-09-20
+
+### §0 背景產出物
+
+- Hub 上 `_fixed` 訓練完成，是**三個獨立 repo**（不是 `act_omx_alcan60` 那種 20k/40k/100k 分支）：
+  `ericc430/act_omx_alcan60_fixed_20k` / `_40k` / `_100k`，均 private，2026-09-20 02:42 上傳。
+  三份 `model.safetensors` 雜湊互異（`3d613712…` / `a73bb321…` / `02bf0d69…`），
+  `train_config.json` 三份皆指向 `ericc430/omx_pick_place_pilot_60_alcan_fixed` 且 `exclude_episodes` 有值。
+  ⚠️ 本機下載需 `HF_HUB_DISABLE_SYMLINKS=1`，否則 Windows 非開發者模式會 `OSError WinError 1314`。
+- eval-open（`omx_pick_place_pilot_alcan_open_loop`，12 集）mean MAE，`[產出物]`
+  `outputs/open_loop_alcan_alcan60{,_fixed}/comparison.md`：
+
+  | checkpoint | alcan60 | alcan60_fixed | Δ |
+  |---|---|---|---|
+  | 20k | 8.170 | 7.601 | −0.569 (−7.0%) |
+  | 40k | 7.988 | 7.339 | −0.650 (−8.1%) |
+  | 100k | 7.989 | 7.564 | −0.425 (−5.3%) |
+
+### §1 兩個可以當事實用的量測
+
+1. **eval-open 幾乎沒有在測位置泛化。** `configs/placements/campA_136sym_20260908_20260908_eval-open.csv`
+   的 12 點逐一對 `..._train.csv` 的 60 點取最近鄰歐氏距離：**最小 2.01 cm、平均 2.95 cm、最大 4.70 cm**。
+   每個評估點旁邊都有訓練點 → MAE 的數值**不能**被解讀成「無法泛化到夾取範圍」。
+
+2. **訓練集與 eval-open 的畫面亮度沒有明顯差異。** 兩者錄製時間差約 5 小時（訓練 09-18 上午、
+   eval-open 同日 15:00），而 D455 是 `intelrealsense_pinned`（exposure 固定 400），固定曝光下環境光改變
+   會直接反映在畫面上。實測 front-left 影片抽幀（訓練 40 幀 / eval 13 幀，160×90 縮圖）：
+   平均亮度 **94.16（sd 6.51） vs 95.24（sd 2.85）**，差異落在訓練集自身的變異內；
+   R/G/B 99.0/99.7/83.8 vs 96.2/99.7/89.8（藍通道高約 7%，量小）。
+   → 「換了時段、光線不同」這個對手解釋在**全域亮度**這個層級被排除；
+   陰影方向、背景物件、罐體外觀等更細的差異**未檢查** `[未確認]`。
+
+### §2 原始推論（保留，但只是「可能之一」，不是結論）
+
+定義一個「凍結」基線：每次 ACT re-plan（`n_action_steps=100`，每 100 幀 ≈ 6.67 s 才看一次影像）時，
+把當下的 ground-truth action 原樣吐 100 步。
+
+| 集合 | policy MAE | freeze 基線 | ratio |
+|---|---|---|---|
+| 訓練集 12 集（ep 0,5,…,55）/ alcan60 100k | 0.84 | 10.14 | **0.08** |
+| eval-open 12 集 / alcan60 100k | 7.79 | 10.13 | **0.77** |
+| eval-open 12 集 / fixed 100k | 7.35 | 10.13 | **0.73** |
+
+兩集合的 freeze 基線幾乎相同（10.14 vs 10.13）→ 動作幅度、難度在這個尺度上一致，差別全在 policy 欄。
+當時據此推論「模型把 56 條人類軌跡背起來了」。該推論的可能佐證：保留的 56 集共 **21,946 幀** `[產出物]`，
+100k steps × batch 32 = 3.2M 樣本 ≈ **146 個 epoch**（20k ≈ 29、40k ≈ 58），
+且 `image_transforms` 在 `train_omx_alcan60_fixed.yaml` 與 `act_omx_alcan60` 兩邊都關閉。
+**但 §3 顯示這個推論把 0.77 誤讀成「差」。**
+
+### §3 修正：0.77 大約就是「人類示範彼此之間」的水準，這個指標已經飽和
+
+缺的控制組是：**兩次不同的人類示範，彼此的 MAE 是多少？** 用同一套協定量（`[AI推論]`，我自訂的基線）：
+在每個 re-plan 點 `s`，取另一集示範的形狀、錨定在目標集當下的 action 上，
+即 `pred = donor[s+j] - donor[s] + target[s]`，與 freeze 基線可直接比較。
+
+| 預測器 | eval-open 12 集上的 MAE |
+|---|---|
+| 常數（各關節平均） | 16.48 |
+| freeze（re-plan 時凍結） | 10.13 |
+| **任取另一集人類示範**（中位數，132 對） | **10.65** |
+| **每集挑最合的那一集人類示範**（oracle 選 donor） | **7.51** |
+| 任取一集訓練示範（中位數，144 對） | 11.08 |
+| 每集挑最合的訓練示範（oracle） | 7.74 |
+| **policy（fixed 100k）** | **7.35** |
+
+**policy 的 7.35 已經略優於「事後挑出最合的那一條人類示範」的 7.51。**
+也就是說，一個完美泛化的 policy 在這個指標上也不會好多少 —— 兩次人類示範本身就差這麼多。
+推論修正如下：
+
+- `[已查證]` 訓練集上的 0.84 **低於**人類示範彼此的差距，這只有「重現那一條特定示範」才辦得到 →
+  **模型確實把訓練軌跡記下來了**，這部分成立。
+- ❌ **不成立**：由 0.77 推論「在沒看過的資料上泛化不好」。0.77 大致就是滿分。
+- ⇒ **真正的結論是：這個指標在 held-out 示範上已經飽和，無法區分好模型與普通模型。**
+  `comparison.md` 裡 8.17 vs 7.34 那些 5–8% 的差異，**低於指標本身的雜訊底線**，不應該拿來排序 checkpoint。
+
+**此下限估計的已知偏差 `[AI推論]`：** donor 來自**不同的擺放點**，形狀本來就該不一樣，所以 7.51 是下限的
+**高估**。要測真正的下限，需要**同一個擺放點錄 2–3 次重複示範**——目前每點只錄一次，所以真實下限未知，
+只知道 ≤ 7.5。若真實下限其實是 4，則 7.35 仍然有意義。**這是本條最關鍵的未知數。**
+
+### §4 對先前記載的更正
+
+- commit `b812937` 訊息寫「a generalisation gap, not an evaluation artefact」。
+  前半（訓練集 vs held-out 有落差）成立；後半**不成立**——§3 顯示很大一部分正是 evaluation artefact。
+- `train_omx_alcan60_fixed.yaml` 註解「清 4/60 集不預期能補上落差」那句 `[AI推論]` 方向正確，
+  但理由要改：不是「清資料不夠力」，而是**那個落差有一大半不是模型的問題**。
+
+### §5 🟡 提議（`[AI提議]`，未裁決，不得寫成定案）
+
+1. **停止用 open-loop MAE 的絕對值排序 checkpoint。** 它在 held-out 示範上飽和。
+   若仍要用，應同時報告人類示範下限（§3 的 oracle-donor 數字）當作刻度。
+2. **優先補「同點重複示範」以定住下限**（每點 2–3 次，選 3–5 個點即可），
+   這比再訓練任何模型都先。沒有它，§3 的 ≤7.5 無法收斂。
+3. **`image_transforms` 重訓降級為「之後再說」。** 目前沒有證據顯示存在它能修的問題（§1-2 排除了亮度位移，
+   §3 顯示 held-out 表現已達指標上限）。它仍是合理的抗記憶手段，但現在動它是在沒有讀數的情況下轉旋鈕。
+4. **真正的判準仍是真機 rollout 的分區成功率**（`eval/README.md` 的 outcome/mechanism 兩軸）。
+
+### §6 追加（2026-09-20 同日第二次修訂）：eval-open ep4 是失敗示範，應排除在 MAE 之外
+
+`[柏宇說]` 逐集看過影片，12 集裡**只有 ep4 失敗**。`[產出物]` 交叉印證三項：
+ep4 最後一幀（f1555）罐子仍立在桌上、手臂已收回；其擺放點 `o5` = `eval-open_005`，
+r = 38.82 cm 是 12 點中最遠；同日錄的 `episode_meta/omx_pick_place_pilot_plastic_bottle_open_loop.csv`
+ep4 也是 `o5` / `no_grasp` / 備註「太遠抓不到」。
+`episode_meta/omx_pick_place_pilot_alcan_open_loop.csv` 已於 2026-09-20 補齊（12/12，`--check` exit 0）。
+
+**拿失敗的示範當 MAE 目標沒有意義**——等於懲罰模型沒有重現一次抓空。剔除 ep4 後重算：
+
+| | 20k | 40k | 100k |
+|---|---|---|---|
+| `alcan60` | 8.170 → 7.873 | 7.988 → 7.779 | 7.989 → 7.651 |
+| `alcan60_fixed` | 7.601 → 7.322 | **7.339 → 7.025** | 7.564 → 7.248 |
+
+ep4 自身 MAE 在六個模型上都是 10.3–11.7，把每個平均往上拖約 0.3。**名次不變**：
+`fixed 40k` 最佳、100k 仍輸 40k、`_fixed` 仍優於 `alcan60`。
+
+§3 的基線也用剩下 11 集重算：
+
+| 預測器 | 含 ep4（12 集） | 排除 ep4（11 集） |
+|---|---|---|
+| freeze | 10.13 | 10.79 |
+| 任取另一集人類示範（中位數） | 10.65 | 10.62 |
+| **最合的人類示範（oracle 下限）** | 7.51 | **7.52** |
+| policy `fixed 100k` | 7.35 | 7.25 |
+| policy `fixed 40k` | — | **7.03** |
+
+**§3 的「飽和」結論因此更強，不是更弱。** 含 ep4 時 policy 7.35 vs 下限 7.51 只是打平；
+排除後 7.03 vs 7.52，模型**穩定優於任何單一人類示範能達到的水準**——
+連「policy 比不上人類」的解釋空間都沒有了，剩下的差距幾乎全是示範之間的不可約變異。
+
+**§5 提議 1 追加一條：** open-loop 的 `--episodes` 必須排除 `outcome != success` 的集數。
+這與 `valid` 是兩回事——依 `configs/episode_meta_schema.yaml`，ep4 是 **`valid=1` + `outcome=no_grasp`**
+（`valid=0` 只給場外干擾），所以它**留在成功率分母裡**，但**不該進 MAE**。
+
+**新的 🟡 提議（`[AI提議]`）：** 實機 close-loop 先跑 `act_omx_alcan60_fixed_40k`。
+依據不是絕對 MAE（飽和），而是**泛化落差比**（eval-open ÷ 訓練集，排除 ep4 前的數字）：
+
+| | 20k | 40k | 100k |
+|---|---|---|---|
+| `alcan60` | 5.5 | 6.1 | **9.5** |
+| `alcan60_fixed` | 4.7 | 5.4 | **9.9** |
+
+兩族六點同向：40k→100k 那 6 萬步把訓練集 MAE 壓低 44%（1.368→0.766）而 held-out 零回報。
+⚠️ **「記憶越多 → 真機越差」這一步沒有證據**，只是合理 `[AI推論]`；定案要 40k / 100k 各跑 36 回合比成功率。
+config 已備妥：`configs/rollout_omx_alcan_fixed_40k_eval.yaml`。
+
+- **Alternatives considered:** 繼續用絕對 MAE 篩 checkpoint（現況，§3 顯示無效）；
+  直接排真機 rollout 比較三個 checkpoint（成本高，佔 lab day，但這是唯一能定案的）。
+- **Accepted costs:** §2 的 freeze 基線與 §3 的 donor 基線都是離線重算，
+  **沒有**改動 `scripts/eval_open_loop.py` / `compare_open_loop.py`，所以這些數字不會自動產生；
+  要重算得照本條的定義重寫一次。
+- **缺口 `[未確認]`：** `episode_meta/` 底下**沒有** `omx_pick_place_pilot_alcan_open_loop.csv`，
+  episode ↔ `eval-open_0NN` 擺放點的對應無從查證，「哪一區失敗」目前答不了。
+- **Reverse if:** 補上同點重複示範後測得人類下限明顯低於 7.35（例如 ≈4）——
+  則 §3 的「飽和」結論失效，held-out MAE 重新成為有效判準，`image_transforms` 也重新升回優先；
+  或補上 `episode_meta` 後發現高 MAE 集中在特定擺放區域——則位置泛化重新成為嫌疑。
+- **Cross-reference:** D024（30 回合與 seeded 位置）、D030（campA_136sym 的 18 個近場點）、
+  `configs/train_omx_alcan60_fixed.yaml`、`outputs/open_loop_alcan_alcan60{,_fixed,_trainset_alcan60}/`。
+
+---
+
+## D032 — 🟡 首次真機閉環讀數：`act_omx_alcan60_fixed_40k` 成功率 16.7%；瓶頸是**定位精度**，不是「有沒有在看相機」
+
+- **Date:** 2026-09-20
+- **Status:** 🟡 這是一次**量測紀錄＋一組待裁決的提議**，不是已批准的決定。
+  §7 全部是 `[AI推論]`，每條附反證條件。
+
+### §0 這場跑了什麼 `[產出物]`
+
+- config `configs/rollout_omx_alcan_fixed_40k_eval.yaml`（policy `ericc430/act_omx_alcan60_fixed_40k`，
+  36 回合，`episode_time_s: 35`，`strategy: episodic`）
+- 資料集 `D:\hf\lerobot\ericc430\rollout_omx_alcan_fixed_40k_20260920_135941`（36 集 / 17658 幀）
+- 標註 `episode_meta/rollout_omx_alcan_fixed_40k_20260920_135941.csv`（柏宇標，36/36）
+- 擺放 `eval-close` `c1`–`c36`（campA_136sym_20260908），ep i ↔ `c(i+1)`
+- 環境 `env_light: 宿舍大燈、檯燈、窗簾拉上`；第三視角相機位置經比對與訓練日一致
+  （ORB＋RANSAC 位移 −6.11/−1.54 px、旋轉 +0.176°、縮放 1.0000；相位相關 −7.00/+0.56 px）
+- **30/36 跑到 35 s 上限**（⚠️ 未跑到上限**不等於**成功——`[柏宇說]` 已更正 AI 先前的這個誤推）
+
+### §1 成功率與失敗機制 `[產出物]` / `[柏宇說]`
+
+| outcome | n |
+|---|---|
+| `no_grasp` | 29 |
+| `success` | **6** |
+| `misplaced` | 1 |
+
+**成功率 6/36 = 16.7%。** 成功的是 ep 3/6/10/17/20/28（= `c4`/`c7`/`c11`/`c18`/`c21`/`c29`）。
+
+| mechanism | n |
+|---|---|
+| **`pushed_away`** | **26** |
+| `other`（中文備註：伸的地方有點歪 ×1、找左邊沒找右邊 ×1、伸的地方有偏差 ×2） | 4 |
+| `self_recovered` | 1（ep3，與 `success` 並存） |
+| `timeout` | 1（ep22，`misplaced`） |
+| 空白 | 4 |
+
+**26/36（72%）是 `pushed_away`。** 依 `eval/README.md` 的定義，這是「接觸把物體推開而不是夾住」——
+**手臂有伸到罐子那裡**。
+
+### §2 「它有沒有在看相機」的檢驗 `[產出物]`
+
+`[柏宇說]` 現場判斷是「只是在背軌跡、夾取時沒在看攝影機」。這個可以直接測：
+每集起始都是同一個 home pose，唯一隨集變動的輸入是相機畫面。若重播單一軌跡，跨集散布會塌掉。
+
+夾爪閉合瞬間的姿態，跨集標準差：
+
+| | 人類示範 56 集 | rollout 36 集 |
+|---|---|---|
+| `shoulder_pan` sd | 18.90（−37.1 ~ +34.5） | **20.21**（−35.2 ~ +31.8） |
+| `shoulder_lift` sd | 13.60 | 12.89 |
+| `elbow_flex` sd | 21.40 | 20.75 |
+
+散布與人類示範相當，沒有塌。且 `pan_at_grasp` 對擺放方位角的線性迴歸 **R² = 0.752**
+（人類示範同樣迴歸 R² = 0.992）。R² 遠大於 0 同時反證了 ep i ↔ `c(i+1)` 的順序假設
+（亂序會得到 R²≈0），也與 2026-09-18 紙杯閉環 CSV 的寫法一致。
+
+⇒ **「完全沒在看相機」這個說法不成立。** 但這只排除「零視覺條件化」，
+不等於「看得準」——見 §3。
+
+### §3 定位誤差的量化 `[產出物]`
+
+以人類示範擬合出的映射為基準：`pan = 0.523 × theta_deg − 0.294`（1 pos 單位 = 1.91°）。
+量 rollout 相對於「人類在同一個點會怎麼做」的偏差：
+
+| | 方位角偏差（中位數） |
+|---|---|
+| 人類示範自身散布 | **1.88°** |
+| rollout 40k | **4.58°** |
+
+徑向（用人類示範擬合 `lift/elbow/wrist_flex → r_cm`，再套到 rollout）：
+
+| | 中位誤差 | p90 | 偏置 |
+|---|---|---|---|
+| 人類（擬合集，即方法自身底線） | 1.49 cm | 3.58 | +0.00 |
+| rollout 40k | **2.20 cm** | 5.70 | **+0.55 cm（伸太遠）** |
+
+`corr(theta, 有號方位誤差) = −0.185` → **沒有明顯的系統性收縮**，是散射不是可校正的偏置。
+
+⚠️ **此節的三個已知弱點：**
+1. 「夾爪閉合瞬間」是用夾爪開合度偵測的（降到開合範圍 40% 以下的第一幀）。
+   **失敗集裡模型可能在半空中亂閉夾爪**，那幾集的 `pan_at_grasp` 不可信 → 數字含雜訊。
+2. 人類映射的 slope 來自 `ep i ↔ train_(i+1)` 的**假設**，未經 `episode_meta` 查證
+   （訓練集的 `episode_meta` 尚未建立）。
+3. 單一 session、單一 checkpoint、n=36。
+
+### §4 夾爪開口 `[產出物]`
+
+| | 人類示範 | rollout |
+|---|---|---|
+| 最大開度 | 60.4 | **60.6** |
+| 閉合值 | 48.5 | **48.3** |
+
+**模型把示範的夾爪開口忠實複製了**（差 <0.3），擺幅僅約 12 個單位。
+
+### §5 空間分布——**不顯著，不要當結論** `[產出物]`
+
+| 距離帶 | n | 成功 |
+|---|---|---|
+| r < 24 cm | 8 | **0（0%）** |
+| 24–31 cm | 12 | 4（33.3%） |
+| r > 31 cm | 16 | 2（12.5%） |
+
+r<24 的 8 集全滅，其中 6 個是 D030 手動補的近場點（`c31`–`c36`，r 13.00–21.21）。
+**但 Fisher 單尾 p = 0.193 —— 不顯著**，n=8 分不出 0% 與 21%。
+且訓練集在 r<24 有 **15/60** 個點，覆蓋是存在的。
+
+方位角：右（θ<−20°）8.3%、中 18.2%、左（θ>20°）23.1% —— n 都太小，看不出模式。
+
+### §6 模型沒有接觸感知——這是設計事實不是失效 `[已查證]`
+
+`[柏宇說]`「他根本從相機看不出來有沒有碰撞」。查 checkpoint 的 `config.json`：
+input_features 只有 `observation.state[6]` + `images.wrist[3,480,640]` + `images.front-left[3,480,848]`，
+**沒有任何力／接觸訊號**。D008（觸覺）2026-08-18 已降級至 Phase D。
+接觸瞬間第三視角會被手臂自身遮擋、腕部相機距離過近——這是硬體與感測配置的結果。
+
+### §7 推測（全部 `[AI推論]`，未經驗證，附反證條件）
+
+> **以下沒有一條是結論。** 都是從 §1–§6 推出來的，柏宇未確認，也都還沒做實驗。
+
+1. **主要瓶頸是「定位精度」而非「有無視覺條件化」。**
+   依據：§2 顯示有條件化、§3 顯示誤差約 2 倍於人類、§1 顯示 72% 是接觸後推開。
+   由 §3 的 4.58° 換算橫向偏移需假設一個代表半徑；取 r ≈ 28 cm 則約 **2.2 cm**，
+   **這個換算本身就是推論**（真實的接觸點半徑逐集不同，未逐集計算）。
+   鋁罐直徑約 5–6.6 cm，2.2 cm 約為半個罐身。
+   **反證：** 若逐集算出實際接觸點偏移後中位數遠小於 2 cm，本條失效——
+   那就要改找別的解釋（例如抓取高度、夾爪時序）。
+
+2. **夾爪開口偏窄，放大了定位誤差的後果。**
+   依據：§4 顯示開合僅 ~12 單位，§1 顯示 72% 是 `pushed_away`（擦過而非夾住）。
+   `[柏宇說]` 現場也是這個判斷（「示範的時候夾爪應該要開一點」）。
+   **完全沒有實驗支持**——沒有任何一組「開口更大的示範」可以對照。
+   **反證：** 錄一批開口更大的示範重訓後，`pushed_away` 比例沒有下降。
+
+3. **近場（r<24）可能較弱。**
+   §5 的 0/8 是**唯一**的線索，而 p=0.193。**目前應視為未確認。**
+   **驗證方式：** 近場點各跑 3–5 回合，而不是各 1 回合。
+
+4. **D031 §6 的「100k 記憶更深 → 真機更差」仍然完全未測。**
+   只跑了 40k。要定案必須 100k 同樣 36 回合。
+
+5. **開環 MAE 與真機成功率的關係目前無法判斷。**
+   D031 §3 已證開環 MAE 在 held-out 示範上飽和；這場真機給了 16.7%，
+   但只有一個資料點，**無法說 MAE 能不能預測成功率**。至少要兩個 checkpoint 才有斜率。
+
+### §8 對 D001 的影響
+
+D001 的反轉條件是「ACT plateaus below ~60% success **with clean data and we've exhausted
+data-side fixes**」。16.7% 遠低於 60%，`_fixed` 也確實是清過的資料；
+**但「exhausted data-side fixes」尚未滿足**——夾爪開口、同點重複示範、`image_transforms`
+三個資料側旋鈕一個都還沒動。**因此本條不觸發 D001 反轉**，只是第一個正式真機讀數。
+
+- **Alternatives considered:** 直接跳到 D027（IK/傳統方法接管）或 D028（狀態機包住 ACT）——
+  §8 的理由同樣適用：資料側手段未窮盡前不該跳。
+- **Accepted costs:** §2–§4 的所有量測都是離線重算，**沒有**改動 `scripts/` 下任何工具，
+  所以這些數字不會自動重現；要重算需照本條定義重寫。
+- **Reverse if:** 逐集計算實際接觸點偏移後，中位數與 §7-1 的 2.2 cm 差距很大；
+  或 100k 的 36 回合成功率顯著高於 40k（則 D031 §6 的建議要撤回）。
+- **Cross-reference:** D001（演算法選擇與反轉條件）、D008（觸覺，Phase D）、D015（兩軸失敗分類）、
+  D016（每物體 30 回合）、D024／D030（擺放清單）、D031（開環 MAE 飽和）、
+  `eval/README.md`、`episode_meta/rollout_omx_alcan_fixed_40k_20260920_135941.csv`。
 
 ---
 
@@ -2124,4 +2444,5 @@ S4 §3 當初主張 MuJoCo 的理由是「Isaac 上手成本高、沒有現成 O
 > **Use `🟡 PROPOSED, NOT DECIDED` in the heading** for anything the team has not ratified or the
 > advisor has not approved. A decision log that quietly promotes proposals into decisions is worse
 > than no log at all.
+
 

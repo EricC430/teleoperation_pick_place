@@ -1,0 +1,67 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/rollout_omx_b1_uvc60.yaml
+# saved_at:      2026-09-17T23:42:10
+# entrypoint:    lerobot-rollout
+# cli overrides: (none)
+# ids:           robot=2026-09-13_omx_follower
+# git:           d2df836 (config file has UNCOMMITTED changes)
+# digest:        f23baed2  (sha256[:8] of the YAML below + the CLI overrides)
+# Real-robot deployment of ACT model ericc430/act_omx_b1_uvc60
+# (trained on omx_pick_place_pilot_uvc_60, 60 episodes, 20000 steps; uploaded 2026-09-14).
+# Object: PAPER CUP -- the model has only seen paper cups; test it with a paper cup.
+# Run on the LAPTOP against the physical OMX follower:
+#
+#   uv run lerobot-rollout --config_path configs/rollout_omx_b1_uvc60.yaml
+#
+# KEEP THIS FILE ASCII-ONLY: lerobot's parser opens the YAML with the Windows default
+# encoding (cp950) when the config has a path field (policy.path) -> non-ASCII comments crash it.
+#
+# First run: hand on the power switch, keep duration short. Low open-loop error does not
+# mean closed-loop is safe (field_manual section 8-(3)).
+# Cameras MUST match the training data (names, resolution, exposure): the robot block below is
+# copied from record_omx.yaml -- change both together. Check the wrist OpenCV index with
+# lerobot-find-cameras before every session.
+# The older D405-era model uses rollout_omx_pilot.yaml -- do not mix them.
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-09-13_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: opencv_uvc
+      index_or_path: 2
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 15
+      fourcc: YUY2
+      exposure: -5
+      gain: 0
+      white_balance: null
+    front-left:
+      type: intelrealsense_pinned
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+      exposure: 400
+      gain: 70
+      white_balance: null
+
+policy:
+  path: ericc430/act_omx_b1_uvc60  # private repo; first run pulls it with the logged-in token, then cached
+
+strategy:
+  type: base  # fully autonomous, no dataset recorded
+
+inference:
+  type: sync
+
+fps: 15                 # same as recording / training
+duration: 20            # seconds; short on purpose for the first run, raise once motion looks right
+task: "Pick up the object and place it into the box"
+display_data: true      # watch joints and cameras live in rerun
+return_to_initial_position: true

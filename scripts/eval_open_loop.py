@@ -75,6 +75,16 @@ def parse_args():
         "Changes what the MAE measures -- runs with different values are not the same metric.",
     )
     parser.add_argument(
+        "--image_affine",
+        action="append",
+        default=[],
+        metavar="CAM:DX,DY,ROT_DEG[,SCALE]",
+        help="Warp one camera's frames before the policy sees them (E3: camera-pose sensitivity). Rotate "
+        "ROT_DEG about the image centre (OpenCV sign: + = counter-clockwise on screen), optional SCALE, then "
+        "shift by (DX, DY) px. Borders are replicated. Repeatable, e.g. --image_affine front-left:0,30,0. "
+        "Changes the inputs only -- compare against an unwarped run with the same N.",
+    )
+    parser.add_argument(
         "--save_plot_dir",
         type=str,
         default=None,
@@ -151,6 +161,8 @@ def main():
         # Keep an override run from overwriting the default run's metrics.json in the same dir.
         if args.n_action_steps is not None:
             save_plot_dir = save_plot_dir.with_name(f"{save_plot_dir.name}_nas{args.n_action_steps}")
+        if args.image_affine:
+            save_plot_dir = save_plot_dir.with_name(f"{save_plot_dir.name}_affine")
 
     if args.policy_type:
         policy_type = args.policy_type
@@ -195,6 +207,18 @@ def main():
         "gripper",
     ][:action_dim]
 
+    affines = {}  # "observation.images.<cam>" -> (spec string, 2x3 matrix); the matrix needs the frame size
+    for spec in args.image_affine:
+        cam, _, nums = spec.partition(":")
+        vals = [float(v) for v in nums.split(",")]
+        if len(vals) not in (3, 4):
+            raise ValueError(f"--image_affine wants CAM:DX,DY,ROT_DEG[,SCALE], got {spec!r}")
+        affines[f"observation.images.{cam}"] = (spec, vals)
+    if affines:
+        import cv2
+
+        logging.info(f"Warping camera frames: {[s for s, _ in affines.values()]}")
+
     logging.info(f"Evaluating {len(args.episodes)} episode(s): {args.episodes}...")
 
     per_episode_errors = []
@@ -221,6 +245,15 @@ def main():
 
         for frame_idx in range(ep_length):
             item = dataset[frame_idx]
+            for key, (spec, (dx, dy, rot, *scale)) in affines.items():
+                if key not in item:
+                    raise KeyError(f"--image_affine {spec!r}: no {key} in the dataset ({[k for k in item if 'images' in k]})")
+                img = item[key].permute(1, 2, 0).numpy()  # CHW float -> HWC
+                h, w = img.shape[:2]
+                M = cv2.getRotationMatrix2D((w / 2, h / 2), rot, scale[0] if scale else 1.0)
+                M[:, 2] += (dx, dy)
+                warped = cv2.warpAffine(img, M, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+                item[key] = torch.from_numpy(warped).permute(2, 0, 1).contiguous()
 
             # Build batch dictionary with batch dimension
             raw_batch = {}
@@ -308,6 +341,7 @@ def main():
         "policy_type": policy_type,
         "n_action_steps": int(n_action_steps),
         "n_action_steps_overridden": args.n_action_steps is not None,
+        "image_affine": list(args.image_affine),
         "dataset_repo_id": args.dataset_repo_id,
         "dataset_root": args.dataset_root,
         "units": "LeRobot .pos (body RANGE_M100_100, gripper RANGE_0_100) -- not degrees",
