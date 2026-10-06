@@ -499,6 +499,27 @@ weeks while the decision log, which is the 正本, still listed the pre-amendmen
 - **Reverse if:** the two-axis scheme itself produces annotator disagreement in practice — check this
   the first time two people independently label the same real eval run.
 
+### Amendment 2026-10-06 — `bad_aim` and `chunk_gap_rush` added to the `mechanism` vocabulary
+
+Proposed by Eric, relayed and approved for implementation by 柏宇 on 2026-10-06 (「這就是他提議的，就這樣做」).
+Eric's own wording is not on record here; the definitions below were drafted by Claude and accepted by 柏宇.
+
+- **`bad_aim`:** the gripper descends / closes at a spot visibly off the object (more than about half the
+  object's width) and misses it or only catches an edge. Defined by what the video shows, not by a guess
+  about the policy's internal estimate. May co-occur with `pushed_away`.
+- **`chunk_gap_rush`:** the arm suddenly speeds up / jumps at a chunk boundary (every `n_action_steps`
+  frames). Valid alongside `outcome=success`. Cross-checkable in the data as an action jump at frames k·N.
+- **Why not existing labels:** neither has a home today — an off-target reach ends up as `pushed_away`
+  (which describes the contact, not the aim) or `other`; a boundary jump is neither `drift` nor
+  `collision`. D032 already measured an azimuth bias (median 4.58° vs human 1.88°) on the alcan run, and
+  the 2026-10-05 E3 test (`docs/meeting/2026-10-05.md` §2-c) showed image shifts move pan / lift
+  predictions — both point at aim errors worth counting separately. `chunk_gap_rush` is the behaviour the
+  N=30 vs N=100 comparison (E6) has to see.
+- **Implemented in:** `configs/episode_meta_schema.yaml` (v5, `strict`), `docs/experiment_spec.md` §1-3 ②
+  and §12, `eval/README.md`, `episode_meta/README.md`.
+- **Reverse if:** annotators cannot agree on `bad_aim` vs `pushed_away` on the same episodes, or
+  `chunk_gap_rush` labels do not line up with action jumps at k·N frames when checked in the data.
+
 ---
 
 ## D016 — Evaluation protocol: 30 trials per object

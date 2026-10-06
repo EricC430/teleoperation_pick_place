@@ -67,6 +67,8 @@ metric that tells you what to change next.**
 | `repetition_loop` | Periodic oscillation or looping over the same trajectory interval without progress |
 | `timeout` | Hit the time limit |
 | **`self_recovered`** | ⭐ **Went off course and corrected itself.** Valid alongside `outcome=success` |
+| `bad_aim` | The gripper descends / closes at a spot **visibly off the object** (more than about half the object's width) — misses it or only catches an edge. Judged from what the video shows, not from a guess about the policy. May co-occur with `pushed_away` (off-target contact pushes the object). Added 2026-10-06 |
+| `chunk_gap_rush` | The arm **suddenly speeds up / jumps** mid-motion at a chunk boundary (every `n_action_steps` frames; N=30 ≈ every 2 s at 15 fps). Valid alongside `outcome=success`, like `self_recovered`. Can be cross-checked in the data as an action jump at frames k·N. Added 2026-10-06 |
 | `other` | Detail it in `notes` |
 
 > ⭐ **`self_recovered` is deliberately a positive label.** This column records *notable behaviour*,
