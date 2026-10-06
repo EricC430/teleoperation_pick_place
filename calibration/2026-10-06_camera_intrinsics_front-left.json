@@ -1,0 +1,24 @@
+{
+  "camera": "front-left",
+  "serial": "262822305610",
+  "width": 848,
+  "height": 480,
+  "fps": 15,
+  "fx": 427.15106201171875,
+  "fy": 425.9688415527344,
+  "cx": 431.0731201171875,
+  "cy": 243.66651916503906,
+  "distortion_model": "distortion.inverse_brown_conrady",
+  "distortion_coeffs": [
+    -0.054625071585178375,
+    0.06350171566009521,
+    -0.0012396894162520766,
+    -0.0006715220515616238,
+    -0.020685186609625816
+  ],
+  "distortion_px_p50": 3.6780957692001355,
+  "distortion_px_p95": 6.208017130807697,
+  "distortion_px_max": 6.605167410523024,
+  "measured_at": "2026-10-06",
+  "source_config": "D:\\teleoperation_pick_place\\configs\\record_omx.yaml"
+}
