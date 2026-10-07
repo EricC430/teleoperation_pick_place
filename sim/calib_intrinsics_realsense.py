@@ -59,10 +59,11 @@ def read_intrinsics(serial: str, width: int, height: int, fps: int):
         pipe.stop()
 
 
-def distortion_displacement_px(intr, n_grid: int = 9) -> np.ndarray:
-    """Per-sample-point |distorted_pixel - ideal_pinhole_pixel|, evaluated on an n_grid x n_grid
-    grid spanning the sensor. Uses the SDK's own (de)projection so the comparison is against
-    exactly the model the D455 reports, not an assumed one."""
+def distortion_displacement_px(intr, n_grid: int = 9):
+    """Returns (displacement, grid, sdk_ideal): per-sample-point |distorted_pixel - ideal_pinhole_pixel|
+    over an n_grid x n_grid grid spanning the sensor, the grid pixels themselves, and where the SDK
+    says each one lands in an ideal pinhole camera. Uses the SDK's own (de)projection so the
+    comparison is against exactly the model the D455 reports, not an assumed one."""
     import pyrealsense2 as rs
 
     ideal = rs.intrinsics()
@@ -71,13 +72,28 @@ def distortion_displacement_px(intr, n_grid: int = 9) -> np.ndarray:
     ideal.model = rs.distortion.none
     ideal.coeffs = [0.0] * 5
 
-    disps = []
+    grid, sdk_ideal = [], []
     for v in np.linspace(0, intr.height - 1, n_grid):
         for u in np.linspace(0, intr.width - 1, n_grid):
             point = rs.rs2_deproject_pixel_to_point(intr, [float(u), float(v)], 1.0)
             ideal_px = rs.rs2_project_point_to_pixel(ideal, point)
-            disps.append(float(np.hypot(ideal_px[0] - u, ideal_px[1] - v)))
-    return np.array(disps)
+            grid.append([float(u), float(v)])
+            sdk_ideal.append([float(ideal_px[0]), float(ideal_px[1])])
+    grid, sdk_ideal = np.array(grid), np.array(sdk_ideal)
+    return np.linalg.norm(sdk_ideal - grid, axis=1), grid, sdk_ideal
+
+
+def formula_vs_sdk_max_px(intr, grid: np.ndarray, sdk_ideal: np.ndarray) -> float | None:
+    """Max per-point gap between camera_distortion.undistort_pixels and the SDK's deprojection over
+    the same grid. ~0.0x px = the repo's formula is what the SDK does; a wrong DIRECTION shows as ~10 px."""
+    import camera_distortion as cd
+
+    try:
+        model = cd.make_model(intr.fx, intr.fy, intr.ppx, intr.ppy, intr.width, intr.height, str(intr.model), list(intr.coeffs))
+    except NotImplementedError as exc:
+        print(f"camera_distortion.py cannot model this camera ({exc}) -- T2 / sim distortion will not work for it")
+        return None
+    return float(np.linalg.norm(cd.undistort_pixels(grid, model) - sdk_ideal, axis=1).max())
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -100,10 +116,14 @@ def main(argv: list[str] | None = None) -> int:
     intr = read_intrinsics(serial, width, height, fps)
     print(f"fx={intr.fx:.3f} fy={intr.fy:.3f} ppx={intr.ppx:.3f} ppy={intr.ppy:.3f} model={intr.model} coeffs={list(intr.coeffs)}")
 
-    disp = distortion_displacement_px(intr)
+    disp, grid, sdk_ideal = distortion_displacement_px(intr)
     p50, p95, pmax = float(np.percentile(disp, 50)), float(np.percentile(disp, 95)), float(disp.max())
     verdict = "OK -- negligible, T3 can compare against the ideal pinhole directly" if pmax <= args.max_accept_px else "WARN -- undistort real T2/T3 images before comparing to the sim's ideal-pinhole render"
     print(f"distortion-induced pixel displacement across the frame: p50={p50:.2f} p95={p95:.2f} max={pmax:.2f} px -> {verdict}")
+
+    sdk_gap = formula_vs_sdk_max_px(intr, grid, sdk_ideal)
+    if sdk_gap is not None:
+        print(f"camera_distortion.py vs the SDK's own deprojection, same {len(grid)}-point grid: max gap {sdk_gap:.3f} px -> " + ("MATCH" if sdk_gap <= 0.5 else "MISMATCH -- do NOT use calib_extrinsics_aruco.py with this json; send this line back"))
 
     result = {
         "camera": args.camera,
@@ -120,6 +140,7 @@ def main(argv: list[str] | None = None) -> int:
         "distortion_px_p50": p50,
         "distortion_px_p95": p95,
         "distortion_px_max": pmax,
+        "formula_vs_sdk_max_px": sdk_gap,
         "measured_at": dt.date.today().isoformat(),
         "source_config": str(args.config),
     }

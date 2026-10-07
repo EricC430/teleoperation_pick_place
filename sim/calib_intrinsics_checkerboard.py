@@ -202,6 +202,7 @@ def main(argv: list[str] | None = None) -> int:
         "fy": float(K[1, 1]),
         "cx": float(K[0, 2]),
         "cy": float(K[1, 2]),
+        "distortion_model": "opencv_brown_conrady",
         "distortion_coeffs": dist.ravel().tolist(),
         "calibration_rms_px": float(rms),
         "per_image_err_p50_px": float(np.percentile(per_image_err, 50)),
