@@ -92,6 +92,11 @@ _TABLE_MARGIN = 0.10             # [AI推論] breathing room beyond the outermos
 #  arm-base frame to "above the table". With 0.15 here, the S6 constants put the grasp at 16.3 cm
 #  against a 9.5 cm cup rim, median over 60 uvc_60 episodes. That ~6.8 cm is NOT this constant:
 #  1 cm either way is all it is worth. See joint_mapping.py for what it is not.)
+# `[柏宇說 2026-10-07]` what this number is PHYSICALLY: the table-top platform is 11 cm, and the arm is
+# raised to its intended height by a 3.6 cm stack of books UNDER THE ARM ONLY (11 + 3.6 = 14.6, the value
+# measured at the T2 photo). The third-person camera stands on the 11 cm platform, NOT on the books.
+# So "riser" here is really platform + books, and the camera does not share the arm's height.
+# Not split into two constants yet: the replay datasets were recorded with the arm at 15 (see above).
 ARM_RISER_HEIGHT = 0.15          # MEASURED (Eric, 2026-09-21); see the conflict note above
 
 # Arm base plate footprint, read off `follower_01_base.stl` (URDF link0, scale 0.001):
@@ -176,23 +181,42 @@ TRASH_OBJ_SCALE = (0.01, 0.01, 0.01)
 # `[Eric說 2026-09-21]` MEASURED, in the pan-axis frame (+X ahead, +Y operator-left):
 #   * 20 cm to the LEFT of the arm base's left edge          -> y = ARM_BASE_HALF_Y + 0.20
 #   * 4.5 cm inward (-X, toward the operator) from the riser's FRONT edge
-#   * 11 cm high ABOVE THE RISER, i.e. 15 + 11 = 26 cm above the table top. `[Eric說 2026-09-21]`
-#     corrected this: a first version placed it 11 cm above the TABLE, which put it below the
-#     riser it actually stands on.
+#   * HEIGHT, 2026-10-07 `[柏宇說]`: it stands on an 11 cm riser and its bracket lifts it another 11 cm,
+#     i.e. 22 cm above the table top -- NOT ARM_RISER_HEIGHT (15) + 11 = 26 as 2026-09-21 had it.
+#     Checked: ArUco T2 (calibration/2026-10-07_camera_extrinsics_front-left.json) solves 21.75 cm.
+#     So this no longer follows ARM_RISER_HEIGHT; the arm base height is a separate quantity.
 #   * aimed at the centre, 45 deg off the rightward horizontal, i.e. bearing -45 deg from +X
 #   * pitched DOWN about 10 deg
 CAM_FRONT_LEFT_INSET_FROM_RISER = 0.045   # MEASURED
-CAM_FRONT_LEFT_Z = ARM_RISER_HEIGHT + 0.11   # MEASURED: 11 cm above the riser top
-CAM_FRONT_LEFT_BEARING_DEG = -45.0    # MEASURED: from the rightward horizontal, turned to centre
-CAM_FRONT_LEFT_PITCH_DEG = -10.0      # MEASURED: negative = looking down
+CAM_FRONT_LEFT_STAND_HEIGHT = 0.11     # MEASURED 2026-10-07: the riser the camera stands on
+CAM_FRONT_LEFT_BRACKET_HEIGHT = 0.11   # MEASURED 2026-10-07: the bracket's extra lift
+CAM_FRONT_LEFT_Z = CAM_FRONT_LEFT_STAND_HEIGHT + CAM_FRONT_LEFT_BRACKET_HEIGHT   # 0.22 above the table top
+# 🟡 [PROVISIONAL 2026-10-07] The front-left pose below is the cup-landmark refit (S4 §5-5), NOT the tape
+# measurements the lines above describe. It is better than both older sets on 32 real cup positions
+# (median 5.5 px vs 25 px ArUco vs 86 px tape; 5-fold CV 6.3 px) and agrees with the hand-measured pitch (17 deg)
+# and height (22 cm), but the arm in a rendered replay is still ~3-5 cm off the real arm, so this is not "verified".
+#   backups: tape 9/21  -> CAM_FRONT_LEFT_*_TAPE_20260921 below
+#            ArUco 10/07 -> calibration/2026-10-07_camera_extrinsics_front-left.json
+#                           pos (0.0425, 0.2441, 0.2175 above table), bearing -40.0, pitch -19.4
+#            full fit   -> calibration/2026-10-07_camera_extrinsics_front-left_refit32_z220.json
+CAM_FRONT_LEFT_BEARING_DEG_TAPE_20260921 = -45.0    # MEASURED: from the rightward horizontal, turned to centre
+CAM_FRONT_LEFT_PITCH_DEG_TAPE_20260921 = -10.0      # MEASURED: negative = looking down
+CAM_FRONT_LEFT_BEARING_DEG = -43.3    # refit 2026-10-07 (provisional)
+CAM_FRONT_LEFT_PITCH_DEG = -18.7      # refit 2026-10-07 (provisional); negative = looking down
+# The refit camera also has a ROLL of +4.8 deg about its optical axis. The look-at poses used by preview_scene.py /
+# render_state_replay.py / replay_render_episode.py cannot express roll (up to ~35 px at the image edge), so the
+# scripts ignore it; the full rotation is CAM_FRONT_LEFT_QUAT_ROS_REFIT for anything that sets the rotation directly.
+CAM_FRONT_LEFT_ROLL_DEG = 4.81        # NOT applied by the look-at scripts
+CAM_FRONT_LEFT_QUAT_ROS_REFIT = (0.2072, -0.3552, 0.7310, -0.5446)   # (w, x, y, z), ros optical convention, world = pan-axis frame
 
 # `[Eric說 2026-09-21]` the inset is -X (toward the operator), corrected after a first render put
 # the camera a few cm the wrong side of the riser's front edge and inside the placement cloud.
-CAM_FRONT_LEFT_POS = (
+CAM_FRONT_LEFT_POS_TAPE_20260921 = (
     RISER_FRONT_X - CAM_FRONT_LEFT_INSET_FROM_RISER,
     CAM_FRONT_LEFT_Y_PRE,
     CAM_FRONT_LEFT_Z,
 )
+CAM_FRONT_LEFT_POS = (0.0382, 0.2505, CAM_FRONT_LEFT_Z)   # refit 2026-10-07 (provisional); z = the hand-measured 0.22 it was pinned to
 # Look-at point: along the measured bearing, dropping at the measured pitch.
 _cam_bearing = math.radians(CAM_FRONT_LEFT_BEARING_DEG)
 _cam_pitch = math.radians(CAM_FRONT_LEFT_PITCH_DEG)
@@ -200,7 +224,7 @@ _CAM_LOOK_DIST = 0.50
 CAM_FRONT_LEFT_LOOKAT = (
     CAM_FRONT_LEFT_POS[0] + _CAM_LOOK_DIST * math.cos(_cam_pitch) * math.cos(_cam_bearing),
     CAM_FRONT_LEFT_POS[1] + _CAM_LOOK_DIST * math.cos(_cam_pitch) * math.sin(_cam_bearing),
-    CAM_FRONT_LEFT_Z + _CAM_LOOK_DIST * math.sin(_cam_pitch),
+    CAM_FRONT_LEFT_POS[2] + _CAM_LOOK_DIST * math.sin(_cam_pitch),
 )
 
 CAM_WRIST_PARENT_LINK = "link5"
@@ -219,7 +243,7 @@ DOME_LIGHT_INTENSITY = 1200.0   # PLACEHOLDER  光照強度 ___ lux
 #    these as "the cameras are aligned" — they are "the scene can be rendered".
 SENSOR_APERTURE_MM = 20.955     # Isaac Sim's standard 35 mm-equivalent horizontal aperture
 HFOV_WRIST_DEG = 87.0           # PLACEHOLDER  Innomaker U20CAM-720P, unmeasured. Real value: sim/calib_intrinsics_checkerboard.py (T1)
-HFOV_FRONT_LEFT_DEG = 90.0      # D455 datasheet RGB horizontal FOV        [PROVISIONAL]
+HFOV_FRONT_LEFT_DEG = 89.47     # from the SDK intrinsics fx=427.15 px @ 848 px wide (calibration/2026-10-07_camera_intrinsics_front-left.json); was the datasheet 90. Principal point (431, 244) is not modelled
 CLIP_WRIST = (0.04, 2.0)        # PLACEHOLDER  Innomaker U20CAM-720P render clip range, unmeasured
 CLIP_FRONT_LEFT = (0.10, 3.0)
 
