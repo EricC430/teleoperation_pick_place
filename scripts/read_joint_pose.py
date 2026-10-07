@@ -8,6 +8,14 @@ torque LEFT ON so the arm holds the pose for the next lerobot-rollout (which cap
 initial_position and returns there between episodes). Caveat: rollout's connect() runs configure() inside
 torque_disabled(), so the arm may sag briefly before that capture -- check frame 0 of ep 0 against HOME.
 
+--goto J1..J6: same move, but to an explicit pose (the six values this script prints, LeRobot .pos units).
+--hold: enable torque AT the present pose and leave it on. For parking the arm somewhere you posed it
+(teleop, or by hand) while a camera script needs the cameras free: lerobot-teleoperate cuts torque on exit
+and the arm sags, so hold the arm by hand while you Ctrl+C it, run --hold, then let go. This script never
+opens a camera. A plain run afterwards (read-only, no torque change) prints the pose to pass to
+sim/calib_extrinsics_aruco.py --joint-pos.
+--release: torque OFF (the arm goes limp -- support it first).
+
     uv run python scripts/read_joint_pose.py
     uv run python scripts/read_joint_pose.py --goto-home              # alcan start pose
     uv run python scripts/read_joint_pose.py --goto-home --home cup   # paper-cup start pose
@@ -36,6 +44,12 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--port", default="COM8")
 ap.add_argument("--id", default="2026-09-18_omx_follower")
 ap.add_argument("--goto-home", action="store_true", help="move to HOME and leave torque on")
+ap.add_argument("--goto", type=float, nargs=6, default=None, metavar=tuple(JOINTS),
+                help="move to this explicit pose (LeRobot .pos units) and leave torque on")
+ap.add_argument("--hold", action="store_true", help="torque ON at the present pose, leave it on")
+ap.add_argument("--release", action="store_true", help="torque OFF (arm goes limp)")
+ap.add_argument("--max-jump", type=float, default=MAX_JUMP,
+                help="refuse --goto-home/--goto if any joint is further than this from the target")
 ap.add_argument("--home", choices=sorted(HOMES), default="alcan", help="which start pose HOME is")
 ap.add_argument("--home-episode", type=int, default=None,
                 help="HOME = frame-0 action of this episode of --dataset-root (use before lerobot-replay); overrides --home")
@@ -43,7 +57,15 @@ ap.add_argument("--dataset-root", type=Path, default=Path(".cache/lerobot/omx_pi
 ap.add_argument("--seconds", type=float, default=3.0, help="duration of the move to HOME")
 ap.add_argument("--dry-run", action="store_true", help="build the robot and print its calibration; no serial port")
 args = ap.parse_args()
+if args.hold + args.release + (args.goto is not None) + args.goto_home > 1:
+    ap.error("--hold, --release, --goto and --goto-home are mutually exclusive")
+if args.goto is not None and args.home_episode is not None:
+    ap.error("--goto already names the target pose; drop --home-episode")
 HOME = dict(zip(JOINTS, HOMES[args.home]))
+if args.goto is not None:
+    HOME = dict(zip(JOINTS, args.goto))
+    args.goto_home = True
+    args.home = "explicit --goto"
 if args.home_episode is not None:
     import pandas as pd
 
@@ -65,19 +87,30 @@ def read() -> dict[str, float]:
     return robot.bus.sync_read("Present_Position", num_retry=2)
 
 
-def show(label: str, pos: dict[str, float]) -> None:
+def show(label: str, pos: dict[str, float], diff: bool = True) -> None:
     print(f"{label:8s}", {k: round(v, 1) for k, v in pos.items()})
-    print(f"{'- HOME':8s}", {k: round(pos[k] - HOME[k], 1) for k in HOME})
+    if diff:
+        print(f"{'- HOME':8s}", {k: round(pos[k] - HOME[k], 1) for k in HOME})
 
 
 robot.bus.connect()
 try:
     start = read()
-    show("present", start)
+    show("present", start, diff=not (args.hold or args.release))
+    if args.release:
+        robot.bus.disable_torque(num_retry=2)
+        print("torque OFF -- the arm is limp, support it")
+    elif args.hold:
+        robot.bus.sync_write("Goal_Position", start)  # goal = present BEFORE torque, or the servos lunge to a stale goal
+        robot.bus.enable_torque(num_retry=2)
+        time.sleep(0.3)
+        show("held", read(), diff=False)
+        print("torque ON at the present pose -- you can let go. Cameras are free (this script opened none). "
+              "To read the pose for --joint-pos: plain run, no flags. To let the arm go limp: --release (support it first).")
     if args.goto_home:
-        far = {k: round(start[k] - HOME[k], 1) for k in HOME if abs(start[k] - HOME[k]) > MAX_JUMP}
+        far = {k: round(start[k] - HOME[k], 1) for k in HOME if abs(start[k] - HOME[k]) > args.max_jump}
         if far:
-            raise SystemExit(f"refusing: {far} further than {MAX_JUMP} from HOME -- move the arm closer by hand first")
+            raise SystemExit(f"refusing: {far} further than {args.max_jump} from {args.home} -- move the arm closer by hand first, or raise --max-jump")
         robot.bus.enable_torque(num_retry=2)
         steps = max(int(args.seconds * 50), 1)
         for i in range(1, steps + 1):

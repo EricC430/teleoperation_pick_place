@@ -18,10 +18,22 @@ CAM_FRONT_LEFT_POS / a set_world_poses(convention="ros") call.
 
 --camera wrist is parented to link5 (CAM_WRIST_PARENT_LINK) -- CameraCfg.OffsetCfg for it is
 LOCAL to link5, not world. This script chains world_from_camera through the arm's own forward
-kinematics (reach_logger.fk.link5_transform) using the joint angles the arm actually held when
-the calibration photo was taken (--joint-deg is REQUIRED for --camera wrist). Get the arm at a
-known pose (the home / five-pose set already used for the gap-2 mimic-gearing check is a
-reasonable choice) and note the leader's joint readout at capture time.
+kinematics (reach_logger.fk.link5_transform) using the joint positions the FOLLOWER actually held
+when the photo was taken (--joint-pos is REQUIRED for --camera wrist). Read them with
+`uv run python scripts/read_joint_pose.py` (read-only, prints the six follower `.pos` values) and
+paste the six numbers as printed. 🔴 They are LeRobot `.pos` units (body joints RANGE_M100_100,
+1 unit = 1.8 deg), NOT degrees, and not the leader's reading -- the follower can lag or sag
+against the leader. They go through sim/joint_mapping.lerobot_to_urdf_rad, which carries the
+measured per-joint scale and zero offsets (S6 / touch calibration); a plain radians() of the
+readout is wrong by tens of degrees (wrist_flex alone has a ~112 deg offset).
+
+--paper-offset-m dx dy dz: if the coordinate paper is known to sit slightly off the pan-axis frame
+(e.g. its x origin is a few mm out), give the offset as X_true = X_paper + (dx, dy, dz) once it is
+measured. It is a pure translation of every marker, so it CANNOT show up in T3 (the camera simply
+solves to a shifted pose and the reprojection error stays the same) -- only an independent
+reference (touching the gripper tip to a marker centre, scripts/touch_calibrate.py) can measure
+it. Run today with 0 and re-run the same command with the measured value later; the output records
+the offset used. Sensitivity: ~fx/Z px per metre, i.e. ~0.85 px per mm at 0.5 m for the D455.
 
 🔴 The ArUco detection + solvePnP + FK-chain math below was self-tested end-to-end against
 synthetic data (see the conversation this was written in) -- fake markers at known 3D points,
@@ -74,15 +86,28 @@ import numpy as np
 
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO))
+sys.path.insert(0, str(_REPO / "sim"))
+import camera_distortion as cd  # noqa: E402
+import joint_mapping as jm  # noqa: E402
 from reach_logger.fk import N_JOINTS, link5_transform  # noqa: E402
 
+SDK_CHECK_MAX_PX = 0.5  # right direction ~0.0x px, wrong direction ~10 px (see camera_distortion.py)
 
-def load_intrinsics(path: Path) -> tuple[np.ndarray, np.ndarray, int, int]:
-    d = json.loads(path.read_text(encoding="utf-8"))
-    K = np.array([[d["fx"], 0.0, d["cx"]], [0.0, d["fy"], d["cy"]], [0.0, 0.0, 1.0]])
-    coeffs = d.get("distortion_coeffs") or [0.0] * 5
-    dist = np.array((coeffs + [0.0] * 5)[:5])
-    return K, dist, d["width"], d["height"]
+
+def load_intrinsics(path: Path) -> cd.CameraModel:
+    model = cd.load_model(path)
+    if model.kind == "rs_bc":
+        d = json.loads(path.read_text(encoding="utf-8"))
+        err = d.get("formula_vs_sdk_max_px")
+        if err is None:
+            raise SystemExit(
+                f"{path} has RealSense distortion coefficients but no `formula_vs_sdk_max_px` -- re-run "
+                "calib_intrinsics_realsense.py on the lab machine (a few seconds); it checks this repo's "
+                "distortion formula against the SDK point by point, which this script depends on."
+            )
+        if err > SDK_CHECK_MAX_PX:
+            raise SystemExit(f"{path}: formula_vs_sdk_max_px={err:.2f} px > {SDK_CHECK_MAX_PX} -- camera_distortion.py disagrees with the SDK for this camera; do not trust T2 until that is resolved")
+    return model
 
 
 def load_points(path: Path, table_top_z: float) -> dict[int, np.ndarray]:
@@ -207,23 +232,36 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dict", default="DICT_4X4_50")
     ap.add_argument("--table-top-z", type=float, default=0.75, help="scene_constants.TABLE_TOP_Z -- currently a PLACEHOLDER, override once measured")
     ap.add_argument(
-        "--joint-deg",
+        "--joint-pos",
         type=float,
         nargs=6,
         default=None,
-        metavar=("J1", "J2", "J3", "J4", "J5", "GRIPPER"),
-        help="REQUIRED for --camera wrist: the leader's joint readout (degrees) at the moment --image was captured",
+        metavar=("PAN", "LIFT", "ELBOW", "WRIST_FLEX", "WRIST_ROLL", "GRIPPER"),
+        help="REQUIRED for --camera wrist: the FOLLOWER's six `.pos` values while the photo was taken, exactly as "
+        "`scripts/read_joint_pose.py` prints them (LeRobot units, not degrees; the gripper value is ignored by FK)",
+    )
+    ap.add_argument(
+        "--paper-offset-m",
+        type=float,
+        nargs=3,
+        default=[0.0, 0.0, 0.0],
+        metavar=("DX", "DY", "DZ"),
+        help="X_true = X_paper + this, for a coordinate paper known to sit off the pan-axis frame; see docstring",
     )
     ap.add_argument("--max-accept-px-median", type=float, default=10.0)
     ap.add_argument("--max-accept-px-max", type=float, default=25.0)
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args(argv)
 
-    if args.camera == "wrist" and args.joint_deg is None:
-        ap.error("--joint-deg is required for --camera wrist (see docstring)")
+    if args.camera == "wrist" and args.joint_pos is None:
+        ap.error("--joint-pos is required for --camera wrist (see docstring)")
 
-    K, dist, w, h = load_intrinsics(args.intrinsics_json)
-    points_3d = load_points(args.points_csv, args.table_top_z)
+    model = load_intrinsics(args.intrinsics_json)
+    K, w, h = model.K, model.width, model.height
+    offset = np.array(args.paper_offset_m, dtype=np.float64)
+    points_3d = {k: v + offset for k, v in load_points(args.points_csv, args.table_top_z).items()}
+    if offset.any():
+        print(f"paper offset applied to every marker: {offset.tolist()} m")
 
     if len(args.images) > 1:
         print(
@@ -242,9 +280,12 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"only {len(used_ids)} markers matched (need >= 4). detected ids: {sorted(centroids)}, csv ids: {sorted(points_3d)}")
 
     object_points = np.array([points_3d[i] for i in used_ids], dtype=np.float64)
-    image_points = np.array([centroids[i] for i in used_ids], dtype=np.float64)
+    detected_px = np.array([centroids[i] for i in used_ids], dtype=np.float64)
+    image_points = cd.undistort_pixels(detected_px, model)  # solve against an ideal pinhole, which is what the sim renders
+    undistort_shift = np.linalg.norm(image_points - detected_px, axis=1)
+    print(f"lens model '{model.kind}': detections moved {undistort_shift.min():.1f}-{undistort_shift.max():.1f} px by undistortion; residuals below are in ideal-pinhole pixels")
 
-    R_wc, t_wc, err_px = solve_world_from_camera(object_points, image_points, K, dist)
+    R_wc, t_wc, err_px = solve_world_from_camera(object_points, image_points, K, np.zeros(5))
 
     print(f"used {len(used_ids)} markers: {used_ids}")
     for mid, e in zip(used_ids, err_px):
@@ -262,7 +303,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nscene_constants.py:\nCAM_FRONT_LEFT_POS = ({t_wc[0]:.4f}, {t_wc[1]:.4f}, {t_wc[2]:.4f})")
         print(f"# and switch cam_front_left in omx_scene_cfg.py from OffsetCfg(pos=...) look-at to also carry rot={tuple(round(x,4) for x in quat)} (ros convention)")
     else:
-        joint_rad = np.radians(args.joint_deg[:N_JOINTS])
+        joint_rad = jm.lerobot_to_urdf_rad(np.array(args.joint_pos, dtype=np.float64))[:N_JOINTS]
         arm_base_pos = np.array([0.0, 0.0, args.table_top_z])
         world_from_baselink = homogeneous(np.eye(3), arm_base_pos)
         world_from_link5 = world_from_baselink @ link5_transform(joint_rad)
@@ -271,7 +312,7 @@ def main(argv: list[str] | None = None) -> int:
 
         pos = link5_from_camera[:3, 3]
         quat = matrix_to_quat_wxyz(link5_from_camera[:3, :3])
-        result = {"camera": args.camera, "frame": "link5", "pos_m": pos.tolist(), "quat_wxyz": quat.tolist(), "joint_deg_at_capture": args.joint_deg}
+        result = {"camera": args.camera, "frame": "link5", "pos_m": pos.tolist(), "quat_wxyz": quat.tolist(), "joint_pos_at_capture": args.joint_pos}
         print(f"\nscene_constants.py:\nCAM_WRIST_OFFSET_POS = ({pos[0]:.4f}, {pos[1]:.4f}, {pos[2]:.4f})")
         print(f"CAM_WRIST_OFFSET_ROT = ({quat[0]:.4f}, {quat[1]:.4f}, {quat[2]:.4f}, {quat[3]:.4f})  # (w, x, y, z), ros convention")
 
@@ -284,6 +325,9 @@ def main(argv: list[str] | None = None) -> int:
             "source_points_csv": str(args.points_csv),
             "source_intrinsics_json": str(args.intrinsics_json),
             "table_top_z": args.table_top_z,
+            "paper_offset_m": args.paper_offset_m,
+            "world_from_camera_paper_frame": {"pos_m": (t_wc - offset).tolist(), "quat_wxyz": matrix_to_quat_wxyz(R_wc).tolist()},
+            "lens_model": model.kind,
             "measured_at": dt.date.today().isoformat(),
         }
     )
