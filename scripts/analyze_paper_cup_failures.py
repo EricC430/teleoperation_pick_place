@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -23,6 +24,8 @@ ROOT = Path(__file__).resolve().parents[1]
 JOINTS = ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper"]
 OLD = "rollout_omx_b1_uvc60_100k_paper_cup_20260918_010912"
 NEW = "rollout_omx_b1_uvc60_100k_nas30_A1_paper_cup_20261006_close_loop"
+NEW_REPO = "ericc430/rollout_omx_b1_uvc60_100k_nas30_A1_paper_cup_20261006_094908"
+NEW_REVISION = "f2f9ab38f6d0083e6bb5fc0a728cdc8a917b4688"
 
 
 def read_annotations(name):
@@ -53,6 +56,8 @@ def write_csv(path, rows):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=ROOT / "outputs/paper_cup_diagnosis_20261006")
+    parser.add_argument("--closed-dataset-root", type=Path,
+                        default=ROOT / "data/huggingface/lerobot" / NEW_REPO)
     args = parser.parse_args()
     base = args.output_dir
     base.mkdir(parents=True, exist_ok=True)
@@ -130,8 +135,10 @@ def main():
     write_csv(base / "closed_success.csv", closed_rows)
     write_csv(base / "paired_outcomes.csv", paired)
 
-    manifest = json.loads((base / "latest_dataset_manifest.json").read_text())
-    dataset_root = ROOT / "data/huggingface/lerobot" / manifest["repo_id"]
+    manifest_path = base / "latest_dataset_manifest.json"
+    manifest = (json.loads(manifest_path.read_text()) if manifest_path.exists()
+                else {"repo_id": NEW_REPO, "revision": NEW_REVISION})
+    dataset_root = args.closed_dataset_root
     data = []
     for path in sorted((dataset_root / "data").rglob("*.parquet")):
         data.extend(pq.read_table(path).to_pylist())
@@ -238,6 +245,17 @@ def main():
                "closed_dataset": {"repo_id":manifest["repo_id"],"revision":manifest["revision"]},
                "grouping": {"near":"r<22 cm; D030 additions", "far":"r>=34 cm; exploratory threshold"},
                "units":"LeRobot .pos; not degrees; averages weight episodes equally"}
+    input_paths = [ROOT / "docs/assets/placement_label_map_campA_136sym_20260908.csv",
+                   ROOT / "episode_meta/omx_pick_place_pilot_paper_cup.csv",
+                   ROOT / "episode_meta" / f"{OLD}.csv", ROOT / "episode_meta" / f"{NEW}.csv",
+                   *sorted((dataset_root / "data").rglob("*.parquet"))]
+    summary["input_sha256"] = {}
+    for path in input_paths:
+        try:
+            label = str(path.relative_to(ROOT))
+        except ValueError:
+            label = str(path)
+        summary["input_sha256"][label] = hashlib.sha256(path.read_bytes()).hexdigest()
     (base / "summary.json").write_text(json.dumps(summary, indent=2))
     for row in group_rows:
         if row["interval"] in ("N100", "N30"):
