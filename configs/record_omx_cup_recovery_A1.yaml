@@ -43,25 +43,25 @@ robot:
       white_balance: null   # = AUTO: fixed 3500 K looked green (D022 2026-09-13). exposure/gain were matched with WB 3500; re-check with freeze_realsense_exposure.py (--wb auto)
 
 dataset:
-  # 2026-10-07 recovery 示範（docs/meeting/2026-10-07.md §5）：紙杯，D455 在 A1，近／中／遠各 6 集，只用 t 點。
+  # 2026-10-07 recovery 示範（docs/meeting/2026-10-07.md §5）：紙杯，D455 在 A1，近 6／中 3／遠 3 集，只用 t 點（中／遠另一半點錄正常示範：configs/record_omx_cup_normal_A1.yaml）。
   #   目的：讓訓練資料出現「手腕畫面看到偏了 → 修正 → 才夾」的例子（10-07：模型抓取前幾乎不用手腕修正）。
   #   每集做法 [柏宇決定：偏移不量公分，小歪即可]：
   #     ① 照平常接近，但停在下表方向「歪一點」的位置 —— 歪到手腕畫面看得出杯子不在正中間（杯子偏到畫面一側）
   #     ② 夾爪保持張開，停約 0.5 s ③ 正常速度修正對準 ④ 夾取、放進盒子
   #   方向：前 = 伸過頭（離底座更遠）、後 = 伸不夠、左 = θ 正側（t58 那側）、右 = θ 負側（t60 那側）。
-  #   遠區多「後／右」= 模型最常犯的偏差（10-06 §3-2）；其餘輪流，避免模型只學到「固定往某邊補」。
-  #   位置圖（右圖，圓圈數字 = 集數、箭頭 = 歪的方向）：docs/assets/recording_sheet_cup_near_recovery_A1.png
+  #   四個方向各 3 集（近場多「前」= 模型在近場伸太遠；遠場的「後／右」= 模型在遠場的偏差，10-06 §3-2）；輪流，避免模型只學到「固定往某邊補」。
+  #   位置圖（右圖，圓圈數字 = 集數、箭頭 = 歪的方向）：docs/assets/recording_sheet_cup_normal_recovery_A1.png
   #   episode → 擺放點 / 歪的方向：
   #     近  ep 0 t60 前 | ep 1 t54 右 | ep 2 t55 前 | ep 3 t53 左 | ep 4 t52 後 | ep 5 t57 前
-  #     中  ep 6 t34 後 | ep 7 t16 左 | ep 8 t21 前 | ep 9 t12 右 | ep 10 t4 後 | ep 11 t17 左
-  #     遠  ep 12 t36 後 | ep 13 t2 右 | ep 14 t20 後 | ep 15 t9 左 | ep 16 t35 右 | ep 17 t45 前
+  #     中  ep 6 t34 後 | ep 7 t12 右 | ep 8 t17 左
+  #     遠  ep 9 t36 後 | ep 10 t9 左 | ep 11 t35 右
   #   （避開第三視角看不到的 t14/t22/t37/t38/t42；不使用 c／o 測試點。）
   #   沒歪出來或修正失敗 → 左方向鍵重錄該集。錄完寫 episode_meta/<dataset>.csv：mechanism 標 self_recovered，notes 寫方向。
   # 開錄前：① scripts/align_camera.py 確認 D455 仍在 A1 ② lerobot-find-cameras 確認 wrist index。
   repo_id: ericc430/omx_pick_place_pilot_paper_cup_recovery_A1
   root: ./.cache/lerobot/omx_pick_place_pilot_paper_cup_recovery_A1
   push_to_hub: false       # upload by hand after the session looks right (same as the rollouts)
-  num_episodes: 18
+  num_episodes: 12
   fps: 15                    # must match camera fps
   episode_time_s: 60         # uvc_60 used 45; recovery adds a pause + correction. Right arrow ends early
   reset_time_s: 120           # was 60 — pilot doesn't need a full minute to reposition
