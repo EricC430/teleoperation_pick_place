@@ -1,0 +1,13 @@
+﻿episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
+0,paper_cup,stand,t60,,,success,self_recovered,,1,,Boyu,2026/10/7,recovery：先歪向前（伸過頭）再修正
+1,paper_cup,stand,t54,,,success,self_recovered,,1,,Boyu,2026/10/7,recovery：先歪向右（θ 負側）再修正
+2,paper_cup,stand,t55,,,success,self_recovered,,1,,Boyu,2026/10/7,recovery：先歪向前（伸過頭）再修正
+3,paper_cup,stand,t53,,,success,self_recovered,,1,,Boyu,2026/10/7,recovery：先歪向左（θ 正側）再修正
+4,paper_cup,stand,t52,,,success,self_recovered,,1,,Boyu,2026/10/7,recovery：先歪向後（伸不夠）再修正
+5,paper_cup,stand,t57,,,success,self_recovered,,1,,Boyu,2026/10/7,recovery：先歪向前（伸過頭）再修正
+6,paper_cup,stand,t34,,,success,self_recovered,,1,,Boyu,2026/10/7,recovery：先歪向後（伸不夠）再修正
+7,paper_cup,stand,t12,,,success,self_recovered,,1,,Boyu,2026/10/7,recovery：先歪向右（θ 負側）再修正
+8,paper_cup,stand,t17,,,success,self_recovered,,1,,Boyu,2026/10/7,recovery：先歪向左（θ 正側）再修正
+9,paper_cup,stand,t36,,,success,self_recovered,,1,,Boyu,2026/10/7,recovery：先歪向後（伸不夠）再修正
+10,paper_cup,stand,t9,,,success,self_recovered,,1,,Boyu,2026/10/7,recovery：先歪向左（θ 正側）再修正
+11,paper_cup,stand,t35,,,success,self_recovered,,1,,Boyu,2026/10/7,recovery：先歪向右（θ 負側）再修正

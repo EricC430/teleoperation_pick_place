@@ -6,7 +6,9 @@ note about scaling that threshold).
 
 Frame convention -- same as sim/scene_constants.py and sim/omx_scene_cfg.py:
   world origin = the pan axis (joint1) projected to (x=0, y=0); the arm is spawned at
-  ARM_BASE_POS = (0, 0, TABLE_TOP_Z) (omx_scene_cfg.py). Marker points are given as
+  ARM_BASE_POS = (0, 0, TABLE_TOP_Z + ARM_RISER_HEIGHT) (omx_scene_cfg.py) -- the arm is on a ~15 cm
+  riser, so the wrist chain needs --arm-base-height-m (table surface -> underside of the base
+  plate = URDF link0's origin). Marker points are given as
   (x_m, y_m, height_above_table_m) in the SAME x_pan_cm/y_pan_cm frame the placement-mat CSVs
   already use, and converted here as z_world = table_top_z + height_above_table_m. This means a
   marker CSV measured today stays correct even after TABLE_TOP_Z's current PLACEHOLDER (0.75 m,
@@ -241,6 +243,15 @@ def main(argv: list[str] | None = None) -> int:
         "`scripts/read_joint_pose.py` prints them (LeRobot units, not degrees; the gripper value is ignored by FK)",
     )
     ap.add_argument(
+        "--arm-base-height-m",
+        type=float,
+        default=None,
+        help="REQUIRED for --camera wrist: height of URDF link0's origin above the table surface = TABLE SURFACE -> "
+        "UNDERSIDE of the arm base plate, i.e. the riser alone (scene_constants.ARM_RISER_HEIGHT; the arm does NOT sit "
+        "on the table). Measure it the day of the photo -- the riser drifted 15 -> 14 cm once (scene_constants), so the "
+        "constant is not reliably today's value. A mistake here moves the solved link5->camera offset 1:1 in z.",
+    )
+    ap.add_argument(
         "--paper-offset-m",
         type=float,
         nargs=3,
@@ -255,6 +266,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.camera == "wrist" and args.joint_pos is None:
         ap.error("--joint-pos is required for --camera wrist (see docstring)")
+    if args.camera == "wrist" and args.arm_base_height_m is None:
+        ap.error("--arm-base-height-m is required for --camera wrist (table surface -> underside of the arm base plate; see --help)")
 
     model = load_intrinsics(args.intrinsics_json)
     K, w, h = model.K, model.width, model.height
@@ -304,7 +317,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"# and switch cam_front_left in omx_scene_cfg.py from OffsetCfg(pos=...) look-at to also carry rot={tuple(round(x,4) for x in quat)} (ros convention)")
     else:
         joint_rad = jm.lerobot_to_urdf_rad(np.array(args.joint_pos, dtype=np.float64))[:N_JOINTS]
-        arm_base_pos = np.array([0.0, 0.0, args.table_top_z])
+        # link0 sits on the riser, not on the table: z = table surface + riser height (2026-10-07: leaving
+        # this at the table surface put the camera 14.8 cm too high in link5 -- S5 §2-D is the same mistake)
+        arm_base_pos = np.array([0.0, 0.0, args.table_top_z + args.arm_base_height_m])
         world_from_baselink = homogeneous(np.eye(3), arm_base_pos)
         world_from_link5 = world_from_baselink @ link5_transform(joint_rad)
         world_from_camera = homogeneous(R_wc, t_wc)
@@ -325,6 +340,7 @@ def main(argv: list[str] | None = None) -> int:
             "source_points_csv": str(args.points_csv),
             "source_intrinsics_json": str(args.intrinsics_json),
             "table_top_z": args.table_top_z,
+            "arm_base_height_m": args.arm_base_height_m,
             "paper_offset_m": args.paper_offset_m,
             "world_from_camera_paper_frame": {"pos_m": (t_wc - offset).tolist(), "quat_wxyz": matrix_to_quat_wxyz(R_wc).tolist()},
             "lens_model": model.kind,

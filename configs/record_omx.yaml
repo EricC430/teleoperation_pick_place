@@ -1,13 +1,13 @@
 teleop:
   type: omx_leader
   port: COM9
-  id: 2026-09-13_omx_leader
+  id: 2026-09-18_omx_leader
   calibration_dir: ./calibration
 
 robot:
   type: omx_follower
   port: COM8
-  id: 2026-09-13_omx_follower
+  id: 2026-09-18_omx_follower
   calibration_dir: ./calibration
   cameras:
     wrist:
@@ -18,7 +18,7 @@ robot:
       #    確認 outputs/captured_images/opencv_3.png 拍到的是夾爪。
       #    🔴 index 錯了「不會報錯」—— 會安靜地錄到筆電鏡頭（index 0）之類的別台相機。
       type: opencv_uvc  # plugin (D022 §2026-09-13). Revert on trouble: type: opencv (and drop the 3 values below)
-      index_or_path: 3
+      index_or_path: 2
       backend: DSHOW    # index 3 是在 DSHOW 下列舉到的；ANY 在 Windows 可能改選 MSMF，編號不同
       width: 640        # 848×480 不支援：DSHOW 吸附成 800 寬 → lerobot 拒絕開啟（2026-09-13 實測）
       height: 480
@@ -46,16 +46,16 @@ dataset:
   # pilot data (D022 / D024 campaign_A_pilot_2cam) — recorded local-only (push_to_hub: false below
   # is what future re-recordings from THIS config will do).
   # 🔴 2026-09-03: this specific already-recorded snapshot WAS manually pushed once —
-  # `hf upload EricC430/omx_pick_place_pilot ...` — to validate the 4090-train -> HF Hub ->
+  # `hf upload ericc430/omx_pick_place_pilot ...` — to validate the 4090-train -> HF Hub ->
   # laptop-deploy handoff for A13. See docs/field_manual.md §8. That is a one-off manual push of
   # existing data, not a change to this config's default behavior — real campaigns still get a
   # fresh repo_id, decided when Phase A/B recording actually starts.
-  repo_id: EricC430/omx_pick_place_pilot   # replace with your real HF handle if you ever push
+  repo_id: ericc430/omx_pick_place_pilot_plastic_bottle_open_loop   # Hub namespace is lowercase — EricC430/... 403s on push (D022 2026-09-13)
   # 🔴 2026-09-13：pilot_2 裡已有 1 集 D405-wrist（848×480）資料。UVC 資料不可混入（D022 重錄邊界），
   #    所以開新 root。pilot / pilot_2 原封保留，不刪。
-  root: ./.cache/lerobot/omx_pick_place_pilot_uvc   # explicit → independent of HF_HOME / HF_LEROBOT_HOME
-  push_to_hub: false
-  num_episodes: 20
+  root: ./.cache/lerobot/omx_pick_place_pilot_plastic_bottle_open_loop  # explicit → independent of HF_HOME / HF_LEROBOT_HOME
+  push_to_hub: true
+  num_episodes: 12
   fps: 15                    # must match camera fps
   episode_time_s: 45
   reset_time_s: 120           # was 60 — pilot doesn't need a full minute to reposition

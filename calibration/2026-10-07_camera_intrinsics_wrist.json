@@ -1,0 +1,28 @@
+{
+  "camera": "wrist",
+  "index": 2,
+  "width": 640,
+  "height": 480,
+  "fx": 694.6581748746704,
+  "fy": 696.6725868716137,
+  "cx": 288.19156625247837,
+  "cy": 236.72215105630147,
+  "distortion_model": "opencv_brown_conrady",
+  "distortion_coeffs": [
+    -0.5255522197350703,
+    0.4725669886410813,
+    0.003127505905239609,
+    0.0015699038457483063,
+    -0.37031118447591643
+  ],
+  "calibration_rms_px": 0.8176269858562557,
+  "per_image_err_p50_px": 0.5540095567703247,
+  "per_image_err_max_px": 1.4609993696212769,
+  "distortion_px_p50": 17.076677322387695,
+  "distortion_px_p95": 76.24229431152344,
+  "distortion_px_max": 129.1944580078125,
+  "n_captures": 23,
+  "square_mm": 25.0,
+  "measured_at": "2026-10-07",
+  "source_config": "D:\\teleoperation_pick_place\\configs\\teleoperate_omx.yaml"
+}

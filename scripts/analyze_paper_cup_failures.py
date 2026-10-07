@@ -70,6 +70,8 @@ def main():
         r["band"] = "near_r<22" if r["radius"] < 22 else (
             "far_r>=34" if r["radius"] >= 34 else "middle_22<=r<34")
     demos = read_annotations("omx_pick_place_pilot_uvc_60")
+    # Merge order is not t(i+1): ep 40-58 = t42-t60, ep 59 = t41 (episode_meta/README.md, D022).
+    train_sid = {int(r["episode_index"]): r["placement_id"] for r in demos}
     old, new = read_annotations(OLD), read_annotations(NEW)
     assert len(demos) == 60 and len(old) == len(new) == 36
     common_ids = {r["placement_id"] for r in old if r["valid"] == "1"} & {
@@ -95,7 +97,7 @@ def main():
         assert {m["episode"] for m in metrics["episodes"]} == set(range(count))
         items = []
         for m in metrics["episodes"]:
-            sid = f"{prefix}{m['episode'] + 1}"
+            sid = train_sid[m["episode"]] if kind == "train" else f"{prefix}{m['episode'] + 1}"
             p = placements[sid]
             row = {"kind": kind, "interval": label, "episode": m["episode"],
                    "placement": sid, "x_pan_cm": p["x"], "y_pan_cm": p["y"],

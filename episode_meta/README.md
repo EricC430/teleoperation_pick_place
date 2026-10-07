@@ -21,23 +21,28 @@ Without that, a dataset is 200 undifferentiated episodes and "the policy fails o
 an unanswerable question — the same failure mode `eval/` exists to prevent, one step earlier in the
 pipeline.
 
-## `omx_pick_place_pilot_uvc_60` — placements follow `t1..t60` in order
+## `omx_pick_place_pilot_uvc_60` — episode ↔ placement is NOT `t{i+1}` past ep 39
 
-`[Eric說 2026-09-21]`: **uvc_60 was recorded walking `campA_136sym`'s `t1..t60` in order**, so
-episode *i* used short_id `t{i+1}` (episode 0 → `t1` → `train_001`). Nothing in the dataset records
-this. The annotations are in `episode_meta/omx_pick_place_pilot_uvc_60.csv` (60/60, `placement_id`
-= `t{i+1}` on every row) — until 2026-10-06 that file was named `omx_pick_place_pilot_paper_cup.csv`
-and saved as Big5, which is why this section used to say no CSV existed.
+uvc_60 is a merge of three recording folders (`docs/decisions.md` D022, 2026-09-13 merge entry;
+copy at `.cache/lerobot/omx_pick_place_pilot_uvc_60/對照表.md`, not in git). t41 was missed in the
+`uvc_20_59` run and re-recorded alone, then merged **last**:
 
-Corroborated independently before being relied on (2026-09-21): for each episode, take the frame
-where the gripper starts closing, run `observation.state` through `reach_logger/fk.py`, and
-correlate end-effector position against the claimed placement — **x r=+0.63, y r=+0.66 across all
-60**, versus r≈0.00 for 20 shuffled pairings, and weaker at every ±1/±2 shift. So the ordering is
-right. The per-episode residual (p50 9 cm after removing a constant +10 cm offset) is big enough
-that this corroborates the **rule**, not any individual row — a re-recorded or aborted take would
-not show up in it.
+| episode | short_id |
+|---|---|
+| 0–39 | `t{i+1}` (t1–t40) |
+| 40–58 | `t{i+2}` (t42–t60) |
+| 59 | `t41` |
 
-`sim/replay_render_episode.py --place-from-episode` already applies the same rule directly.
+`episode_meta/omx_pick_place_pilot_uvc_60.csv` carries these `placement_id`s (corrected 2026-10-06;
+until then rows 40–59 had `t{i+1}`, and until the same day the file was named
+`omx_pick_place_pilot_paper_cup.csv`). `sim/replay_render_episode.py --place-from-episode` applies
+the same rule.
+
+> 🔴 This section used to say the whole set followed `t{i+1}` (`[Eric說 2026-09-21]`), "corroborated"
+> by an FK correlation of r≈0.63 over all 60. That correlation was the 40 correct rows diluted by
+> 20 misassigned ones. On 2026-10-06 the grasp-frame `shoulder_pan` vs θ correlation was 0.99 for
+> ep 0–39 and ≈0 for ep 40–59 under the old rule. **A pooled correlation corroborates nothing row-wise —
+> check per block.**
 
 ## Vocabulary is shared with `eval/`
 

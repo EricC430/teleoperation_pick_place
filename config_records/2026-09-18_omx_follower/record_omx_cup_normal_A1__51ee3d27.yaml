@@ -1,3 +1,11 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/record_omx_cup_normal_A1.yaml
+# saved_at:      2026-10-07T22:13:09
+# entrypoint:    lerobot-record
+# cli overrides: (none)
+# ids:           robot=2026-09-18_omx_follower, teleop=2026-09-18_omx_leader
+# git:           331145f (config file committed)
+# digest:        51ee3d27  (sha256[:8] of the YAML below + the CLI overrides)
 teleop:
   type: omx_leader
   port: COM9
@@ -43,14 +51,21 @@ robot:
       white_balance: null   # = AUTO: fixed 3500 K looked green (D022 2026-09-13). exposure/gain were matched with WB 3500; re-check with freeze_realsense_exposure.py (--wb auto)
 
 dataset:
-  # 2026-10-06 近場補錄（docs/meeting/2026-10-06.md §4）：紙杯，D455 在 A1，擺放點 t51–t60 依序走兩輪。
-  #   uvc_60 的近場 10 集（ep 50–59）是在相機 A2 錄的、示範密度只有中區的 0.6 → 在 A1 各補 2 集。
-  #   episode i → t{51 + i % 10}（ep 0–9 第一輪、ep 10–19 第二輪）。錄完寫 episode_meta/<dataset>.csv。
+  # 正常示範補錄（docs/meeting/2026-10-07.md §5）：紙杯，D455 在 A1，只用 t 點，不刻意偏。
+  #   近 10：uvc_60 的近場 10 集（ep 49–58）是在相機 A2 錄的、閉環兩次都 1/6 → 在 A1 各補 1 集。
+  #   中 3＋遠 3：2026-10-07 [柏宇決定] 中／遠的點一半錄正常、一半錄 recovery（configs/record_omx_cup_recovery_A1.yaml）。
+  #   （2026-10-06 原為「近場 t51–t60 走兩輪 20 集」，檔名原 record_omx_cup_near_A1.yaml。）
+  #   位置圖（左圖，圓圈數字 = 集數）：docs/assets/recording_sheet_cup_normal_recovery_A1.png
+  #   episode → 擺放點：
+  #     近  ep 0–9 = t51, t52, t53, t54, t55, t56, t57, t58, t59, t60
+  #     中  ep 10 t16 | ep 11 t21 | ep 12 t4
+  #     遠  ep 13 t2  | ep 14 t20 | ep 15 t45
+  #   錄完寫 episode_meta/<dataset>.csv。
   # 開錄前：① scripts/align_camera.py 確認 D455 仍在 A1 ② lerobot-find-cameras 確認 wrist index。
-  repo_id: ericc430/omx_pick_place_pilot_paper_cup_near_A1
-  root: ./.cache/lerobot/omx_pick_place_pilot_paper_cup_near_A1
+  repo_id: ericc430/omx_pick_place_pilot_paper_cup_normal_A1
+  root: ./.cache/lerobot/omx_pick_place_pilot_paper_cup_normal_A1
   push_to_hub: false       # upload by hand after the session looks right (same as the rollouts)
-  num_episodes: 20
+  num_episodes: 16
   fps: 15                    # must match camera fps
   episode_time_s: 45         # same as uvc_60
   reset_time_s: 120           # was 60 — pilot doesn't need a full minute to reposition
