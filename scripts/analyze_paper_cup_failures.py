@@ -69,7 +69,7 @@ def main():
         r["radius"] = float(np.hypot(r["x"], r["y"]))
         r["band"] = "near_r<22" if r["radius"] < 22 else (
             "far_r>=34" if r["radius"] >= 34 else "middle_22<=r<34")
-    demos = read_annotations("omx_pick_place_pilot_paper_cup")
+    demos = read_annotations("omx_pick_place_pilot_uvc_60")
     old, new = read_annotations(OLD), read_annotations(NEW)
     assert len(demos) == 60 and len(old) == len(new) == 36
     common_ids = {r["placement_id"] for r in old if r["valid"] == "1"} & {
@@ -246,7 +246,7 @@ def main():
                "grouping": {"near":"r<22 cm; D030 additions", "far":"r>=34 cm; exploratory threshold"},
                "units":"LeRobot .pos; not degrees; averages weight episodes equally"}
     input_paths = [ROOT / "docs/assets/placement_label_map_campA_136sym_20260908.csv",
-                   ROOT / "episode_meta/omx_pick_place_pilot_paper_cup.csv",
+                   ROOT / "episode_meta/omx_pick_place_pilot_uvc_60.csv",
                    ROOT / "episode_meta" / f"{OLD}.csv", ROOT / "episode_meta" / f"{NEW}.csv",
                    *sorted((dataset_root / "data").rglob("*.parquet"))]
     summary["input_sha256"] = {}
