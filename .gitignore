@@ -40,3 +40,12 @@ sim/__pycache__/
 # Crash dumps -- a container/process leaves these at repo root sometimes, ~10GB, never useful.
 core
 core.*
+
+# Local Isaac Sim / URDF working assets (2026-10-07 [柏宇決定]): generated or third-party clones, ~120 MB.
+# Not needed for training; tracked assets (omx_f/, paper_cup/, OMX-AI stp) stay tracked.
+assets/Trashcan/
+assets/omx_f_generated/
+assets/omx_f_generated_gearNeg1/
+assets/open_manipulator_description/
+assets/wildbot_car_urdf/
+assets/wildbot_with_omxaiarm.usd
