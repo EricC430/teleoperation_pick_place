@@ -19,7 +19,7 @@
 | 來源 | 用途與限制 |
 |---|---|
 | `data/huggingface/lerobot/ericc430/omx_pick_place_pilot_uvc_60` | 60 集訓練示範；本次重算全部 N=100、N=30 |
-| `episode_meta/omx_pick_place_pilot_uvc_60.csv` | 60 集 outcome/quality/placement；10/6 由原 `omx_pick_place_pilot_paper_cup.csv`（CP950）改名／轉 UTF-8；確認 ep i → t(i+1) |
+| `episode_meta/omx_pick_place_pilot_uvc_60.csv` | 60 集 outcome/quality/placement；10/6 由原 `omx_pick_place_pilot_paper_cup.csv`（CP950）改名／轉 UTF-8；位置依對照表：ep 0–39 = t1–t40、ep 40–58 = t42–t60、ep 59 = t41（`episode_meta/README.md`）。初版誤用 t(i+1)，10/7 已修正分析器並重算 train 欄 |
 | `data/huggingface/lerobot/ericc430/omx_pick_place_open_loop_eval` | 12 集錄好的人工評估示範；本次重算 N=30，N=100/50/20 使用既有逐集結果 |
 | `episode_meta/rollout_omx_b1_uvc60_100k_paper_cup_20260918_010912.csv` | 9/18 的 36 個 closed-loop outcome；4 筆 valid=0，另有非 episode 的 `0.5` 摘要尾列，計算時跳過尾列 |
 | `episode_meta/rollout_omx_b1_uvc60_100k_nas30_A1_paper_cup_20261006_close_loop.csv` | 36 個 outcome；10/7 核對最新版，c7/c16/c17/c36 已標 valid=0 |
@@ -42,11 +42,13 @@ closed-loop 表使用共同 32 個位置：排除舊 CSV valid=0 的 c7、c16、
 
 | 組別 | Train 集數 | Train MAE N100 → N30 | Open 集數 | Open MAE N100 → N30 | Closed N100 | Closed N30 |
 |---|---:|---:|---:|---:|---:|---:|
-| 主區域合計 | 50 | 0.683 → 0.636 | 10 | 6.670 → 4.510 | 17/27，63.0% | 16/27，59.3% |
-| 近距離 r<22 | 10 | 0.645 → 0.646 | 2 | 4.014 → 3.738 | 1/5，20.0% | 1/5，20.0% |
-| 中距離 22≤r<34 | 33 | 0.658 → 0.598 | 7 | 7.099 → 4.880 | 12/16，75.0% | 13/16，81.3% |
-| 遠距離 r≥34 | 17 | 0.732 → 0.709 | 3 | 5.669 → 3.647 | 5/11，45.5% | 3/11，27.3% |
+| 主區域合計 | 50 | 0.680 → 0.636 | 10 | 6.670 → 4.510 | 17/27，63.0% | 16/27，59.3% |
+| 近距離 r<22 | 10 | 0.662 → 0.646 | 2 | 4.014 → 3.738 | 1/5，20.0% | 1/5，20.0% |
+| 中距離 22≤r<34 | 33 | 0.667 → 0.605 | 7 | 7.099 → 4.880 | 12/16，75.0% | 13/16，81.3% |
+| 遠距離 r≥34 | 17 | 0.704 → 0.696 | 3 | 5.669 → 3.647 | 5/11，45.5% | 3/11，27.3% |
 | 全部 | 60 | 0.677 → 0.637 | 12 | 6.227 → 4.382 | 18/32，56.3% | 17/32，53.1% |
+
+> 10/7 更正：train 欄初版以 t(i+1) 分配 ep 40–59，改用對照表重算（同權重 `2bdff2b3871e` 的逐集 MAE）。各組變化 ≤0.03，判讀不變；下圖為初版產出，未重繪。
 
 ![分組誤差、成功率與交接幀跳變](../../outputs/paper_cup_diagnosis_20261006/comparison.png)
 
