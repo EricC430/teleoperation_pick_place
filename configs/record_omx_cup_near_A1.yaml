@@ -47,6 +47,7 @@ dataset:
   #   uvc_60 的近場 10 集（ep 49–58）是在相機 A2 錄的、示範密度只有中區的 0.6 → 在 A1 各補 1 集。
   #   2026-10-07 [柏宇] 改成 10 集（原 20），另錄 recovery 示範：configs/record_omx_cup_recovery_A1.yaml。
   #   episode i → t{51 + i}。正常示範，不刻意偏。錄完寫 episode_meta/<dataset>.csv。
+  #   位置圖（左圖，圓圈數字 = 集數）：docs/assets/recording_sheet_cup_near_recovery_A1.png
   # 開錄前：① scripts/align_camera.py 確認 D455 仍在 A1 ② lerobot-find-cameras 確認 wrist index。
   repo_id: ericc430/omx_pick_place_pilot_paper_cup_near_A1
   root: ./.cache/lerobot/omx_pick_place_pilot_paper_cup_near_A1
