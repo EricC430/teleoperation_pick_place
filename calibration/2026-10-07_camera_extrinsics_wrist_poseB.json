@@ -1,0 +1,60 @@
+{
+  "camera": "wrist",
+  "frame": "link5",
+  "pos_m": [
+    0.05305065011489973,
+    -0.0352270871572718,
+    0.08267353645382491
+  ],
+  "quat_wxyz": [
+    0.3706781979249232,
+    -0.589009681739572,
+    0.6068281443532927,
+    -0.38395946611708764
+  ],
+  "joint_pos_at_capture": [
+    21.4,
+    -9.4,
+    -27.9,
+    6.8,
+    -14.7,
+    78.6
+  ],
+  "reprojection_err_p50_px": 0.8310764161631736,
+  "reprojection_err_max_px": 1.8306071650014069,
+  "used_marker_ids": [
+    0,
+    1,
+    4,
+    5,
+    6,
+    7
+  ],
+  "source_images": [
+    "calibration\\shots\\wrist_t2_poseB.png"
+  ],
+  "source_points_csv": "calibration\\aruco_points.csv",
+  "source_intrinsics_json": "calibration\\2026-10-07_camera_intrinsics_wrist.json",
+  "table_top_z": 0.75,
+  "arm_base_height_m": 0.146,
+  "paper_offset_m": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "world_from_camera_paper_frame": {
+    "pos_m": [
+      0.15360263765345022,
+      0.13073238032787615,
+      1.2316046340296132
+    ],
+    "quat_wxyz": [
+      0.021119453617274853,
+      0.9587009461136724,
+      -0.25150971615375856,
+      0.1311080748082023
+    ]
+  },
+  "lens_model": "opencv",
+  "measured_at": "2026-10-07"
+}
