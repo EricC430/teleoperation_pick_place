@@ -528,6 +528,7 @@ def main():
             "attention_measure": "raw decoder cross-attention averaged over heads; camera tokens contain mixed encoder information; not a causal importance score",
             "run_name": run_name,
             "dataset_repo_id": args.dataset_repo_id,
+            "bundle_path": str(output_base),
             "episode": args.episode,
             "total_frames": total_frames,
             "fps": fps,

@@ -160,6 +160,7 @@ function bindEvents() {
     elements.badgeROIWrist.textContent = "No ROI Set";
     elements.badgeROIFront.classList.remove("active");
     elements.badgeROIWrist.classList.remove("active");
+    computeFullEpisodeAoTR();
     renderCurrentFrame();
   });
 
@@ -283,11 +284,13 @@ async function loadDefaultData() {
   elements.btnLoadDefault.textContent = "⏳ Loading...";
   try {
     // Attempt to load from relative output directory
-    const defaultUrl = "../../outputs/act_analysis/phase_b1_uvc60_ep0/ep0_data.json";
+    const configuredUrl = new URLSearchParams(window.location.search).get("data");
+    const defaultUrl = configuredUrl || "../../outputs/act_analysis/phase_b1_uvc60_ep0/ep0_data.json";
     const res = await fetch(defaultUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    onDataLoaded(data, "../../outputs/act_analysis/phase_b1_uvc60_ep0");
+    const bundleUrl = new URL(defaultUrl, window.location.href);
+    onDataLoaded(data, new URL(".", bundleUrl).href.replace(/\/$/, ""));
   } catch (err) {
     console.warn("Could not load default file via relative path:", err);
     elements.btnLoadDefault.textContent = "⚡ Load Phase B1 (Ep 0)";
@@ -303,7 +306,9 @@ function handleFileUpload(e) {
     try {
       const data = JSON.parse(event.target.result);
       // Path base assuming relative to tools/act_visualizer/
-      const basePath = `../../outputs/act_analysis/${data.metadata.run_name}_ep${data.metadata.episode}`;
+      const basePath = data.metadata.bundle_path
+        ? `../../${data.metadata.bundle_path}`
+        : `../../outputs/act_analysis/${data.metadata.run_name}_ep${data.metadata.episode}`;
       onDataLoaded(data, basePath);
     } catch (err) {
       alert("Error parsing JSON file: " + err.message);
@@ -316,6 +321,18 @@ function onDataLoaded(data, basePath) {
   state.data = data;
   state.basePath = basePath;
   state.currentFrame = 0;
+  state.cachedImages = {front: {}, wrist: {}};
+  state.roiKeyframes = {front: {}, wrist: {}};
+  state.interpolatedROI = {front: [], wrist: []};
+  state.aotrTimeline = {front: [], wrist: []};
+  elements.badgeROIFront.textContent = "No ROI Set";
+  elements.badgeROIWrist.textContent = "No ROI Set";
+  elements.badgeROIFront.classList.remove("active");
+  elements.badgeROIWrist.classList.remove("active");
+  elements.valMeanAoTRFront.textContent = "--";
+  elements.valMeanAoTRWrist.textContent = "--";
+  elements.valLostFrameCount.textContent = "0 frames";
+  elements.btnJumpFirstLost.disabled = true;
 
   const totalFrames = data.metadata.total_frames;
   elements.timelineScrubber.max = totalFrames - 1;
@@ -324,7 +341,7 @@ function onDataLoaded(data, basePath) {
   elements.badgeCheckpoint.textContent = `Model: ${data.metadata.run_name}`;
   elements.badgeDataset.textContent = `Dataset: ${data.metadata.dataset_repo_id}`;
   elements.badgeEpisode.textContent = `Ep: ${data.metadata.episode}`;
-  elements.btnLoadDefault.textContent = "✅ Loaded Ep 0";
+  elements.btnLoadDefault.textContent = `✅ Loaded Ep ${data.metadata.episode}`;
 
   // Preload first few images
   preloadImagesAround(0);
@@ -571,9 +588,7 @@ function interpolateAllROIs() {
 
     if (keyframes.length === 1) {
       const singleROI = state.roiKeyframes[camKey][keyframes[0]];
-      for (let i = 0; i < total; i++) {
-        state.interpolatedROI[camKey][i] = { ...singleROI };
-      }
+      state.interpolatedROI[camKey][keyframes[0]] = { ...singleROI };
       return;
     }
 
@@ -595,19 +610,8 @@ function interpolateAllROIs() {
       }
     }
 
-    // Hold before first keyframe
-    const firstF = keyframes[0];
-    const firstROI = state.roiKeyframes[camKey][firstF];
-    for (let f = 0; f < firstF; f++) {
-      state.interpolatedROI[camKey][f] = { ...firstROI };
-    }
-
-    // Hold after last keyframe
-    const lastF = keyframes[keyframes.length - 1];
-    const lastROI = state.roiKeyframes[camKey][lastF];
-    for (let f = lastF + 1; f < total; f++) {
-      state.interpolatedROI[camKey][f] = { ...lastROI };
-    }
+    // Visibility is unknown outside the annotated interval. Do not extrapolate
+    // a target box to frames where the object may not yet be in view.
   });
 }
 
