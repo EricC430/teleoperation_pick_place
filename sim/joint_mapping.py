@@ -111,7 +111,7 @@ SIGN: dict[str, float] = {name: 1.0 for name in LEROBOT_NAMES}
 #     these constants applicable to the uvc_60 recordings.
 # [已查證 2026-09-21] Checked against recorded reality, not just self-consistency. The grasp frame
 # is each episode's MOST CLOSED gripper frame -- that detector was chosen by scoring candidates
-# against each episode's RECORDED cup placement (episode_meta/omx_pick_place_pilot_paper_cup.csv
+# against each episode's RECORDED cup placement (episode_meta/omx_pick_place_pilot_uvc_60.csv
 # joined to configs/placements/campA_136sym_...train.csv); it is the only one that lands both on a
 # closed gripper (49.68, vs 50.21 = fingers touching) and over the cup. Through reach_logger/fk.py,
 # median over the 60 uvc_60 episodes:
