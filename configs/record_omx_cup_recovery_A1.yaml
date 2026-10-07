@@ -58,8 +58,13 @@ dataset:
   #   （避開第三視角看不到的 t14/t22/t37/t38/t42；不使用 c／o 測試點。）
   #   沒歪出來或修正失敗 → 左方向鍵重錄該集。錄完寫 episode_meta/<dataset>.csv：mechanism 標 self_recovered，notes 寫方向。
   # 開錄前：① scripts/align_camera.py 確認 D455 仍在 A1 ② lerobot-find-cameras 確認 wrist index。
-  repo_id: ericc430/omx_pick_place_pilot_paper_cup_recovery_A1
-  root: ./.cache/lerobot/omx_pick_place_pilot_paper_cup_recovery_A1
+  # 2026-10-07 實際錄了兩輪（同一份點位表），都是「先空夾 → 鬆開 → 修正 → 夾取」[柏宇說]：
+  #   recovery_A1       ：空夾約 0.5 s 後在原高度鬆開，再抬起修正（12 集）
+  #   recovery_A1_tight ：空夾後夾緊抬起，看到杯子留在桌上才鬆開（13 集；t12 漏錄 → ep 7–10 前移一格、ep 12 補 t12；
+  #                       ep 11 = 60 s 未動作，valid=0）。episode_meta/ 有兩份對應 CSV。
+  #   下面 repo_id／root 是最後一輪（tight）用的；要再錄 recovery_A1 請改回去並加 --resume=true。
+  repo_id: ericc430/omx_pick_place_pilot_paper_cup_recovery_A1_tight
+  root: ./.cache/lerobot/omx_pick_place_pilot_paper_cup_recovery_A1_tight
   push_to_hub: false       # upload by hand after the session looks right (same as the rollouts)
   num_episodes: 12
   fps: 15                    # must match camera fps
