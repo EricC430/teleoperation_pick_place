@@ -752,9 +752,14 @@ uv run lerobot-rollout --config_path configs/rollout_omx_pilot.yaml
 uv run python scripts/align_camera.py                                   # 1. D455 是否仍在 A1（疊訓練參考畫面，看偏差數字）
 uv run lerobot-find-cameras opencv                                      # 2. wrist index 是否仍是 config 裡的值
 uv run python scripts/read_joint_pose.py --goto-home --home-episode 10  # 3. 手臂移到 HOME、不關扭力（紙杯：uvc_60 ep 10 第 0 幀）
-uv run lerobot-rollout --config_path configs/rollout_omx_b1_uvc60_eval.yaml --policy.path=<repo> --policy.n_action_steps=30 --dataset.repo_id=<rollout_...>
+uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_b1_uvc60_eval.yaml --policy.path=<repo> --policy.n_action_steps=30 --dataset.repo_id=<rollout_...> --meta-template paper_cup_A1
 ```
 
+- **4. 用 `scripts/rollout_labeled.py`（2026-10-08 起）取代 `lerobot-rollout`**：參數相同，另外開場就把範本 `episode_meta/templates/<名稱>.csv` 複製成 `episode_meta/<rollout_…時戳>.csv`（同 episode_index 的那列）。
+  範本一集一列，用 Excel 改；列數比集數多沒關係，少了會在第一集開始前報錯。燈光/背景今天不一樣就加 `--env-light` / `--env-bg` 蓋過範本（另有 `--object-name`、`--object-orientation`、`--placement-prefix`）。
+  按鍵：**→ 成功**（outcome=success）、**↑ 失敗**（outcome 留空 = 失敗，之後再補 no_grasp 等）、**← 重錄**、**Esc 結束（當集丟掉）**。
+  策略執行或重置階段都可以按，存檔前最後按的那一個算數；沒按成功/失敗就不會存，重置時間到了會一直等。沒錄到的集數，結束時會從 CSV 刪掉。結束前手臂會先回起始姿勢，然後才寫 dataset。
+  細節見腳本開頭的 docstring。
 - 鋁罐模型用 `--home alcan`（預設）；`--home-episode N` 以 `--dataset-root`（預設 uvc_60）第 N 集第 0 幀為 HOME。
 - `--policy.n_action_steps` 必須和 `--policy.path` 一起寫在指令列（只寫在 YAML 會報錯，10-05 §1）。
 - 跑完檢查：ep 0 第 0 幀 6 個關節是否都在訓練範圍內（10-05 §2 的驗證方式）。

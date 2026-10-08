@@ -1,0 +1,70 @@
+# SHORT 2-episode real-robot test of scripts/rollout_labeled.py (verdict keys, single voice line,
+# return-home before finalize). Not an evaluation run: the dataset and CSV are throwaway.
+#
+#   uv run python scripts/rollout_labeled.py --config_path configs/rollout_labeled_test.yaml --policy.path=ericc430/act_omx_b1_uvc60_100k --policy.n_action_steps=30 --meta-template paper_cup_A1
+#
+# The CSV goes to episode_meta/<stamped dataset name>.csv (do not pass --meta-csv).
+# KEEP THIS FILE ASCII-ONLY (lerobot opens it as cp950 when policy.path is set).
+# policy.n_action_steps must be given on the command line together with --policy.path (2026-10-05 note).
+# robot block copied from rollout_omx_b1_uvc60_eval.yaml -- check the wrist index before running.
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-09-17_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: opencv_uvc
+      index_or_path: 2
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 15
+      fourcc: YUY2
+      exposure: -5
+      gain: 0
+      white_balance: null
+    front-left:
+      type: intelrealsense_pinned
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+      exposure: 400
+      gain: 70
+      white_balance: null
+
+policy:
+  path: ericc430/act_omx_b1_uvc60_100k
+
+strategy:
+  type: episodic
+  reset_to_initial_position: true
+
+inference:
+  type: sync
+
+dataset:
+  repo_id: ericc430/rollout_labeled_test   # must start with rollout_; timestamp appended
+  single_task: "Pick up the object and place it into the box"
+  fps: 15
+  num_episodes: 2
+  episode_time_s: 10       # short: this tests the flow, not the policy
+  reset_time_s: 15         # short, so the "no verdict -> keep waiting" case shows up quickly
+  video: true
+  push_to_hub: false
+  private: true
+  streaming_encoding: false
+  encoder_threads: 2
+  rgb_encoder:
+    vcodec: h264
+    preset: veryfast
+    crf: 23
+    pix_fmt: yuv420p
+
+fps: 15
+task: "Pick up the object and place it into the box"
+display_data: true
+return_to_initial_position: true
