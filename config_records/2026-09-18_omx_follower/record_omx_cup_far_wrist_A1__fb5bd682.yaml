@@ -1,3 +1,11 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/record_omx_cup_far_wrist_A1.yaml
+# saved_at:      2026-10-09T01:20:39
+# entrypoint:    lerobot-record
+# cli overrides: --resume=true --dataset.num_episodes=1
+# ids:           robot=2026-09-18_omx_follower, teleop=2026-09-18_omx_leader
+# git:           498ac07 (config file has UNCOMMITTED changes)
+# digest:        fb5bd682  (sha256[:8] of the YAML below + the CLI overrides)
 teleop:
   type: omx_leader
   port: COM9

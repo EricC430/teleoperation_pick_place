@@ -33,7 +33,10 @@ n = len(far)
 # saved by the stop) -> valid=0. Everything from t65 on shifts by one; pass 2 starts at ep n + 1.
 DONE, VOID = 9, 9
 pass1 = {k: (i if i < DONE else i + 1) for i, k in enumerate(far)}
-pass2 = {k: n + 1 + i for i, k in enumerate(far)}
+# 2026-10-09: pass 2 skipped t68 -> ep 40-45 shifted one point, ep 46 empty (void); t68 made up as ep 47.
+SKIPPED, VOID2, MAKEUP = "t68", 46, 47
+_p2 = [k for k in far if k != SKIPPED]
+pass2 = {k: n + 1 + i for i, k in enumerate(_p2)} | {SKIPPED: MAKEUP}
 
 fig, (ax, tab) = plt.subplots(1, 2, figsize=(17, 9.5), gridspec_kw={"width_ratios": [3.1, 1]})
 for k, (x, y) in xy.items():
@@ -63,7 +66,7 @@ ax.plot([], [], "o", ms=5, color=TEST, label="c / o TEST points: never use")
 ax.plot(0, 0, "s", ms=14, color=INK)
 ax.text(0, -1.5, "arm base (pan axis)", ha="center", va="top", fontsize=9, color=INK)
 ax.set_title(f"Far zone, wrist-rotation grasp: {n} points x 2 = {2 * n} eps. Number = pass-1 episode (pass 2 in the table).\n"
-             f"ep 0-{DONE - 1} done 2026-10-08; ep {VOID} = failed t65 attempt (void); resume at ep {DONE + 1} with --dataset.num_episodes={2 * n - DONE}.\n"
+             f"ep {VOID}, {VOID2} void. Only {SKIPPED} pass 2 is left: record it as ep {MAKEUP} (--resume=true --dataset.num_episodes=1).\n"
              "Teleop-test the edges first: t61/t62 (near the camera), t70 (near the bin).",
              fontsize=11, color=INK)
 ax.set_xlabel("<- arm's LEFT        cm        arm's RIGHT ->", color=INK)
@@ -78,9 +81,9 @@ tab.axis("off")
 lines = [f"{'ep':>5} {'point':>6} {'x_pan':>7} {'y_pan':>7}", "-" * 34]
 for k in far:
     mark = "*" if int(k[1:]) >= 61 else " "
-    done = "done" if pass1[k] < DONE else ""
+    done = "TODO pass 2" if k == SKIPPED else "done"
     lines.append(f"{pass1[k]:>2}/{pass2[k]:<2} {k:>5}{mark} {float(pts[k]['x_pan_cm']):7.1f} {float(pts[k]['y_pan_cm']):7.1f}  {done}")
-lines += ["-" * 34, f"ep {VOID}: void (failed t65 attempt)", "ep = pass 1 / pass 2; done = pass 1 recorded", "* = new point (not on the mat)", "cm, origin = pan axis",
+lines += ["-" * 34, f"ep {VOID}: void (failed t65 attempt)", f"ep {VOID2}: void (empty, t68 was skipped)", "ep = pass 1 / pass 2", "* = new point (not on the mat)", "cm, origin = pan axis",
           "x forward, y = arm's LEFT (+)"]
 tab.text(0, 1, "\n".join(lines), family="monospace", fontsize=10.5, va="top", color=INK, transform=tab.transAxes)
 fig.tight_layout()
