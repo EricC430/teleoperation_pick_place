@@ -16,7 +16,7 @@ tell at a glance which entries still govern current state.
 | Status | Entries |
 |---|---|
 | 🔴 **Superseded — do not read as current state** | **D002** (platform: SO-ARM) → superseded by **D021** |
-| 🟡 **Open / proposed — not decided** | **D019** (action representation), **D020** (mobile base & XLeRobot — *2026-09-01: candidate list expanded (七 chassis options with pricing), still not scored against the 七判準 table*), **D027** (IK / traditional-method fallback when ACT plateaus — approved in principle, unscoped), **D028** (3-phase state machine wrapping ACT — approved in principle, execution gated on B2), **D031** (*2026-09-20: open-loop MAE 在 held-out 示範上**已飽和** — policy 7.35 已優於「事後挑最合的人類示範」7.51，comparison.md 裡 5–8% 的差異低於指標雜訊底線；訓練集 0.84 確為軌跡記憶，但由此推論「泛化不好」不成立。提議：先補同點重複示範定住下限，`image_transforms` 降級——皆 `[AI提議]`，未裁決*), **D032** (*2026-09-20: 首次真機閉環讀數，`act_omx_alcan60_fixed_40k` **6/36 = 16.7%**，**72% 是 `pushed_away`**（接觸後推開，不是找不到）。已否證「沒在看相機」（跨集姿態散布與示範相當、R²=0.752）；量出方位偏差中位 4.58° vs 人類 1.88°、徑向 2.20cm vs 1.49cm。§7 全為 `[AI推論]` 並附反證條件；尚**不**觸發 D001 反轉（資料側手段未窮盡）*) |
+| 🟡 **Open / proposed — not decided** | **D019** (action representation), **D020** (mobile base & XLeRobot — *2026-09-01: candidate list expanded (七 chassis options with pricing), still not scored against the 七判準 table*), **D027** (IK / traditional-method fallback when ACT plateaus — approved in principle, unscoped), **D028** (3-phase state machine wrapping ACT — approved in principle, execution gated on B2), **D031** (*2026-09-20: open-loop MAE 在 held-out 示範上**已飽和** — policy 7.35 已優於「事後挑最合的人類示範」7.51，comparison.md 裡 5–8% 的差異低於指標雜訊底線；訓練集 0.84 確為軌跡記憶，但由此推論「泛化不好」不成立。提議：先補同點重複示範定住下限，`image_transforms` 降級——皆 `[AI提議]`，未裁決；**2026-10-08 §7：「人類下限」隨 donor 池與對齊方法而變（鋁罐 12 條 7.79 → 56 條 6.60），§3 的 7.51 無法重現，飽和結論變弱、未推翻***), **D032** (*2026-09-20: 首次真機閉環讀數，`act_omx_alcan60_fixed_40k` **6/36 = 16.7%**，**72% 是 `pushed_away`**（接觸後推開，不是找不到）。已否證「沒在看相機」（跨集姿態散布與示範相當、R²=0.752）；量出方位偏差中位 4.58° vs 人類 1.88°、徑向 2.20cm vs 1.49cm。§7 全為 `[AI推論]` 並附反證條件；尚**不**觸發 D001 反轉（資料側手段未窮盡）*) |
 | ✅ **Resolved 2026-08-27** | **D025** → do it, but only after Phase B real data exists (complement to D007, not a reversal). **D021** → 甲: OMX to the end, SO-ARM is a spare. **D022** single-camera verified + 3-config recording plan; **2026-09-01 `[Eric決定]`: D405 is the interim wrist camera until the UVC module arrives OR Phase C is reached** — interim config = D405 wrist + D455 third-person; D405→UVC swap and Phase C are both re-record boundaries. **2026-09-13: UVC module (Innomaker U20CAM-720P) is on the wrist → the D405 interim period has ended (end condition 1); "proves usable" still 🟡 pending an arm-on teleop run — see D022 §2026-09-13.** **D024** → 60 per campaign, position-OOD cancelled, training positions seeded, closed-loop 30 is in-distribution, uniform sampling replaces the 3×3 grid. |
 | 🔴 **D023 — status changed 2026-08-31** | Cable resolved **by RE-ROUTING the existing cable, not replacement** (`[Eric說]`; lab had no spare). **The 2026-08-27 conservative-workspace exemption is VOID** (a re-route is not a monotone relaxation); A7's original gate is back. **Tape measurement (FK failed → D026):** `r_outer` top-down ≈ **41 cm**, side-only ≈ 49, `r_inner` ≈ **22** (all + `d_offset` 5 cm, pan axis → chassis edge). Azimuth sector ≈ **135°** (`theta ∈ [−90°, +45°]`), edge = **arm body physically hits the third-person camera mount** if rotated past — a hard mechanical limit, not FOV, not the cable. **Scope: Phase-A pilot layout only; Phase B on the vehicle re-runs S1/S2 from scratch** (`[Eric說]`). Next: S2 `--dry-run` feasibility. See D023 §2026-08-31 points 5–6. **2026-08-31 (earlier):** the 33–43 cm figure disambiguated (grasp-approach band); `r_max` verdict logic dropped. |
 | ✅ **Resolved 2026-08-31** | **D026** → reach logger measures by FK from the `omx_f` URDF (placo, LeRobot-native); tape measure is the fallback. `placo` enters the pinned env. |
@@ -2263,6 +2263,30 @@ config 已備妥：`configs/rollout_omx_alcan_fixed_40k_eval.yaml`。
   或補上 `episode_meta` 後發現高 MAE 集中在特定擺放區域——則位置泛化重新成為嫌疑。
 - **Cross-reference:** D024（30 回合與 seeded 位置）、D030（campA_136sym 的 18 個近場點）、
   `configs/train_omx_alcan60_fixed.yaml`、`outputs/open_loop_alcan_alcan60{,_fixed,_trainset_alcan60}/`。
+
+### §7 追加（2026-10-08）：§3 的「人類示範下限」依定義而變，7.51 無法重現
+
+起因：紙杯新模型的開環比較（`docs/meeting/2026-10-08_open_loop.md`）時，AI 把鋁罐的 7.5 直接套到紙杯，
+被柏宇追問來源。於是把 §3 的基線寫成 `scripts/open_loop_floor.py`（§3 當時沒留程式，見 Accepted costs），重算。
+
+1. **freeze 重現了，但 §3 與 §6 用了不同的平均方式** `[已查證]`：§3 的 10.13（12 集）是全部幀合併平均；
+   §6 的 10.79（11 集）是每集先平均再平均。policy MAE（`eval_open_loop.py` 的 `mean_mae`）是後者，
+   所以 §3 表格裡 baseline 和 policy 欄的口徑不一致。
+2. **oracle 7.51 / 7.52 重現不出來** `[已查證]`：同資料、同 donor 公式，試了兩種平均方式 × 三種 donor 長度處理，
+   eval-donor oracle 都在 7.66–7.96（donor 長度拉齊時掉到 ≈6.0）。差異來源 `[未確認]`。
+3. **oracle 隨 donor 池大小而變** `[已查證]`（N=100，每集平均，`--align hold`）：
+
+   | | 12 條訓練示範 | 全部訓練示範 |
+   |---|---|---|
+   | 鋁罐（`alcan_fixed`，eval 12 集） | 7.79 | 6.60（56 條） |
+   | 紙杯（`uvc_60`，eval 12 集） | 6.79 | 4.57（60 條） |
+
+   池越大越容易事後挑到擺放點相近的那條，所以 oracle 是「donor 池＋對齊方法」的函數，不是指標的固定下限。
+
+**對本條的影響** `[AI推論]`：§3「policy 7.35 ≈ 人類下限 → 飽和」只在 12 條 donor、同幀對齊這個定義下成立；
+換成 56 條 donor，鋁罐 policy（7.03–7.35）高於 oracle 6.60 約 0.4–0.75。**「飽和」結論因此變弱，未被推翻**：
+oracle 是事後挑選，policy 不能事後挑，兩者本來就不是同一種預測器。§5 提議 1 的「同時報告下限當刻度」仍然適用，
+但要附上 donor 池與 `--align`。**Reverse if** 條件不變（同點重複示範仍是定住真實下限的唯一方法）。
 
 ---
 
