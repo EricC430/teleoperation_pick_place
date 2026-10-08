@@ -1,0 +1,74 @@
+# RECORDED closed-loop evaluation of ericc430/act_omx_b1_paper-cup_60-16-12rcvry_100k (paper cup).
+# Model: ACT 100k steps on uvc_60 + normal_A1 16 + recovery_A1_tight 12 (88 eps, exclude_episodes [87]),
+# chunk_size 100, sha256 e6ef7c0e9528. Run it with scripts/rollout_labeled.py (verdict keys -> episode_meta CSV):
+#
+#   uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_b1_papercup_60_16_12rcvry_100k_eval.yaml --policy.path=ericc430/act_omx_b1_paper-cup_60-16-12rcvry_100k --policy.n_action_steps=100 --meta-template paper_cup_A1
+#
+# KEEP THIS FILE ASCII-ONLY (lerobot opens it as cp950 when policy.path is set).
+# policy.n_action_steps must be given on the command line together with --policy.path (2026-10-05 note).
+# Settings other than policy / dataset name are the same as rollout_omx_b1_uvc60_eval.yaml (the 10-06 N=30
+# run) so the results are comparable, except robot.id and episode_time_s (30, set 2026-10-08).
+# Calibration 2026-10-08_omx_follower.json is byte-identical to 2026-09-17 and 2026-09-18 (the id
+# record_omx.yaml used for the normal/recovery demos).
+# Check the wrist OpenCV index before every session (lerobot-find-cameras opencv).
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-10-08_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: opencv_uvc
+      index_or_path: 2
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 15
+      fourcc: YUY2
+      exposure: -5
+      gain: 0
+      white_balance: null
+    front-left:
+      type: intelrealsense_pinned
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+      exposure: 400
+      gain: 70
+      white_balance: null
+
+policy:
+  path: ericc430/act_omx_b1_paper-cup_60-16-12rcvry_100k  # private; cached at D:\hf\hub (downloaded 2026-10-08)
+
+strategy:
+  type: episodic
+  reset_to_initial_position: true   # no teleop: arm goes back to its startup pose between trials
+
+inference:
+  type: sync
+
+dataset:
+  repo_id: ericc430/rollout_omx_b1_papercup_60_16_12rcvry_100k_paper_cup   # must start with rollout_; timestamp appended
+  single_task: "Pick up the object and place it into the box"   # same string as training
+  fps: 15                  # must match camera fps
+  num_episodes: 36         # same as the 10-06 run (template paper_cup_A1 = c1..c36)
+  episode_time_s: 30
+  reset_time_s: 120        # time to re-place the cup; Right/Up ends it early
+  video: true
+  push_to_hub: false       # upload later by hand once the session looks right
+  private: true
+  streaming_encoding: false
+  encoder_threads: 2
+  rgb_encoder:
+    vcodec: h264
+    preset: veryfast
+    crf: 23
+    pix_fmt: yuv420p
+
+fps: 15
+task: "Pick up the object and place it into the box"
+display_data: true
+return_to_initial_position: true
