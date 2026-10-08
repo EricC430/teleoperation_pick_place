@@ -8,6 +8,7 @@
 > - hash = `sha256(model.safetensors)` 前 12 碼。本機：`sha256sum .../pretrained_model/model.safetensors | cut -c1-12`
 > - `scripts/eval_open_loop.py` 會自動把它寫進 `metrics.json` 的 `weights_sha256_12`（2026-09-29 起）。
 > - 表內 hash 都是 2026-09-29 從本機檔案和 Hub API（`/api/models/<repo>/tree/<rev>` 的 LFS oid）逐一比對出來的 `[已查證]`。
+>   2026-10-08 加的 `cup_uvc60_normal_tight_A1` 三列只有本機檔案（沒上 Hub），hash 取自 `eval_open_loop.py` 的 `metrics.json`。
 
 ## ACT／Diffusion 模型
 
@@ -27,6 +28,9 @@
 | `3d61371203ab` | `alcan60_fixed` / 20k | `act_omx_alcan60_fixed_20k` | 鋁罐 | `omx_pick_place_pilot_60_alcan_fixed`，`exclude_episodes: [8, 18, 22, 46]` → 56 集 | — |
 | `a73bb321b675` | `alcan60_fixed` / 40k | `act_omx_alcan60_fixed_40k` | 鋁罐 | 同上 | 9/20 `__b567a640` |
 | `02bf0d69a088` | `alcan60_fixed` / 100k | `act_omx_alcan60_fixed_100k` | 鋁罐 | 同上 | 9/20 `__b504fd10`、`__a6f2a67a`（**沒有對應的 rollout 資料夾** `[未確認]`）；9/21 `__039dfb74` |
+| `24df8d1ce78b` | `cup_uvc60_normal_tight_A1` / 20k | —（`push_to_hub: false`） | 紙杯 | `omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1`（本機 merge：uvc_60 ＋ normal_A1 ＋ recovery_A1_tight，`exclude_episodes: [87]` → 88 集；`configs/train_omx_cup_uvc60_normal_tight_A1.yaml`） | — |
+| `dbf3d7b250de` | `cup_uvc60_normal_tight_A1` / 40k | — | 紙杯 | 同上 | — |
+| `e6ef7c0e9528` | `cup_uvc60_normal_tight_A1` / 100k | — | 紙杯 | 同上 | — |
 
 未列：60k／80k checkpoint（沒上 Hub、沒閉環過）、`my-002`／`smoke-001`／`perf-*`／`openloop-eval`（煙霧測試與效能測試）。
 

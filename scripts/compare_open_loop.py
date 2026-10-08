@@ -121,6 +121,21 @@ def plot_overlays(root: Path, names: list, out: Path, mae: dict, joints: list) -
     return written
 
 
+def paired_test(diff: np.ndarray, n_boot: int = 10000, seed: int = 0) -> tuple:
+    """Mean of per-episode differences, 95% bootstrap CI over episodes, and a two-sided sign-flip p
+    (exact up to 16 episodes, else 20000 random flips). Episodes are the unit -- frames within one
+    episode are not independent."""
+    rng = np.random.default_rng(seed)
+    n = len(diff)
+    boot = diff[rng.integers(0, n, (n_boot, n))].mean(1)
+    if n <= 16:
+        signs = 1 - 2 * ((np.arange(2 ** n)[:, None] >> np.arange(n)) & 1)
+    else:
+        signs = rng.choice([-1, 1], (20000, n))
+    p = float((np.abs((signs * diff).mean(1)) >= abs(diff.mean()) - 1e-12).mean())
+    return float(diff.mean()), float(np.percentile(boot, 2.5)), float(np.percentile(boot, 97.5)), p
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("root", help="directory holding one sub-directory per run")
@@ -170,8 +185,12 @@ def main():
     lines.append("| **mean** | " + " | ".join(f"**{mean[n]:.3f}**" for n in args.runs) + " |")
     lines += ["", f"Episodes where each run beats `{base}`: "
               + ", ".join(f"`{n}` {sum(mae[n][e] < mae[base][e] for e in episodes)}/{len(episodes)}"
-                          for n in args.runs[1:]), "",
-              "## Per joint (mean MAE over episodes)", "",
+                          for n in args.runs[1:]), ""]
+    lines += [f"Paired difference vs `{base}` (run - `{base}`; 95% bootstrap CI over episodes; sign-flip p):", ""]
+    for n in args.runs[1:]:
+        d, lo, hi, p = paired_test(np.array([mae[n][e] - mae[base][e] for e in episodes]))
+        lines.append(f"- `{n}`: {d:+.2f} [{lo:+.2f}, {hi:+.2f}], p={p:.3f}")
+    lines += ["", "## Per joint (mean MAE over episodes)", "",
               "| joint | " + " | ".join(args.runs) + " |", "|---|" + "---|" * len(args.runs)]
     for j in joints:
         lines.append(f"| {j} | " + " | ".join(f"{joint_mean[n][j]:.2f}" for n in args.runs) + " |")

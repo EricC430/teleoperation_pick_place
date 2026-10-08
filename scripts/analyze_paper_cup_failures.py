@@ -248,7 +248,7 @@ def main():
                "grouping": {"near":"r<22 cm; D030 additions", "far":"r>=34 cm; exploratory threshold"},
                "units":"LeRobot .pos; not degrees; averages weight episodes equally"}
     input_paths = [ROOT / "docs/assets/placement_label_map_campA_136sym_20260908.csv",
-                   ROOT / "episode_meta/omx_pick_place_pilot_paper_cup.csv",
+                   ROOT / "episode_meta/omx_pick_place_pilot_uvc_60.csv",
                    ROOT / "episode_meta" / f"{OLD}.csv", ROOT / "episode_meta" / f"{NEW}.csv",
                    *sorted((dataset_root / "data").rglob("*.parquet"))]
     summary["input_sha256"] = {}
