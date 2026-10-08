@@ -96,8 +96,11 @@ _TABLE_MARGIN = 0.10             # [AI推論] breathing room beyond the outermos
 # raised to its intended height by a 3.6 cm stack of books UNDER THE ARM ONLY (11 + 3.6 = 14.6, the value
 # measured at the T2 photo). The third-person camera stands on the 11 cm platform, NOT on the books.
 # So "riser" here is really platform + books, and the camera does not share the arm's height.
-# Not split into two constants yet: the replay datasets were recorded with the arm at 15 (see above).
-ARM_RISER_HEIGHT = 0.15          # MEASURED (Eric, 2026-09-21); see the conflict note above
+# `[柏宇決定 2026-10-08]` sim reconstruction now targets the recordings from 2026-10-07 on (paper_cup_normal_A1,
+# paper_cup_recovery_A1, paper_cup_recovery_A1_tight), so the CURRENT value is the 10-07 one. The older era is kept,
+# labelled, for replaying uvc_60 and the other pre-10-07 datasets -- pick it explicitly, it is not the default.
+ARM_RISER_HEIGHT_UVC60_ERA = 0.15   # MEASURED (Eric, 2026-09-21): uvc_60 and the other datasets recorded before 10-07
+ARM_RISER_HEIGHT = 0.146            # MEASURED 2026-10-07 at the T2 photo (11 cm platform + 3.6 cm books)
 
 # Arm base plate footprint, read off `follower_01_base.stl` (URDF link0, scale 0.001):
 # x -0.060..+0.060, y -0.075..+0.075, z 0..0.0575. The pan axis sits at x=-0.01125 in that frame,
@@ -191,23 +194,29 @@ CAM_FRONT_LEFT_INSET_FROM_RISER = 0.045   # MEASURED
 CAM_FRONT_LEFT_STAND_HEIGHT = 0.11     # MEASURED 2026-10-07: the riser the camera stands on
 CAM_FRONT_LEFT_BRACKET_HEIGHT = 0.11   # MEASURED 2026-10-07: the bracket's extra lift
 CAM_FRONT_LEFT_Z = CAM_FRONT_LEFT_STAND_HEIGHT + CAM_FRONT_LEFT_BRACKET_HEIGHT   # 0.22 above the table top
-# 🟡 [PROVISIONAL 2026-10-07] The front-left pose below is the cup-landmark refit (S4 §5-5), NOT the tape
-# measurements the lines above describe. It is better than both older sets on 32 real cup positions
-# (median 5.5 px vs 25 px ArUco vs 86 px tape; 5-fold CV 6.3 px) and agrees with the hand-measured pitch (17 deg)
-# and height (22 cm), but the arm in a rendered replay is still ~3-5 cm off the real arm, so this is not "verified".
-#   backups: tape 9/21  -> CAM_FRONT_LEFT_*_TAPE_20260921 below
-#            ArUco 10/07 -> calibration/2026-10-07_camera_extrinsics_front-left.json
-#                           pos (0.0425, 0.2441, 0.2175 above table), bearing -40.0, pitch -19.4
-#            full fit   -> calibration/2026-10-07_camera_extrinsics_front-left_refit32_z220.json
+# 🔴 THE CAMERA HAS TWO ERAS (S4 §5-5, 2026-10-07 evening). It was moved after the 10-05 A1 realignment, before the
+# ArUco photo; today's recordings share the ArUco photo's pose, uvc_60 does not (~41 px pan between them).
+# `[柏宇決定 2026-10-08]` CURRENT = the 10-07 ArUco T2 solve (calibration/2026-10-07_camera_extrinsics_front-left.json),
+# for the recordings from 2026-10-07 on. Checked with no fitting on 9 of today's cup positions: median 8.7 px;
+# a kinematic render of normal_A1 ep 12/13 overlays arm, gripper and cup within ~10-20 px.
+# Backups, labelled, NOT the default:
+#   * UVC60_ERA (cup-landmark refit on uvc_60, calibration/2026-10-07_camera_extrinsics_front-left_refit32_z220.json):
+#     8.8 px on uvc_60 cups, 28.5 px on today's -- use it only to replay uvc_60 / pre-10-07 data.
+#   * TAPE_20260921: the original tape/protractor measurements described above (86 px on uvc_60).
 CAM_FRONT_LEFT_BEARING_DEG_TAPE_20260921 = -45.0    # MEASURED: from the rightward horizontal, turned to centre
 CAM_FRONT_LEFT_PITCH_DEG_TAPE_20260921 = -10.0      # MEASURED: negative = looking down
-CAM_FRONT_LEFT_BEARING_DEG = -43.3    # refit 2026-10-07 (provisional)
-CAM_FRONT_LEFT_PITCH_DEG = -18.7      # refit 2026-10-07 (provisional); negative = looking down
-# The refit camera also has a ROLL of +4.8 deg about its optical axis. The look-at poses used by preview_scene.py /
-# render_state_replay.py / replay_render_episode.py cannot express roll (up to ~35 px at the image edge), so the
-# scripts ignore it; the full rotation is CAM_FRONT_LEFT_QUAT_ROS_REFIT for anything that sets the rotation directly.
-CAM_FRONT_LEFT_ROLL_DEG = 4.81        # NOT applied by the look-at scripts
-CAM_FRONT_LEFT_QUAT_ROS_REFIT = (0.2072, -0.3552, 0.7310, -0.5446)   # (w, x, y, z), ros optical convention, world = pan-axis frame
+CAM_FRONT_LEFT_BEARING_DEG_UVC60_ERA = -43.3
+CAM_FRONT_LEFT_PITCH_DEG_UVC60_ERA = -18.7
+CAM_FRONT_LEFT_ROLL_DEG_UVC60_ERA = 4.81
+CAM_FRONT_LEFT_QUAT_ROS_UVC60_ERA = (0.2072, -0.3552, 0.7310, -0.5446)
+CAM_FRONT_LEFT_POS_UVC60_ERA = (0.0382, 0.2505, 0.22)
+# CURRENT (10-07 ArUco). The camera also has a ROLL of +3.3 deg about its optical axis. The look-at poses used by
+# preview_scene.py / render_state_replay.py / replay_render_episode.py cannot express roll (~25 px at the image edge),
+# so those scripts ignore it; the full rotation is CAM_FRONT_LEFT_QUAT_ROS for anything that sets the rotation directly.
+CAM_FRONT_LEFT_BEARING_DEG = -40.02   # ArUco T2 2026-10-07
+CAM_FRONT_LEFT_PITCH_DEG = -19.42     # ArUco T2 2026-10-07; negative = looking down (hand-measured 17)
+CAM_FRONT_LEFT_ROLL_DEG = 3.29        # NOT applied by the look-at scripts
+CAM_FRONT_LEFT_QUAT_ROS = (0.2280, -0.3672, 0.7290, -0.5308)   # (w, x, y, z), ros optical convention, world = pan-axis frame
 
 # `[Eric說 2026-09-21]` the inset is -X (toward the operator), corrected after a first render put
 # the camera a few cm the wrong side of the riser's front edge and inside the placement cloud.
@@ -216,7 +225,7 @@ CAM_FRONT_LEFT_POS_TAPE_20260921 = (
     CAM_FRONT_LEFT_Y_PRE,
     CAM_FRONT_LEFT_Z,
 )
-CAM_FRONT_LEFT_POS = (0.0382, 0.2505, CAM_FRONT_LEFT_Z)   # refit 2026-10-07 (provisional); z = the hand-measured 0.22 it was pinned to
+CAM_FRONT_LEFT_POS = (0.0425, 0.2441, 0.2175)   # ArUco T2 2026-10-07; z above the table top (hand-measured 0.22 = CAM_FRONT_LEFT_Z)
 # Look-at point: along the measured bearing, dropping at the measured pitch.
 _cam_bearing = math.radians(CAM_FRONT_LEFT_BEARING_DEG)
 _cam_pitch = math.radians(CAM_FRONT_LEFT_PITCH_DEG)

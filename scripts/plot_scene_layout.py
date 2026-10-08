@@ -41,12 +41,19 @@ ax.add_patch(Circle((S.BIN_CENTER_X, S.BIN_CENTER_Y), S.BIN_OPENING_DIA/2, fc="#
 ax.plot(0, 0, "k+", ms=16, mew=3, label="pan axis (origin)")
 
 xs, ys, tx, ty = [], [], [], []
-for r in csv.DictReader(open(a.placements)):
+nx, ny = [], []  # t61+ = manual additions 2026-10-08 (far zone, wrist-rotation grasp)
+for r in csv.DictReader(open(a.placements, encoding="utf-8")):
     x, y = float(r["x_pan_cm"])/100, float(r["y_pan_cm"])/100
-    (tx if r["short_id"].startswith("t") else xs).append(x)
-    (ty if r["short_id"].startswith("t") else ys).append(y)
+    sid = r["short_id"]
+    if sid.startswith("t") and int(sid[1:]) > 60:
+        nx.append(x); ny.append(y)
+    else:
+        (tx if sid.startswith("t") else xs).append(x)
+        (ty if sid.startswith("t") else ys).append(y)
 ax.scatter(xs, ys, s=8, c="#bbb", label="other placements")
 ax.scatter(tx, ty, s=14, c="#d1495b", label="t1..t60 (uvc_60)")
+if nx:
+    ax.scatter(nx, ny, s=40, c="#eb6834", marker="D", label="t61..t70 (added 2026-10-08)")
 
 cx, cy, cz = S.CAM_FRONT_LEFT_POS
 lx, ly, _ = S.CAM_FRONT_LEFT_LOOKAT

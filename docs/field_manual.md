@@ -749,7 +749,7 @@ uv run lerobot-rollout --config_path configs/rollout_omx_pilot.yaml
 10-05 曾因此從訓練範圍外起步（wrist_flex +1.5、gripper 50.6），第一步 0.13 s 內轉約 38°。照順序做：
 
 ```powershell
-uv run python scripts/align_camera.py                                   # 1. D455 是否仍在 A1（疊訓練參考畫面，看偏差數字）
+uv run python scripts/align_camera.py                                   # 1. D455 是否仍在 A1（疊訓練參考畫面，看偏差數字；2026-10-08 起預設參考 = 10-07 normal_A1 + recovery_A1_tight，舊 uvc_60 視角見腳本 docstring）
 uv run lerobot-find-cameras opencv                                      # 2. wrist index 是否仍是 config 裡的值
 uv run python scripts/read_joint_pose.py --goto-home --home-episode 10  # 3. 手臂移到 HOME、不關扭力（紙杯：uvc_60 ep 10 第 0 幀）
 uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_b1_uvc60_eval.yaml --policy.path=<repo> --policy.n_action_steps=30 --dataset.repo_id=<rollout_...> --meta-template paper_cup_A1

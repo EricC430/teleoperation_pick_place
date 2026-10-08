@@ -14,13 +14,16 @@ Everything is measured on the table (fixed): the boundary in the left part (x < 
 The arm, clamp, router and curtain change between sessions and are ignored.
 Reference = median of frame 0 over several episodes, which removes the object (it sits elsewhere each episode).
 Clear the table while aligning.
-2026-10-05: uvc_60 ep 0-49 and ep 50-59 differ by ~17 px pan / 0.5 deg roll (the camera moved between them);
-the default episodes are from the 50-episode majority.
+2026-10-05: uvc_60 ep 0-49 and ep 50-59 differ by ~17 px pan / 0.5 deg roll (the camera moved between them).
+2026-10-08: the 10-07 demos (normal_A1, recovery_A1_tight) sit ~1 deg roll / 3-6 px off the uvc_60 majority
+(dry run: d_angle +0.9..+1.2, d_y0 -3.7..-5.8, d_y400 +2.6..+3.3); between themselves they agree within
+0.2 deg / 2 px. Default reference = those two (the data act_omx_b1_paper-cup_60-16-12rcvry_100k added).
 
 Keys: 1 blend 50/50 | 2 edges (red = reference, green = live, yellow = both) | 3 live + boundary lines |
       4 difference | s save snapshot to outputs/camera_align/ | q quit
 
-    uv run python scripts/align_camera.py                                   # paper-cup / bottle training view
+    uv run python scripts/align_camera.py                                   # 10-07 paper-cup demos (normal_A1 + recovery_A1_tight)
+    uv run python scripts/align_camera.py --dataset-root .cache/lerobot/omx_pick_place_pilot_uvc_60 --episodes 0 10 20 30 40   # old uvc_60 view
     uv run python scripts/align_camera.py --dataset-root .cache/lerobot/omx_pick_place_pilot_60_alcan_fixed --episodes 1 11 21 31 41
     uv run python scripts/align_camera.py --dry-run --live-from <dataset root> --live-episode 0   # no camera
 """
@@ -217,10 +220,12 @@ def run_live(args, ref, ref_edge) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dataset-root", type=Path, default=Path(".cache/lerobot/omx_pick_place_pilot_uvc_60"),
-                    help="training dataset whose view to match (default: paper-cup uvc_60 = camera pose 'A')")
-    ap.add_argument("--episodes", type=int, nargs="+", default=[0, 10, 20, 30, 40],
-                    help="reference = median of frame 0 over these episodes (default: uvc_60 majority pose)")
+    ap.add_argument("--dataset-root", type=Path, nargs="+",
+                    default=[Path(".cache/lerobot/omx_pick_place_pilot_paper_cup_normal_A1"),
+                             Path(".cache/lerobot/omx_pick_place_pilot_paper_cup_recovery_A1_tight")],
+                    help="training dataset(s) whose view to match (default: the 10-07 paper-cup demos)")
+    ap.add_argument("--episodes", type=int, nargs="+", default=[0, 4, 8, 12],
+                    help="reference = median of frame 0 over these episodes of every --dataset-root")
     ap.add_argument("--serial", default="262822305610")
     ap.add_argument("--fps", type=int, default=15)
     ap.add_argument("--exposure", type=float, default=400, help="pin like the YAML; pass a negative value for AUTO")
@@ -232,9 +237,11 @@ def main() -> None:
     if args.exposure is not None and args.exposure < 0:
         args.exposure = None
 
-    ref = np.median(np.stack([episode_frames(args.dataset_root, e) for e in args.episodes]), 0).astype(np.uint8)
+    frames = [episode_frames(root, e) for root in args.dataset_root for e in args.episodes]
+    ref = np.median(np.stack(frames), 0).astype(np.uint8)
     ref_edge = table_edge(ref)
-    print(f"reference: {args.dataset_root.name} median of ep{args.episodes}  boundary "
+    names = " + ".join(root.name for root in args.dataset_root)
+    print(f"reference: {names} median of ep{args.episodes}  boundary "
           + ("not found" if ref_edge is None else f"angle {ref_edge[0]:.2f}deg y0 {ref_edge[1]:.1f} y400 {ref_edge[2]:.1f}"))
     if not args.dry_run:
         run_live(args, ref, ref_edge)
