@@ -743,6 +743,22 @@ already exists」）——如果不小心先建成 public，要自己到 Hub 網
 uv run lerobot-rollout --config_path configs/rollout_omx_pilot.yaml
 ```
 
+#### 🔴 每次閉環 rollout 開跑前（2026-10-05 起，`docs/meeting/2026-10-05.md` §2、§2-b）
+
+`reset_to_initial_position` 回到的是**連線那一刻**的姿勢，程式結束時又會關扭力——起始姿勢等於「手臂上次被放在哪」。
+10-05 曾因此從訓練範圍外起步（wrist_flex +1.5、gripper 50.6），第一步 0.13 s 內轉約 38°。照順序做：
+
+```powershell
+uv run python scripts/align_camera.py                                   # 1. D455 是否仍在 A1（疊訓練參考畫面，看偏差數字）
+uv run lerobot-find-cameras opencv                                      # 2. wrist index 是否仍是 config 裡的值
+uv run python scripts/read_joint_pose.py --goto-home --home-episode 10  # 3. 手臂移到 HOME、不關扭力（紙杯：uvc_60 ep 10 第 0 幀）
+uv run lerobot-rollout --config_path configs/rollout_omx_b1_uvc60_eval.yaml --policy.path=<repo> --policy.n_action_steps=30 --dataset.repo_id=<rollout_...>
+```
+
+- 鋁罐模型用 `--home alcan`（預設）；`--home-episode N` 以 `--dataset-root`（預設 uvc_60）第 N 集第 0 幀為 HOME。
+- `--policy.n_action_steps` 必須和 `--policy.path` 一起寫在指令列（只寫在 YAML 會報錯，10-05 §1）。
+- 跑完檢查：ep 0 第 0 幀 6 個關節是否都在訓練範圍內（10-05 §2 的驗證方式）。
+
 🔴 **第一次真機跑推論：手放在緊急停止/斷電開關上，`--duration` 先設短**（config 裡預設 20 秒，
 確認動作方向合理再拉長）。**開環 MAE 11.29°（A12）是「軌跡跟真人示範差多少」，不是「閉環會不會
 撞」的保證**——那是本節要驗證的，兩者是不同的失敗模式。
