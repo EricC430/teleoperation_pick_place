@@ -1,0 +1,41 @@
+# ACT on paper cup: same as configs/train_omx_cup_uvc60_normal_tight_far_A1.yaml, except the recovery_A1_tight
+# episodes start at the onset of their first (empty) gripper close -- the deliberate-miss approach is cut off.
+#
+# Only the data changes; hyper-parameters, merge order, episode numbering and exclude_episodes are identical.
+#
+# recovery_A1_tight_cut = scripts/trim_recovery_prefix.py on recovery_A1_tight (2026-10-09; source left untouched):
+#   cut table in <dataset>/meta/trim_recovery_prefix.json; videos are byte-identical copies, only from_timestamp moves.
+#   Rows kept per tight episode: 288 228 274 268 242 246 245 242 266 260 215 900(ep 11, void, uncut) 406  (5712 -> 4080 frames)
+#
+# Merged locally 2026-10-09 with `lerobot-edit-dataset --operation.type merge`, same order as the main version
+# (log: data/merge_cup_uvc60_normal_tightcut_far_A1.log; 137 eps / 41574 frames = 43206 - 1632 trimmed):
+#   merged ep   0-59  <- ericc430/omx_pick_place_pilot_uvc_60                         ep 0-59
+#   merged ep  60-75  <- ericc430/omx_pick_place_pilot_paper_cup_normal_A1            ep 0-15
+#   merged ep  76-88  <- ericc430/omx_pick_place_pilot_paper_cup_recovery_A1_tight_cut ep 0-12
+#   merged ep  89-136 <- ericc430/omx_pick_place_pilot_paper_cup_far_wrist_A1         ep 0-47
+# Checked: 3 frames per episode (images, action, state) identical to the old merged dataset (other sources)
+# or to the trimmed copy (76-88).
+#
+#   ./scripts/run_container.sh lerobot-train --config_path configs/train_omx_cup_uvc60_normal_tightcut_far_A1.yaml
+dataset:
+  repo_id: ericc430/omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1cut_farwristA1   # local only
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1cut_farwristA1
+  exclude_episodes: [73, 74, 75, 85, 86, 87, 98, 135]   # -> 129 of 137 remain (see the main version for why)
+  eval_split: 0.0
+policy:
+  type: act
+  chunk_size: 100
+  n_action_steps: 100
+  push_to_hub: false
+output_dir: /workspace/data/train/cup_uvc60_normal_tightcut_far_A1
+job_name: act_omx_cup_uvc60_normal_tightcut_far_A1
+steps: 100000
+batch_size: 32
+save_freq: 20000
+eval_steps: 0
+log_freq: 50
+seed: 1000
+num_workers: 4
+wandb:
+  enable: true
+  project: teleoperation_pick_place
