@@ -134,6 +134,9 @@ SCALE／OFFSET 最後要送進模擬，所以「真實關節角」只能用模�
 
 #### 🟡 2026-09-21 待裁決：`shoulder_lift` 到底該不該扣那 20.14°
 
+> **2026-10-08 指標**：CAD 網格顯示上臂本體的長平面在 joint2 = 0 時是垂直的，20.14° 只是關節連線的傾角。
+> 見 `S7_link_tilt_calibration.md` §2-4。S7 用網格平面取代這個量法，本節以下保留為歷史。
+
 **`[AI提議]`，不是決定。** 用 uvc_60 全 60 集、以「該集夾爪最閉合的幀」為抓取幀，
 對照各集記錄的杯子擺放位置（`episode_meta/omx_pick_place_pilot_uvc_60.csv`（2026-10-06 前名為 `omx_pick_place_pilot_paper_cup.csv`）接
 `configs/placements/campA_136sym_...train.csv`），三個物理條件同時評分：
