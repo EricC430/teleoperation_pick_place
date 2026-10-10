@@ -65,17 +65,53 @@ def test_remap_agrees_with_pointwise_distortion():
             assert np.linalg.norm(found - e, axis=1).min() < 0.6
 
 
-def test_margin_removes_black_corners_and_keeps_geometry():
-    assert cd.build_distort_maps(D455)[2] < 1.0  # D455 corners sample outside an unpadded render
-    margin = 8
-    assert cd.build_distort_maps(D455, margin)[2] == 1.0
-    w, h, K = cd.padded_render_spec(D455, margin)
-    centres = np.array([[100.0, 80.0], [424.0, 240.0], [750.0, 400.0]])
-    ideal = np.zeros((h, w), np.uint8)
-    for cx, cy in centres:  # ideal pixel (x, y) of the real frame lives at (x + margin, y + margin) in the padded render
-        ideal[int(cy + margin) - 5 : int(cy + margin) + 6, int(cx + margin) - 5 : int(cx + margin) + 6] = 255
-    distorted = cd.apply_distortion(ideal, cd.build_distort_maps(D455, margin))
-    assert distorted.shape == (D455.height, D455.width)
-    _, _, _, found = cv2.connectedComponentsWithStats((distorted > 127).astype(np.uint8))
-    for e in cd.distort_pixels(centres, D455):
-        assert np.linalg.norm(found[1:] - e, axis=1).min() < 0.6
+# Innomaker wrist lens as calibrated 2026-10-07 (calib_intrinsics_checkerboard.py, 23 shots): ~130 px
+# of barrel distortion at the corners and a principal point 32 px off-centre -- the hard case.
+WRIST = cd.make_model(
+    694.6581748746704, 696.6725868716137, 288.19156625247837, 236.72215105630147, 640, 480, "opencv_brown_conrady",
+    [-0.5255522197350703, 0.4725669886410813, 0.003127505905239609, 0.0015699038457483063, -0.37031118447591643],
+)
+
+
+def test_numpy_opencv_inverse_matches_opencv():
+    # The container's OpenCV 5 has no undistortPointsIter, so camera_distortion does the inverse in
+    # numpy. Check it against OpenCV's own where OpenCV has it.
+    if not hasattr(cv2, "undistortPointsIter"):
+        return
+    us, vs = np.meshgrid(np.arange(0, 640, 7.0), np.arange(0, 480, 7.0))
+    pts = np.stack([us.ravel(), vs.ravel()], axis=1)
+    crit = (cv2.TERM_CRITERIA_COUNT + cv2.TERM_CRITERIA_EPS, 200, 1e-14)
+    ref = cv2.undistortPointsIter(pts.reshape(-1, 1, 2), WRIST.K, np.array(WRIST.coeffs), None, WRIST.K, crit).reshape(-1, 2)
+    assert np.abs(cd.undistort_pixels(pts, WRIST) - ref).max() < 1e-3
+
+
+def test_round_trip_wrist():
+    pts = _random_pixels(WRIST)
+    assert np.abs(cd.distort_pixels(cd.undistort_pixels(pts, WRIST), WRIST) - pts).max() < 1e-6
+
+
+def test_render_to_real_maps_land_rays_where_the_real_camera_would():
+    # A centred, square-pixel render (all Isaac can produce) with dots on known rays; after the
+    # remap every dot must sit where the REAL camera (its own cx/cy, fx/fy, distortion) puts that ray.
+    rays = np.array([[-0.25, -0.15], [0.0, 0.0], [0.3, 0.2], [-0.35, 0.25], [0.1, -0.2]])
+    for m in (D455, WRIST):
+        w, h, f = cd.render_spec(m)
+        map_x, map_y, coverage = cd.build_render_to_real_maps(m, w, h, f)
+        assert coverage == 1.0
+        assert map_x.shape == (m.height, m.width)
+        render = np.zeros((h, w), np.uint8)
+        drawn = []
+        for x, y in rays:  # draw on integer pixels, then use the ray through the pixel actually drawn
+            iu, iv = int(round(f * x + (w - 1) / 2.0)), int(round(f * y + (h - 1) / 2.0))
+            render[iv - 4 : iv + 5, iu - 4 : iu + 5] = 255
+            drawn.append(((iu - (w - 1) / 2.0) / f, (iv - (h - 1) / 2.0) / f))
+        drawn = np.array(drawn)
+        real = cd.apply_distortion(render, (map_x, map_y)).astype(np.float64)
+        n, labels = cv2.connectedComponents((real > 0).astype(np.uint8))
+        vs, us = np.mgrid[0 : m.height, 0 : m.width]
+        found = np.array([[(us * real)[labels == k].sum() / real[labels == k].sum(),
+                           (vs * real)[labels == k].sum() / real[labels == k].sum()] for k in range(1, n)])
+        ideal_real_px = np.stack([m.K[0, 0] * drawn[:, 0] + m.K[0, 2], m.K[1, 1] * drawn[:, 1] + m.K[1, 2]], axis=1)
+        for e in cd.distort_pixels(ideal_real_px, m):
+            assert 6 <= e[0] < m.width - 6 and 6 <= e[1] < m.height - 6  # every test ray is well inside
+            assert np.linalg.norm(found - e, axis=1).min() < 0.3

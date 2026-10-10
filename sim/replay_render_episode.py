@@ -41,8 +41,15 @@ the flag, not to quietly pick something plausible:
    🔴 [已查證 2026-09-29] EXCEPT the back third: docs/meeting/2026-09-13.md item 4, "t41 重錄後排在
    最後一集" -- ep0-39 = t1-t40, ep40-58 = t42-t60, ep59 = t41. The plain `t{i+1}` rule put ep40-58
    one placement off and ep59 at t60 (23-52 cm grasp "errors"); `uvc60_short_id()` below has the fix.
-3. **`geometry_aligned`** -- always false until S5 gap 4's T1/T2 land. `scene_constants.py`'s
-   camera pose is PLACEHOLDER (S4 §5-5).
+3. **`geometry_aligned`** -- false until BOTH cameras have a measured lens and pose.
+   `--front-left-intrinsics/--front-left-extrinsics/--wrist-intrinsics` wire in the 10/07 T1/T2 JSONs
+   (`geometry_aligned_per_camera` then reads front-left: true); the wrist POSE is still the CAD offset
+   because the hand-eye has not passed. Without those flags the old behaviour is unchanged.
+
+    ./sim/run_in_container.sh replay_render_episode.py ... \\
+        --front-left-intrinsics $GUEST/omx_sim/calibration/2026-10-07_camera_intrinsics_front-left.json \\
+        --front-left-extrinsics $GUEST/omx_sim/calibration/2026-10-07_camera_extrinsics_front-left.json \\
+        --wrist-intrinsics      $GUEST/omx_sim/calibration/2026-10-07_camera_intrinsics_wrist.json
 
 ## Domain randomization
 
@@ -113,6 +120,17 @@ parser.add_argument("--max-frames", type=int, default=0, help="stop after N rend
 parser.add_argument("--skip-grasp", action="store_true", help="degraded mode: no attach/detach (S5 §2 gap 3)")
 parser.add_argument("--attach-radius", type=float, default=0.09,
                     help="grasp attach radius in meters (default 0.09 m, covers cup rim-to-centre offset)")
+parser.add_argument("--front-left-intrinsics", default=None,
+                    help="calib_intrinsics_realsense.py JSON: render front-left with the measured lens "
+                         "(principal point, fx/fy, distortion) instead of scene_constants' HFOV")
+parser.add_argument("--front-left-extrinsics", default=None,
+                    help="calib_extrinsics_aruco.py JSON (frame 'world'): place front-left at that full pose "
+                         "(incl. roll) instead of the look-at from scene_constants")
+parser.add_argument("--wrist-intrinsics", default=None,
+                    help="calib_intrinsics_checkerboard.py JSON: render the wrist camera with the measured lens. "
+                         "Its POSE stays scene_constants' CAD offset -- the wrist hand-eye is not calibrated")
+parser.add_argument("--save-ideal", action="store_true",
+                    help="also save Isaac's raw render (square pixels, centred axis, no distortion) per camera")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 
@@ -126,6 +144,7 @@ import torch  # noqa: E402
 import isaaclab.sim as sim_utils  # noqa: E402
 from isaaclab.scene import InteractiveScene  # noqa: E402
 
+import camera_distortion as CD  # noqa: E402
 import joint_mapping as JM  # noqa: E402
 import omx_constants as K  # noqa: E402
 import omx_scene_cfg as SC  # noqa: E402
@@ -172,6 +191,57 @@ def kelvin_to_rgb(kelvin: float) -> tuple[float, float, float]:
     else:
         b = 138.5177312231 * math.log(t - 10) - 305.0447927307
     return tuple(max(0.0, min(255.0, c)) / 255.0 for c in (r, g, b))
+
+
+def quat_wxyz_to_R(q):
+    w, x, y, z = q
+    return [[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+            [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+            [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]]
+
+
+def R_to_quat_wxyz(R):
+    import numpy as np  # noqa: PLC0415
+    R = np.asarray(R, dtype=float)
+    t = np.trace(R)
+    if t > 0:
+        s = 0.5 / math.sqrt(t + 1.0)
+        q = [0.25 / s, (R[2, 1] - R[1, 2]) * s, (R[0, 2] - R[2, 0]) * s, (R[1, 0] - R[0, 1]) * s]
+    elif R[0, 0] > R[1, 1] and R[0, 0] > R[2, 2]:
+        s = 2.0 * math.sqrt(1.0 + R[0, 0] - R[1, 1] - R[2, 2])
+        q = [(R[2, 1] - R[1, 2]) / s, 0.25 * s, (R[0, 1] + R[1, 0]) / s, (R[0, 2] + R[2, 0]) / s]
+    elif R[1, 1] > R[2, 2]:
+        s = 2.0 * math.sqrt(1.0 + R[1, 1] - R[0, 0] - R[2, 2])
+        q = [(R[0, 2] - R[2, 0]) / s, (R[0, 1] + R[1, 0]) / s, 0.25 * s, (R[1, 2] + R[2, 1]) / s]
+    else:
+        s = 2.0 * math.sqrt(1.0 + R[2, 2] - R[0, 0] - R[1, 1])
+        q = [(R[1, 0] - R[0, 1]) / s, (R[0, 2] + R[2, 0]) / s, (R[1, 2] + R[2, 1]) / s, 0.25 * s]
+    n = math.sqrt(sum(v * v for v in q))
+    return [v / n for v in q]
+
+
+def front_left_pose_from_json(path: str):
+    """(position in THIS scene's world, R_world_from_cam in ROS optical) from a T2 extrinsics JSON.
+
+    The T2 solve's world is the coordinate paper's frame with z measured from the floor at its own
+    --table-top-z; this scene's table is at scene_constants.TABLE_TOP_Z, so only z is re-based.
+    x/y are used as-is: docs/meeting/2026-10-08_paper_to_pan.md found the paper frame and the arm's
+    FK (pan-axis) frame agree to ~1 cm on 10/07, with no detectable constant offset."""
+    d = json.load(open(path))
+    if d.get("frame") != "world":
+        raise SystemExit(f"{path}: frame={d.get('frame')!r}; expected a 'world' front-left pose from calib_extrinsics_aruco.py")
+    if "table_top_z" not in d:
+        raise SystemExit(f"{path}: no table_top_z -- cannot re-base its z onto this scene's table")
+    p = d["pos_m"]
+    return [p[0], p[1], p[2] - d["table_top_z"] + S.TABLE_TOP_Z], quat_wxyz_to_R(d["quat_wxyz"]), d
+
+
+def small_rotation(rx: float, ry: float, rz: float):
+    """Rx @ Ry @ Rz -- the DR jitter, applied in the camera's own (ROS optical) axes."""
+    import numpy as np  # noqa: PLC0415
+    cx, sx, cy, sy, cz, sz = math.cos(rx), math.sin(rx), math.cos(ry), math.sin(ry), math.cos(rz), math.sin(rz)
+    return (np.array([[1, 0, 0], [0, cx, -sx], [0, sx, cx]]) @ np.array([[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]])
+            @ np.array([[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]]))
 
 
 def load_episode(dataset_root: str, episode: int):
@@ -250,6 +320,23 @@ if args.object:
 # wrist camera is parented to link5, so its DR jitter is a local offset tweak, pre-build
 scene_cfg.cam_wrist.offset.pos = tuple(p + d for p, d in zip(S.CAM_WRIST_OFFSET_POS, cam_dpos))
 
+# Measured lenses: Isaac renders a centred, square-pixel image sized to hold every ray the real camera
+# sees (camera_distortion.render_spec); after each render a remap turns it into the real camera's
+# image -- its own principal point, fx/fy and distortion, at the dataset's resolution. Isaac cannot
+# render the real K directly (camera_distortion's docstring has the container evidence).
+lens = {}  # scene key -> dict(model, render_w, render_h, f, source)
+for key, path, want_wh in (("cam_front_left", args.front_left_intrinsics, (S.CAM_WIDTH_FRONT_LEFT, S.CAM_HEIGHT_FRONT_LEFT)),
+                           ("cam_wrist", args.wrist_intrinsics, (S.CAM_WIDTH_WRIST, S.CAM_HEIGHT_WRIST))):
+    if not path:
+        continue
+    model = CD.load_model(path)
+    if (model.width, model.height) != want_wh:
+        raise SystemExit(f"{path} is {model.width}x{model.height}, but {key} records at {want_wh[0]}x{want_wh[1]}")
+    rw, rh, rf = CD.render_spec(model)
+    getattr(scene_cfg, key).width, getattr(scene_cfg, key).height = rw, rh
+    lens[key] = {"model": model, "render_w": rw, "render_h": rh, "f": rf, "source": path}
+    print(f"{key}: measured lens from {path} -> Isaac renders {rw}x{rh} at f={rf:.1f} px, remapped to {model.width}x{model.height}")
+
 
 
 def uvc60_short_id(episode: int) -> str:
@@ -306,15 +393,43 @@ if len(_jaws) != 2:
     raise SystemExit(f"expected link6 and link7 as rigid bodies under the robot, found {_jaws}")
 sim.reset()
 
-# front-left camera: look-at, with the DR jitter applied to both endpoints (translation) and the
-# target (which is what a small rotation of the camera actually amounts to here)
-eye = torch.tensor([S.CAM_FRONT_LEFT_POS], device=sim.device) + torch.tensor([cam_dpos], device=sim.device)
-tgt = torch.tensor([S.CAM_FRONT_LEFT_LOOKAT], device=sim.device)
-reach = float(torch.norm(tgt - eye))
-tgt = tgt + torch.tensor([[math.tan(cam_drot[0]) * reach, math.tan(cam_drot[1]) * reach, math.tan(cam_drot[2]) * reach]],
-                         device=sim.device)
-lift = torch.tensor([[0.0, 0.0, S.TABLE_TOP_Z]], device=sim.device)
-scene["cam_front_left"].set_world_poses_from_view(eye + lift, tgt + lift)
+import numpy as np  # noqa: E402
+
+for key, spec in lens.items():
+    K_isaac = torch.tensor(CD.isaac_K(spec["render_w"], spec["render_h"], spec["f"]), dtype=torch.float32, device=sim.device)
+    scene[key].set_intrinsic_matrices(K_isaac.unsqueeze(0))
+    got = scene[key].data.intrinsic_matrices[0].cpu().numpy()
+    # build the remap from what Isaac SAYS it renders, not from what was asked for
+    spec["f_isaac"] = float(got[0, 0])
+    if abs(spec["f_isaac"] - spec["f"]) > 1e-3 * spec["f"] or abs(got[1, 1] - got[0, 0]) > 1e-6:
+        raise SystemExit(f"{key}: asked Isaac for f={spec['f']:.3f}, it reports K={got.tolist()}")
+    map_x, map_y, coverage = CD.build_render_to_real_maps(spec["model"], spec["render_w"], spec["render_h"], spec["f_isaac"])
+    if coverage < 1.0:
+        raise SystemExit(f"{key}: remap samples outside the render ({coverage*100:.2f}% inside) -- render_spec is too small")
+    spec["maps"] = (map_x, map_y)
+    print(f"{key}: Isaac K = f {got[0, 0]:.2f}, c ({got[0, 2]:.1f}, {got[1, 2]:.1f}); remap coverage {coverage*100:.1f}%")
+
+fl_pose = None
+if args.front_left_extrinsics:
+    # full measured pose (roll included), DR jitter in the camera's own axes
+    fl_pos, fl_R, fl_json = front_left_pose_from_json(args.front_left_extrinsics)
+    pos = [p + d for p, d in zip(fl_pos, cam_dpos)]
+    R = np.asarray(fl_R) @ small_rotation(*cam_drot)
+    quat = R_to_quat_wxyz(R)
+    scene["cam_front_left"].set_world_poses(torch.tensor([pos], device=sim.device), torch.tensor([quat], device=sim.device),
+                                            convention="ros")
+    fl_pose = {"pos": pos, "quat_wxyz_ros": quat, "source": args.front_left_extrinsics}
+    print(f"cam_front_left: measured pose from {args.front_left_extrinsics} -> pos {[round(v, 4) for v in pos]} quat {[round(v, 4) for v in quat]}")
+else:
+    # front-left camera: look-at, with the DR jitter applied to both endpoints (translation) and the
+    # target (which is what a small rotation of the camera actually amounts to here)
+    eye = torch.tensor([S.CAM_FRONT_LEFT_POS], device=sim.device) + torch.tensor([cam_dpos], device=sim.device)
+    tgt = torch.tensor([S.CAM_FRONT_LEFT_LOOKAT], device=sim.device)
+    reach = float(torch.norm(tgt - eye))
+    tgt = tgt + torch.tensor([[math.tan(cam_drot[0]) * reach, math.tan(cam_drot[1]) * reach, math.tan(cam_drot[2]) * reach]],
+                             device=sim.device)
+    lift = torch.tensor([[0.0, 0.0, S.TABLE_TOP_Z]], device=sim.device)
+    scene["cam_front_left"].set_world_poses_from_view(eye + lift, tgt + lift)
 
 robot = scene["robot"]
 obj = scene["object"]
@@ -357,6 +472,18 @@ write_pose(frames[0])
 for _ in range(args.warmup_steps):
     sim.step()
     scene.update(sim.get_physics_dt())
+
+if fl_pose is not None:
+    # read the pose back in the SAME (ros) convention it was written in -- a convention mix-up shows
+    # up here as a large angle, instead of as a plausible-looking but rotated image
+    got_p = scene["cam_front_left"].data.pos_w[0].cpu().numpy()
+    got_R = np.asarray(quat_wxyz_to_R(scene["cam_front_left"].data.quat_w_ros[0].cpu().numpy().tolist()))
+    dp = float(np.linalg.norm(got_p - np.asarray(fl_pose["pos"])))
+    dang = math.degrees(math.acos(max(-1.0, min(1.0, (np.trace(got_R.T @ np.asarray(quat_wxyz_to_R(fl_pose["quat_wxyz_ros"]))) - 1) / 2))))
+    print(f"cam_front_left pose read back: |dpos| {dp*1000:.3f} mm, rotation {dang:.4f} deg")
+    if dp > 1e-3 or dang > 0.05:
+        raise SystemExit("front-left camera pose did not take -- check set_world_poses' convention in this Isaac Lab")
+    fl_pose["readback"] = {"dpos_m": dp, "drot_deg": dang}
 
 # 🔴 2026-09-29: one carry per episode. ep0 (current constants) released the cup into the bin at
 # frame 382, then the gripper closed again at 401 with the cup inside the 14 cm attach radius, and
@@ -402,9 +529,13 @@ for n, t in enumerate(frames):
            "observation_state": states_deg[t], "grasp_attached": attached,
            "tcp_object_dist_m": tcp_obj_dist}
     for key, name in (("cam_wrist", "wrist"), ("cam_front_left", "front-left")):
-        rgb = scene[key].data.output["rgb"][0]
+        rgb = scene[key].data.output["rgb"][0][..., :3].detach().cpu().numpy()
         fn = f"f{t:05d}_{name}.png"
-        Image.fromarray(rgb[..., :3].detach().cpu().numpy()).save(os.path.join(args.out, fn))
+        if key in lens:
+            if args.save_ideal:
+                Image.fromarray(rgb).save(os.path.join(args.out, f"f{t:05d}_{name}_ideal.png"))
+            rgb = CD.apply_distortion(np.ascontiguousarray(rgb), lens[key]["maps"])
+        Image.fromarray(rgb).save(os.path.join(args.out, fn))
         rec[f"image_{name}"] = fn
     records.append(rec)
     if n % max(1, len(frames) // 10) == 0:
@@ -429,9 +560,29 @@ manifest = {
             for e in grasp.events
         ],
     },
+    "cameras": {
+        "front-left": {
+            "lens": lens["cam_front_left"]["source"] if "cam_front_left" in lens else f"scene_constants HFOV {S.HFOV_FRONT_LEFT_DEG} deg, centred, no distortion",
+            "pose": fl_pose if fl_pose is not None else "scene_constants look-at (no roll)",
+        },
+        "wrist": {
+            "lens": lens["cam_wrist"]["source"] if "cam_wrist" in lens else f"scene_constants HFOV {S.HFOV_WRIST_DEG} deg PLACEHOLDER",
+            "pose": "scene_constants CAM_WRIST_OFFSET_* (CAD); hand-eye NOT calibrated",
+        },
+        "render_sizes": {k: [v["render_w"], v["render_h"], v["f_isaac"]] for k, v in lens.items()},
+    },
     "fidelity": {
+        # True only when BOTH cameras have a measured lens AND a measured pose; the wrist hand-eye is
+        # still open (2026-10-08: poses A/B disagree by 3.6 cm / 6.5 deg), so this stays False for now.
         "geometry_aligned": False,
-        "geometry_note": "PLACEHOLDER camera pose, S5 gap 4 (T1/T2) not done",
+        "geometry_aligned_per_camera": {
+            "front-left": bool("cam_front_left" in lens and fl_pose is not None),
+            "wrist": False,
+        },
+        "geometry_note": ("front-left: measured lens + ArUco pose (T1/T2, 10/07 camera position); "
+                          "wrist: measured lens only, pose is the CAD offset (hand-eye pending)")
+                         if ("cam_front_left" in lens and fl_pose is not None)
+                         else "PLACEHOLDER camera pose and/or lens, S5 gap 4 (T1/T2) not wired in",
         "object_matches_source": False,
         "object_note": (
             (f"rendered USD {os.path.basename(args.object)}" if args.object else

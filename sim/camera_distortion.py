@@ -23,9 +23,21 @@ JSON that lacks that check or fails it.
 
 Two uses, one conversion underneath:
   undistort_pixels(pts, model)   real detections -> ideal pixels (T2 solvePnP, T3 residual)
-  apply_distortion(img, maps)    ideal sim render -> what the real camera would show (S5 frames)
-                                 -- render with set_intrinsic_matrices(K from the SAME json), at the
-                                 json's width x height, then remap.
+  render -> real image           an Isaac render -> what the real camera would show (S5 frames):
+                                 render_spec() + isaac_K() for the sim camera, then
+                                 build_render_to_real_maps() + apply_distortion().
+
+Why the sim render is NOT simply "the real K": `[已查證 2026-10-08]` in the isaac-lab container,
+isaaclab/utils/sensors.py convert_camera_intrinsics_to_usd drops aperture offsets ("c_x and c_y will
+be half of width and height") and averages fx/fy, and camera.py _update_intrinsic_matrices sets
+f_y = f_x ("rendering does not use aperture offsets or vertical aperture"). So Isaac can only render a
+square-pixel image with the optical axis at the centre. render_spec() sizes such an image wide enough
+to contain every ray the real camera sees; the remap then applies the real principal point, the real
+fx/fy and the lens distortion in one step. The D455's principal point is (7, 4) px off-centre and the
+wrist camera's (-32, -3) px -- ignoring it would shift the whole image by that much.
+
+Pure numpy apart from cv2.remap / imread / imwrite: the container's OpenCV is 5.0 and has no
+cv2.undistortPointsIter (checked 2026-10-08), so the OpenCV-model inverse is done here.
 
     uv run python sim/camera_distortion.py --intrinsics-json calibration/<d>_camera_intrinsics_front-left.json \\
         --image render.png --out render_distorted.png
@@ -105,6 +117,29 @@ def _rs_inverse(xo, yo, c, iters: int):
     return x, y
 
 
+def _opencv_inverse(xd, yd, c, iters: int):
+    """OpenCV's own undistortPoints fixed-point iteration, then Newton steps: with the wrist lens
+    (k1 = -0.53, ~130 px of distortion at the corners) the fixed point alone converges slowly."""
+    k1, k2, p1, p2, k3 = c
+    x, y = xd.copy(), yd.copy()
+    for _ in range(iters):
+        r2 = x * x + y * y
+        icdist = 1.0 / (1.0 + ((k3 * r2 + k2) * r2 + k1) * r2)
+        dx = 2.0 * p1 * x * y + p2 * (r2 + 2.0 * x * x)
+        dy = p1 * (r2 + 2.0 * y * y) + 2.0 * p2 * x * y
+        x, y = (xd - dx) * icdist, (yd - dy) * icdist
+    eps = 1e-7
+    for _ in range(4):
+        fx0, fy0 = _opencv_forward(x, y, c)
+        ax, ay = _opencv_forward(x + eps, y, c)
+        bx, by = _opencv_forward(x, y + eps, c)
+        j11, j21, j12, j22 = (ax - fx0) / eps, (ay - fy0) / eps, (bx - fx0) / eps, (by - fy0) / eps
+        rx, ry = fx0 - xd, fy0 - yd
+        det = j11 * j22 - j12 * j21
+        x, y = x - (j22 * rx - j12 * ry) / det, y - (j11 * ry - j21 * rx) / det
+    return x, y
+
+
 def _norm(pts: np.ndarray, K: np.ndarray):
     return (pts[:, 0] - K[0, 2]) / K[0, 0], (pts[:, 1] - K[1, 2]) / K[1, 1]
 
@@ -119,12 +154,8 @@ def undistort_pixels(pts, m: CameraModel, iters: int = 30) -> np.ndarray:
     pts = np.asarray(pts, dtype=np.float64).reshape(-1, 2)
     if m.kind == "none" or not any(m.coeffs):
         return pts.copy()
-    if m.kind == "opencv":
-        crit = (cv2.TERM_CRITERIA_COUNT + cv2.TERM_CRITERIA_EPS, 60, 1e-12)
-        out = cv2.undistortPointsIter(pts.reshape(-1, 1, 2), m.K, np.array(m.coeffs), None, m.K, crit)
-        return out.reshape(-1, 2)
     xo, yo = _norm(pts, m.K)
-    x, y = _rs_inverse(xo, yo, m.coeffs, iters)
+    x, y = (_opencv_inverse if m.kind == "opencv" else _rs_inverse)(xo, yo, m.coeffs, iters)
     return _pix(x, y, m.K)
 
 
@@ -138,26 +169,56 @@ def distort_pixels(ideal_pts, m: CameraModel) -> np.ndarray:
     return _pix(dx, dy, m.K)
 
 
-def padded_render_spec(m: CameraModel, margin: int):
-    """(width, height, K) to render the IDEAL image at when `margin` extra pixels per side are needed:
-    same focal lengths, principal point shifted by `margin`. Feed K to set_intrinsic_matrices."""
-    K = m.K.copy()
-    K[0, 2] += margin
-    K[1, 2] += margin
-    return m.width + 2 * margin, m.height + 2 * margin, K
+def _real_pixel_rays(m: CameraModel):
+    """Normalised ideal-pinhole rays (x, y) of every pixel of the real image, shaped (height, width)."""
+    us, vs = np.meshgrid(np.arange(m.width, dtype=np.float64), np.arange(m.height, dtype=np.float64))
+    ideal = undistort_pixels(np.stack([us.ravel(), vs.ravel()], axis=1), m)
+    x = (ideal[:, 0] - m.K[0, 2]) / m.K[0, 0]
+    y = (ideal[:, 1] - m.K[1, 2]) / m.K[1, 1]
+    return x.reshape(us.shape), y.reshape(us.shape)
 
 
-def build_distort_maps(m: CameraModel, margin: int = 0):
-    """cv2.remap maps that turn an ideal render into the real camera's image. Returns
-    (map_x, map_y, coverage). With margin=0 the ideal render is width x height; coverage < 1 then
-    means some output pixels sample outside it (the D455's corners: ~97%, 6.6 px of distortion) --
-    render at padded_render_spec(m, margin) instead (margin >= the max distortion displacement,
-    calib_intrinsics_*'s `distortion_px_max`, rounded up) and coverage reaches 1."""
+def render_spec(m: CameraModel, f: float | None = None, pad_px: int = 2):
+    """(width, height, f) of the ideal image Isaac should render for this camera: square pixels,
+    optical axis at the centre, wide enough to contain every ray the real image samples. f defaults
+    to the mean of the real fx/fy, so the centre of the render has the real camera's resolution."""
+    f = float(f if f is not None else (m.K[0, 0] + m.K[1, 1]) / 2.0)
+    x, y = _real_pixel_rays(m)
+    half_w = f * float(np.abs(x).max()) + pad_px
+    half_h = f * float(np.abs(y).max()) + pad_px
+    return 2 * int(np.ceil(half_w)), 2 * int(np.ceil(half_h)), f
+
+
+def isaac_K(width: int, height: int, f: float) -> np.ndarray:
+    """The matrix to hand to Isaac Lab's Camera.set_intrinsic_matrices for a render_spec() render.
+    Isaac's own convention puts the axis at (W/2, H/2); anything else is dropped with a warning."""
+    return np.array([[f, 0.0, width / 2.0], [0.0, f, height / 2.0], [0.0, 0.0, 1.0]])
+
+
+def build_render_to_real_maps(m: CameraModel, render_w: int, render_h: int, f: float):
+    """cv2.remap maps: Isaac render (render_w x render_h, square pixels, centred axis, focal f) ->
+    the real camera's image (m.width x m.height, its own principal point, fx/fy and distortion).
+    Returns (map_x, map_y, coverage); coverage should be 1.0 for a render_spec() render.
+
+    In remap's pixel-centre coordinates a symmetric frustum's axis is at ((W-1)/2, (H-1)/2); Isaac
+    reports W/2, H/2 in its own continuous convention. The two differ by half a pixel, which is the
+    remaining uncertainty here."""
+    x, y = _real_pixel_rays(m)
+    map_x = (f * x + (render_w - 1) / 2.0).astype(np.float32)
+    map_y = (f * y + (render_h - 1) / 2.0).astype(np.float32)
+    inside = (map_x >= 0) & (map_x <= render_w - 1) & (map_y >= 0) & (map_y <= render_h - 1)
+    return map_x, map_y, float(inside.mean())
+
+
+def build_distort_maps(m: CameraModel):
+    """cv2.remap maps from an ideal image WITH THE REAL K (same size) to the real camera's image.
+    Host-side utility; for Isaac renders use build_render_to_real_maps (Isaac cannot render the
+    real K). Returns (map_x, map_y, coverage); corners sample outside the input when coverage < 1."""
     w, h = m.width, m.height
     us, vs = np.meshgrid(np.arange(w, dtype=np.float64), np.arange(h, dtype=np.float64))
-    src = undistort_pixels(np.stack([us.ravel(), vs.ravel()], axis=1), m).reshape(h, w, 2) + margin
+    src = undistort_pixels(np.stack([us.ravel(), vs.ravel()], axis=1), m).reshape(h, w, 2)
     map_x, map_y = src[..., 0].astype(np.float32), src[..., 1].astype(np.float32)
-    inside = (map_x >= 0) & (map_x <= w + 2 * margin - 1) & (map_y >= 0) & (map_y <= h + 2 * margin - 1)
+    inside = (map_x >= 0) & (map_x <= w - 1) & (map_y >= 0) & (map_y <= h - 1)
     return map_x, map_y, float(inside.mean())
 
 

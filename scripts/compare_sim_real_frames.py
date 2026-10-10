@@ -54,8 +54,23 @@ def parse_args():
     p.add_argument("--frames", help="comma-separated frame indices to build (default: every frame "
                                     "in the first manifest)")
     p.add_argument("--camera", default="front-left", choices=["front-left", "wrist"])
+    p.add_argument("--blend", action="store_true",
+                   help="add a 50/50 blend of REAL and the first render (S4 §5-5 T4). Only meaningful when "
+                        "that render used the measured lens and pose (replay_render_episode.py "
+                        "--front-left-intrinsics/--front-left-extrinsics); sizes must match")
     p.add_argument("--out", required=True)
     return p.parse_args()
+
+
+def blend(real_png: str, sim_png: str, dest: str) -> bool:
+    from PIL import Image
+
+    real, sim = Image.open(real_png).convert("RGB"), Image.open(sim_png).convert("RGB")
+    if real.size != sim.size:
+        print(f"  blend skipped: real {real.size} vs sim {sim.size} -- render with the measured lens to compare pixels")
+        return False
+    Image.blend(real, sim, 0.5).save(dest)
+    return True
 
 
 def episode_video_location(dataset_root: str, episode: int, camera: str):
@@ -175,6 +190,10 @@ def main():
             panels.append((f"SIM {label}", png))
         if len(panels) == 1:
             continue
+        if args.blend:
+            blend_png = os.path.join(args.out, f"f{frame:05d}_blend.png")
+            if blend(real_png, panels[1][1], blend_png):
+                panels.append(("50/50 REAL+SIM", blend_png))
         dest = os.path.join(args.out, f"f{frame:05d}_compare.png")
         strip(panels, dest, f"ep{episode} f{frame}  t={entry['timestamp_s']:.2f}s")
         made.append(dest)
@@ -185,7 +204,11 @@ def main():
         if missing:
             print(f"⚠️  asked for frames not in the manifest: {sorted(missing)}")
     print(f"\n{len(made)} comparison image(s) in {args.out}")
-    print("Judge arm CONFIGURATION, not pixel overlap -- the sim camera pose is a placeholder (gap 4).")
+    aligned = first.get("fidelity", {}).get("geometry_aligned_per_camera", {}).get(args.camera, False)
+    if aligned:
+        print(f"{args.camera} was rendered with the measured lens and pose: pixel overlap IS meaningful here.")
+    else:
+        print("Judge arm CONFIGURATION, not pixel overlap -- this camera's sim lens/pose is not the measured one.")
 
 
 if __name__ == "__main__":
