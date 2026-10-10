@@ -410,6 +410,15 @@ for key, spec in lens.items():
     print(f"{key}: Isaac K = f {got[0, 0]:.2f}, c ({got[0, 2]:.1f}, {got[1, 2]:.1f}); remap coverage {coverage*100:.1f}%")
 
 fl_pose = None
+if not args.front_left_extrinsics:
+    # S4 §5-5 camera eras: a recorded dataset is replayed with the camera pose of the session it was recorded in
+    _ds = os.path.basename(os.path.normpath(args.dataset_root))
+    _rel = S.front_left_extrinsics_for_dataset(_ds)
+    if _rel:
+        args.front_left_extrinsics = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), _rel)
+        print(f"cam_front_left: {_ds} was recorded in camera era {S.DATASET_CAMERA_ERA[_ds]} -> {_rel}")
+    else:
+        print(f"cam_front_left: no camera era registered for {_ds!r} -> look-at from scene_constants (latest era, no roll)")
 if args.front_left_extrinsics:
     # full measured pose (roll included), DR jitter in the camera's own axes
     fl_pos, fl_R, fl_json = front_left_pose_from_json(args.front_left_extrinsics)

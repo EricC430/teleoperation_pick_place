@@ -194,12 +194,19 @@ CAM_FRONT_LEFT_INSET_FROM_RISER = 0.045   # MEASURED
 CAM_FRONT_LEFT_STAND_HEIGHT = 0.11     # MEASURED 2026-10-07: the riser the camera stands on
 CAM_FRONT_LEFT_BRACKET_HEIGHT = 0.11   # MEASURED 2026-10-07: the bracket's extra lift
 CAM_FRONT_LEFT_Z = CAM_FRONT_LEFT_STAND_HEIGHT + CAM_FRONT_LEFT_BRACKET_HEIGHT   # 0.22 above the table top
-# 🔴 THE CAMERA HAS TWO ERAS (S4 §5-5, 2026-10-07 evening). It was moved after the 10-05 A1 realignment, before the
-# ArUco photo; today's recordings share the ArUco photo's pose, uvc_60 does not (~41 px pan between them).
-# `[柏宇決定 2026-10-08]` CURRENT = the 10-07 ArUco T2 solve (calibration/2026-10-07_camera_extrinsics_front-left.json),
-# for the recordings from 2026-10-07 on. Checked with no fitting on 9 of today's cup positions: median 8.7 px;
-# a kinematic render of normal_A1 ep 12/13 overlays arm, gripper and cup within ~10-20 px.
-# Backups, labelled, NOT the default:
+# 🔴 THE CAMERA HAS ERAS (S4 §5-5). It moves between sessions, so a replay must use the pose of the session its
+# dataset was recorded in, and anything new (sim data collection, closed-loop eval) the LATEST pose.
+# `[柏宇決定 2026-10-10]` two rules:
+#   1. replaying a recorded dataset -> that dataset's era, FRONT_LEFT_EXTRINSICS_FOR_DATASET below
+#      (replay_render_episode.py picks it from --dataset-root when --front-left-extrinsics is not given);
+#   2. everything else -> the latest era = the CURRENT CAM_FRONT_LEFT_* constants below, so the sim view matches
+#      what the camera sees in today's closed-loop evaluation.
+# Eras (all ArUco T2 solves, `calib_extrinsics_aruco.py`, frame 'world' = coordinate paper):
+#   * 2026-10-10 (LATEST, CURRENT): far_wrist_A1 (recorded 10-08) and later. Reprojection 0.69 px. Versus 10-07: 0.31 cm,
+#     2.92 deg (yaw); far_wrist_A1 frame 0 is within 3.4 px of the 10-10 photo (wood-grain phase correlation).
+#   * 2026-10-07: normal_A1, recovery_A1, recovery_A1_tight. Checked with no fitting on 9 cup positions: median 8.7 px;
+#     a kinematic render of normal_A1 ep 12/13 overlays arm, gripper and cup within ~10-20 px.
+# Older backups, labelled, NOT the default:
 #   * UVC60_ERA (cup-landmark refit on uvc_60, calibration/2026-10-07_camera_extrinsics_front-left_refit32_z220.json):
 #     8.8 px on uvc_60 cups, 28.5 px on today's -- use it only to replay uvc_60 / pre-10-07 data.
 #   * TAPE_20260921: the original tape/protractor measurements described above (86 px on uvc_60).
@@ -210,13 +217,18 @@ CAM_FRONT_LEFT_PITCH_DEG_UVC60_ERA = -18.7
 CAM_FRONT_LEFT_ROLL_DEG_UVC60_ERA = 4.81
 CAM_FRONT_LEFT_QUAT_ROS_UVC60_ERA = (0.2072, -0.3552, 0.7310, -0.5446)
 CAM_FRONT_LEFT_POS_UVC60_ERA = (0.0382, 0.2505, 0.22)
-# CURRENT (10-07 ArUco). The camera also has a ROLL of +3.3 deg about its optical axis. The look-at poses used by
-# preview_scene.py / render_state_replay.py / replay_render_episode.py cannot express roll (~25 px at the image edge),
-# so those scripts ignore it; the full rotation is CAM_FRONT_LEFT_QUAT_ROS for anything that sets the rotation directly.
-CAM_FRONT_LEFT_BEARING_DEG = -40.02   # ArUco T2 2026-10-07
-CAM_FRONT_LEFT_PITCH_DEG = -19.42     # ArUco T2 2026-10-07; negative = looking down (hand-measured 17)
-CAM_FRONT_LEFT_ROLL_DEG = 3.29        # NOT applied by the look-at scripts
-CAM_FRONT_LEFT_QUAT_ROS = (0.2280, -0.3672, 0.7290, -0.5308)   # (w, x, y, z), ros optical convention, world = pan-axis frame
+CAM_FRONT_LEFT_BEARING_DEG_20261007 = -40.02
+CAM_FRONT_LEFT_PITCH_DEG_20261007 = -19.42
+CAM_FRONT_LEFT_ROLL_DEG_20261007 = 3.29
+CAM_FRONT_LEFT_QUAT_ROS_20261007 = (0.2280, -0.3672, 0.7290, -0.5308)
+CAM_FRONT_LEFT_POS_20261007 = (0.0425, 0.2441, 0.2175)
+# CURRENT = LATEST era (10-10 ArUco). The camera also has a ROLL of +3.0 deg about its optical axis. The look-at poses used
+# by preview_scene.py / render_state_replay.py cannot express roll (~25 px at the image edge), so those scripts ignore it;
+# the full rotation is CAM_FRONT_LEFT_QUAT_ROS (replay_render_episode.py uses the full pose from the era's JSON).
+CAM_FRONT_LEFT_BEARING_DEG = -37.06   # ArUco T2 2026-10-10
+CAM_FRONT_LEFT_PITCH_DEG = -19.91     # ArUco T2 2026-10-10; negative = looking down (hand-measured 17 on 10-07)
+CAM_FRONT_LEFT_ROLL_DEG = 3.03        # NOT applied by the look-at scripts
+CAM_FRONT_LEFT_QUAT_ROS = (0.2414, -0.3854, 0.7223, -0.5210)   # (w, x, y, z), ros optical convention, world = pan-axis frame
 
 # `[Eric說 2026-09-21]` the inset is -X (toward the operator), corrected after a first render put
 # the camera a few cm the wrong side of the riser's front edge and inside the placement cloud.
@@ -225,7 +237,28 @@ CAM_FRONT_LEFT_POS_TAPE_20260921 = (
     CAM_FRONT_LEFT_Y_PRE,
     CAM_FRONT_LEFT_Z,
 )
-CAM_FRONT_LEFT_POS = (0.0425, 0.2441, 0.2175)   # ArUco T2 2026-10-07; z above the table top (hand-measured 0.22 = CAM_FRONT_LEFT_Z)
+CAM_FRONT_LEFT_POS = (0.0442, 0.2467, 0.2183)   # ArUco T2 2026-10-10; z above the table top (hand-measured 0.22 = CAM_FRONT_LEFT_Z)
+
+# Era registry. Paths are repo-relative; each JSON is a calib_extrinsics_aruco.py 'world' solve.
+FRONT_LEFT_EXTRINSICS_BY_ERA = {
+    "2026-10-07": "calibration/2026-10-07_camera_extrinsics_front-left.json",
+    "2026-10-10": "calibration/2026-10-10_camera_extrinsics_front-left.json",
+}
+FRONT_LEFT_ERA_LATEST = "2026-10-10"
+# dataset (the directory name under data/huggingface/lerobot/ericc430/ or .cache/lerobot/) -> era it was recorded in.
+# uvc_60 and older have no ArUco solve (their camera pose is the cup-landmark refit, CAM_FRONT_LEFT_*_UVC60_ERA).
+DATASET_CAMERA_ERA = {
+    "omx_pick_place_pilot_paper_cup_normal_A1": "2026-10-07",
+    "omx_pick_place_pilot_paper_cup_recovery_A1": "2026-10-07",
+    "omx_pick_place_pilot_paper_cup_recovery_A1_tight": "2026-10-07",
+    "omx_pick_place_pilot_paper_cup_far_wrist_A1": "2026-10-10",
+}
+
+
+def front_left_extrinsics_for_dataset(dataset_name: str) -> str | None:
+    """Repo-relative path of the front-left T2 JSON for the session a dataset was recorded in, or None."""
+    era = DATASET_CAMERA_ERA.get(dataset_name)
+    return FRONT_LEFT_EXTRINSICS_BY_ERA[era] if era else None
 # Look-at point: along the measured bearing, dropping at the measured pitch.
 _cam_bearing = math.radians(CAM_FRONT_LEFT_BEARING_DEG)
 _cam_pitch = math.radians(CAM_FRONT_LEFT_PITCH_DEG)
