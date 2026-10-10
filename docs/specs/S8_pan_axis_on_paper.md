@@ -5,6 +5,14 @@
 
 > 這份設計成可以單獨帶到實驗室筆電執行。
 
+### 🔁 2026-10-10 審查修訂（量測前）
+
+1. **新增第 0 步：世界座標檢查**（§4），S7 共用。座標紙就是模擬的世界座標，但沒有任何步驟確認它和 10/07 錄影時在同一個位置；第三視角相機也在 10/07 之後又動過（`已查證 2026-10-10`，約 23 px）。
+2. **讀座標的方法改成用卡片墊出固定間隙**：指尖離紙面 3–5 mm 時眼睛稍偏就有 1–2 mm 視差。改成墊一疊已知厚度的卡片（約 2–3 mm）擺姿勢，鎖住後抽掉卡片再讀，間隙固定而且小。
+3. **新增垂直閉合檢查**（已實作）：鎖住姿勢時輸入卡片厚度，`session` 記下 FK 預測的指尖高度，`solve` 印出兩者差。這是唯一直接檢查「底座高度＋俯仰鏈」的量，S7 和圓心都量不到它。
+4. **pan 軸和 link0 的約定**（§5）：`已查證` 有 6 支程式把 link0 原點當成 pan 軸放在座標紙原點，差 1.125 cm。量測前不用改，但套用 S8 結果前必須統一，否則量到的 `c` 會被套到錯的點上。
+5. **順序建議改成先 S7、後 S8**：S7 全程需要桌上的 ArUco 標記（腕部外參），S8 需要清空的座標紙；先 S7 再收標記比較順。S8 的半徑和垂直閉合也要用 S7 的新常數重算才有意義。
+
 ---
 
 ## 1. 要解什麼問題
@@ -64,7 +72,18 @@
 
 ## 4. 現場步驟
 
-1. 清空手臂周圍 30 cm 內的東西：杯子、收納盒都移走，**座標紙不要動**。
+0. **世界座標檢查（S7 也從這一步開始）**：
+   1. 座標紙：確認它還是 10/07 錄影時的那張、在同一個位置（膠帶、摺線對齊底盤前緣）。**如果已經收起來或移動過**，照原本的規則重新擺好，並在這裡記下「重擺過」。S8 量到的就是**這次擺放**相對 pan 軸的位置；10/07 錄影當時的擺放誤差無法回溯，只能用 `docs/meeting/2026-10-08_paper_to_pan.md` 的結果（約 1 cm 內）當上限。
+   2. ArUco 標記照 `calibration/aruco_points.csv` 擺回，拍第三視角並解外參：
+      ```bash
+      uv run python sim/capture_still.py --camera front-left --out calibration/shots/<日期>_fl_world.png
+      uv run python sim/calib_extrinsics_aruco.py --camera front-left \
+        --intrinsics-json calibration/2026-10-07_camera_intrinsics_front-left.json \
+        --points-csv calibration/aruco_points.csv --images calibration/shots/<日期>_fl_world.png \
+        --out calibration/<日期>_camera_extrinsics_front-left.json
+      ```
+   3. 判讀：重投影誤差中位數 ≤ 2 px 才算標記擺得對。和 10/07 的解相比，位置差超過約 0.5 cm 或角度差超過約 0.3°，代表相機（或座標紙）動過，**這次的解只適用於今天之後的錄影**，在 `scene_constants.py` 另存一組，不覆蓋 10/07 的。
+1. 清空手臂周圍 30 cm 內的東西：杯子、收納盒都移走，**座標紙不要動**。S7 先做完的話，這時把 ArUco 標記收掉。
 2. 執行：
    ```bash
    uv run python scripts/measure_pan_circle.py session --csv calibration/<日期>_pan_circle.csv
@@ -72,7 +91,7 @@
 3. 每個圓的流程：
    1. 腳本先把 pan 轉到起點，夾爪閉合。
    2. 腳本會**放掉 lift、elbow、wrist_flex**，pan、roll、夾爪保持出力。放掉前會先提醒你用手托住前臂和夾爪。
-   3. 把夾爪擺成**尖端朝正下方、離紙面 3–5 mm、不要碰到紙**，扶著不要動，按 Enter，腳本就把這個姿勢鎖住。
+   3. 在指尖下方墊一疊已知厚度的卡片（約 2–3 mm），把夾爪擺成**尖端朝正下方、輕靠在卡片上**，扶著不要動，按 Enter，腳本就把這個姿勢鎖住。抽掉卡片，輸入卡片厚度（mm），腳本會印出 FK 預測的指尖高度和兩者的差。
    4. 腳本把 pan 轉到各站，預設 9 站、約 ±60°。每站停下來，你輸入**指尖正下方的座標 `x y`（cm）**，讀到 0.1 cm。
       - 讀的時候眼睛要在指尖正上方往下看，避免視差。
       - 如果其他關節跑掉超過 1 單位，腳本會警告。
@@ -106,6 +125,20 @@ python scripts/measure_pan_circle.py solve --csv calibration/<日期>_pan_circle
 | pan 零點 `o`、比例 `s` | `sim/joint_mapping.py` 的 `shoulder_pan` | 由人貼回 |
 | 腕部 T2（`sim/calib_extrinsics_aruco.py`） | 它目前假設手臂底座在座標紙原點，要改成用 `c` | 另一個 session 已發現它的 link0 位置有 bug，兩件事一起改 |
 
+**🔴 先統一 pan 軸和 link0 的約定（`已查證 2026-10-10`）。**
+URDF 的 link0 原點在底座板中心，pan 軸在 link0 的 x = −1.125 cm（`reach_logger/fk.py` 的 `_PAN_AXIS_XY`）。
+擺放點、座標紙、S8 的 `c` 都是 **pan 軸**座標，所以 link0 應該放在 `c + (+1.125, 0) cm`（pan 零點把底座轉了的話，這個偏移也跟著轉）。
+
+| 程式 | 現在的做法 | 結果 |
+|---|---|---|
+| `sim/omx_scene_cfg.py` | `ARM_BASE_POS = (0, 0, …)`，link0 在原點 | 模擬手臂整體偏後 1.125 cm |
+| `sim/calib_extrinsics_aruco.py`（腕部） | link0 在原點 | 腕部外參吸收這 1.125 cm |
+| `scripts/fit_arm_overlay.py` | link0 在原點 | 輪廓比對同上 |
+| `scripts/touch_calibrate.py`、`scripts/eval_joint_calibration.py`（`point_cm`）、`scripts/fit_paper_to_pan.py`（經由前者） | 把 FK 的 link0 座標當成 pan 軸座標 | 9/22 的觸碰零點、夾取／放開評估、10/08 的 paper_to_pan `t` 都含這 1.125 cm |
+| `scripts/measure_pan_circle.py`、`reach_logger/fk.py` 的方位與半徑 | 有扣 `_PAN_AXIS_XY` | 正確 |
+
+套用前要先把前三支改成「link0 = pan 軸位置 + 1.125 cm」，並在 `scene_constants.py` 加一個 `ARM_PAN_AXIS_IN_PAPER_M`（量到之前是 (0, 0)）。後兩支是歷史結果，不重跑，只在讀數字時記得這一點。
+
 ---
 
 ## 6. 驗收條件
@@ -113,11 +146,13 @@ python scripts/measure_pan_circle.py solve --csv calibration/<日期>_pan_circle
 - [ ] 擬合殘差 RMS ≤ 0.2 cm。這個標準是依讀座標的精度約 0.1 cm 訂的，`推論`
 - [ ] 兩個圓各自的圓心相差 ≤ 0.3 cm
 - [ ] pan 軸位置 95% 區間的半寬 ≤ 0.3 cm
+- [ ] 垂直閉合：FK 指尖高度和卡片厚度的差 ≤ 0.5 cm（用 S7 的新常數重算後）。`推論`：超過就代表底座高度（14.6 cm）或俯仰鏈還有沒量到的誤差
+- [ ] 第 0 步的 ArUco 重投影誤差中位數 ≤ 2 px
 - [ ] 量測 CSV 存進 `calibration/`，檔名帶日期，不覆寫
 
 ## 7. 明確不做、限制
 
-- 只量平面（x、y、pan 角度）。底座高度沿用柏宇 10/07 量的墊高 14.6 cm。
+- 只量平面（x、y、pan 角度）。底座高度沿用柏宇 10/07 量的墊高 14.6 cm，用垂直閉合檢查（§4）。
 - 不分開「pan 零點」和「底座偏航」（§2 最後一點）。
 - 指尖不碰紙，是懸空讀座標，所以結果受視差影響。如果殘差 RMS 超標，改用鉛筆在指尖正下方點記號，量完再用尺讀記號。
 - 假設 pan 軸是鉛垂的。S7 的 `base_x`、`base_y` 會量底座傾斜，兩個圓的圓心是否一致也能檢查這一點。

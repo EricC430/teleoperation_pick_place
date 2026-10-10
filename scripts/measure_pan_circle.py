@@ -48,8 +48,17 @@ import numpy as np  # noqa: E402
 import measure_link_tilt as S7  # noqa: E402  (shares the bus wrapper, prompts and FK setup)
 from measure_link_tilt import JM, JOINTS, fk  # noqa: E402
 
-FIELDS = ("circle", "sweep", "pan_target", "paper_x_cm", "paper_y_cm", "note") + tuple(f"state_{j}" for j in JOINTS)
+FIELDS = ("circle", "sweep", "pan_target", "paper_x_cm", "paper_y_cm", "tip_gap_mm", "fk_tip_above_table_cm", "note") \
+    + tuple(f"state_{j}" for j in JOINTS)
 PAN_AXIS_IN_BASE_M = (-0.01125, 0.0)    # fk._PAN_AXIS_XY: the pan axis sits 1.125 cm behind the base plate centre
+
+
+def fk_tip_above_table_cm(state: dict[str, float], riser_m: float) -> float:
+    """CAD fingertip height above the table by FK on the current constants (vertical closure, spec §5)."""
+    import omx_constants as K  # noqa: PLC0415
+    q = JM.lerobot_to_urdf_rad(np.array([state[j] for j in JOINTS]))[:5].tolist()
+    z = (fk.link5_transform(q) @ np.array([K.GRIPPER_TIP_X_M, K.GRIPPER_MIDLINE_Y_M, 0.0, 1.0]))[2]
+    return 100 * (z + riser_m)
 
 
 def deg_per_unit_nominal() -> float:
@@ -237,6 +246,12 @@ def cmd_session(args) -> int:
             if not hand_pose(arm, ["shoulder_lift", "elbow_flex", "wrist_flex"]):
                 return 0
             held = arm.read_avg()
+            gap = S7._ask_float("    指尖離紙面的間隙（mm；用已知厚度的卡片墊著擺姿勢最準，鎖住後抽掉卡片；空白=沒量）: ")
+            if gap == "q":
+                return 0
+            fk_z = fk_tip_above_table_cm(held, args.riser_m)
+            print(f"    FK（現行常數、底座 {args.riser_m * 100:.1f} cm）說指尖在桌面上 {fk_z:.2f} cm"
+                  + ("" if gap is None else f"；你量 {gap / 10:.2f} cm → 差 {fk_z - gap / 10:+.2f} cm"))
             for sweep, seq in (("up", targets), ("down", targets[::-1][::2] if args.reverse else [])):
                 if not seq:
                     continue
@@ -260,6 +275,7 @@ def cmd_session(args) -> int:
                         continue
                     append_row(csv_path, {"circle": circle, "sweep": sweep, "pan_target": round(float(tgt), 2),
                                           "paper_x_cm": xy[0], "paper_y_cm": xy[1], "note": "",
+                                          "tip_gap_mm": "" if gap is None else gap, "fk_tip_above_table_cm": round(fk_z, 3),
                                           **{f"state_{j}": round(st[j], 3) for j in JOINTS}})
             print("    這個圓量完。把夾爪抬離紙面……")
             arm.move_to(dict(arm.read(), wrist_flex=arm.read()["wrist_flex"] - 8.0), 1.5)
@@ -316,6 +332,16 @@ def cmd_solve(args) -> int:
             d_ang.append(S7.wrap(a_meas - a_pred))
         print(f"\nreverse sweep: arm angle minus the up-sweep model, median {np.median(d_ang):+.2f} deg over {len(d_ang)} "
               "points (pan backlash beyond what the encoder reads)")
+
+    gaps = {}
+    for r in csv.DictReader(Path(args.csv).open(encoding="utf-8")):
+        if r.get("tip_gap_mm") and r.get("fk_tip_above_table_cm"):
+            gaps.setdefault(r["circle"], (float(r["tip_gap_mm"]) / 10, float(r["fk_tip_above_table_cm"])))
+    if gaps:
+        print("\nvertical closure (FK fingertip height minus the measured gap: base height + pitch chain, current constants;"
+              " re-run solve after pasting the S7 constants):")
+        for c, (g, z) in sorted(gaps.items()):
+            print(f"  {c}: FK {z:.2f} cm, measured {g:.2f} cm -> {z - g:+.2f} cm")
 
     print("\nwhat this means for the sim (spec §5):")
     print(f"  * the arm's pan axis is at ({P['cx']:+.2f}, {P['cy']:+.2f}) cm in the paper/world frame, not (0, 0):")
@@ -383,6 +409,8 @@ def main() -> int:
     se.add_argument("--no-reverse", dest="reverse", action="store_false", help="skip the backlash sweep")
     se.add_argument("--gripper-closed", type=float, default=50.5)
     se.add_argument("--settle", type=float, default=1.0)
+    se.add_argument("--riser-m", type=float, default=0.146,
+                    help="table -> underside of the base plate (scene_constants.ARM_RISER_HEIGHT); for the closure print")
     se.set_defaults(func=cmd_session)
     so = sub.add_parser("solve", help="fit the circle(s) (no hardware)")
     so.add_argument("--csv", required=True)

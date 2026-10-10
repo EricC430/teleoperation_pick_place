@@ -49,6 +49,7 @@ import glob
 import json
 import math
 import os
+import subprocess
 import sys
 import time
 from dataclasses import dataclass
@@ -516,6 +517,39 @@ def measure_face(csv_path: Path, pose_id: str, source: str, face_name: str, stat
     return None
 
 
+CAPTURE_FIELDS = ("pose_id", "approach", "camera", "image") + STATE_FIELDS
+
+
+def capture_stills(csv_path: Path, pose_id: str, approach: str, state: dict[str, float], cameras: list[str]) -> None:
+    """--capture: one still per camera at this pose, BEFORE the phone/hand enter the frame.
+
+    The stills are the bridge from S7 to the actual goal (sim overlays the real video): static frames with
+    known joint readings, no cup, no motion blur -- front-left for the arm-overlay acceptance (S7 §8), wrist
+    with the table markers for the multi-pose wrist hand-eye (S4 §5-5 T2). Each camera is opened in a child
+    process (sim/capture_still.py, the resolution its intrinsics were measured at) and released again; the
+    motor bus stays with this process, so the arm keeps holding.
+    """
+    shot_dir = csv_path.parent / "shots" / csv_path.stem
+    shot_dir.mkdir(parents=True, exist_ok=True)
+    log = csv_path.with_name(csv_path.stem + "_captures.csv")
+    for cam in cameras:
+        img = shot_dir / f"{pose_id}_{approach or 'start'}_{cam}.png"
+        r = subprocess.run([sys.executable, os.path.join(_REPO, "sim", "capture_still.py"), "--camera", cam,
+                            "--out", str(img)], capture_output=True, text=True)
+        if r.returncode != 0 or not img.exists():
+            print(f"    ⚠️  {cam} 拍照失敗（姿勢 {pose_id}），這筆照片沒存；量測繼續。\n{(r.stdout + r.stderr)[-400:]}")
+            continue
+        new = not log.exists()
+        with log.open("a", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=CAPTURE_FIELDS)
+            if new:
+                w.writeheader()
+            w.writerow({"pose_id": pose_id, "approach": approach, "camera": cam,
+                        "image": str(img.relative_to(Path(_REPO))) if img.is_relative_to(Path(_REPO)) else str(img),
+                        **{f"state_{j}": round(state[j], 3) for j in JOINTS}})
+        print(f"    📷 {cam} → {img.name}")
+
+
 def cmd_session(args) -> int:
     plan = json.loads(Path(args.plan).read_text(encoding="utf-8"))
     csv_path = Path(args.csv)
@@ -526,7 +560,11 @@ def cmd_session(args) -> int:
     p = nominal_params()
     start = dict(zip(JOINTS, plan["start"]))
     sp = args.seconds_per_point
+    cams = [c for c in (args.capture or "").split(",") if c]
+    shot = (lambda pid, appr, st: capture_stills(csv_path, pid, appr, st, cams)) if cams else (lambda *a: None)
     print("=" * 76)
+    if cams:
+        print(f"每個姿勢停穩後會先拍 {', '.join(cams)} 各一張，拍完才請你貼手機：拍照時手和手機都不要進畫面。")
     print("S7 session. 手臂扭力全程開著、自己撐住；每次移動前都會停下來等你按 Enter。")
     print("移動走的是錄影時真實走過的路徑（放慢），所以桌上的杯子要拿走，收納盒可以留在原位。")
     print("讀數時手機用手托著、輕貼在面上，不要讓手機的重量壓在手臂上（負載測試那幾筆例外）。")
@@ -550,6 +588,7 @@ def cmd_session(args) -> int:
 
         print("\n--- B0 底座水平（不動手臂）")
         st = arm.read_avg()
+        shot("B0", "", st)
         if faces_at("B0", "start", ["base_x", "base_y"], st, "", "", None) == "q":
             return 0
 
@@ -565,6 +604,7 @@ def cmd_session(args) -> int:
             arm.follow(ps["path"], sp)
             time.sleep(args.settle)
             st = arm.read_avg()
+            shot(ps["id"], "traj", st)
             if faces_at(ps["id"], ps["source"], ps["faces"], st, "traj", "held", ps["predicted"]) == "q":
                 return 0
             if ps.get("load_test") and (ps["id"], "forearm", "traj", "resting") not in done:
@@ -585,7 +625,9 @@ def cmd_session(args) -> int:
                     arm.move_to(bump, 1.5)
                     arm.move_to(target, 1.5)
                     time.sleep(args.settle)
-                    if faces_at(ps["id"], ps["source"], ps["faces"], arm.read_avg(), tag, "held", ps["predicted"]) == "q":
+                    st = arm.read_avg()
+                    shot(ps["id"], tag, st)
+                    if faces_at(ps["id"], ps["source"], ps["faces"], st, tag, "held", ps["predicted"]) == "q":
                         return 0
             print("    沿原路徑退回起始姿勢……")
             arm.follow(list(reversed(ps["path"])), sp)
@@ -603,6 +645,7 @@ def cmd_session(args) -> int:
                 time.sleep(args.settle)
                 st = arm.read_avg()
                 print(f"    {pid}: wrist_roll = {st['wrist_roll']:.1f}")
+                shot(pid, "traj", st)
                 if faces_at(pid, "roll sweep", ["gripper_across", "gripper"], st, "traj", "held", None) == "q":
                     return 0
             arm.move_to(dict(arm.read(), wrist_roll=start["wrist_roll"]), 2.0)
@@ -879,6 +922,9 @@ def main() -> int:
     se.add_argument("--settle", type=float, default=1.0)
     se.add_argument("--bump-units", type=float, default=4.0)
     se.add_argument("--max-start-jump", type=float, default=8.0)
+    se.add_argument("--capture", default="", metavar="CAMS",
+                    help="comma list, e.g. front-left,wrist: a still per camera at every pose before the phone readings "
+                         "(S7 §6; stills -> <csv dir>/shots/<csv stem>/, index -> <csv stem>_captures.csv)")
     se.set_defaults(func=cmd_session)
 
     so = sub.add_parser("solve", help="fit and diagnose (no hardware)")
