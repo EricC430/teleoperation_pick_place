@@ -1,0 +1,61 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/teleoperate_omx.yaml
+# saved_at:      2026-09-17T22:58:59
+# entrypoint:    lerobot-teleoperate
+# cli overrides: (none)
+# ids:           robot=2026-09-17_omx_follower, teleop=2026-09-17_omx_leader
+# git:           f0876d3 (config file has UNCOMMITTED changes)
+# digest:        a4e03d7f  (sha256[:8] of the YAML below + the CLI overrides)
+teleop:
+  type: omx_leader
+  port: COM9
+  id: 2026-09-17_omx_leader
+  calibration_dir: ./calibration
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-09-17_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      # 2026-09-13：D405 → Innomaker U20CAM-720P（USB UVC，D022 §2026-09-13）
+      # ⚠️ index 3 不是固定 ID —— 每個 lab day 先確認，理由見 record_omx.yaml 同一段
+      type: opencv_uvc
+      index_or_path: 2
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 30
+      fourcc: YUY2
+      # 2026-09-13 [柏宇] tune_uvc_exposure.py `f` at the grasp close-up (curtains drawn + ceiling light + desk lamp):
+      # exposure/gain pinned from AUTO; white balance stays AUTO. -5 = 31.25 ms (< 1 frame at 30 fps).
+      exposure: -5
+      gain: 0
+      white_balance: null   # = AUTO. Fixed WB leaves a green cast on this camera, no temperature removes it (D022 2026-09-13)
+    front-left:
+      type: intelrealsense_pinned  # plugin (D022 2026-09-13): null = AUTO, set explicitly on every connect
+      serial_number_or_name: "262822305610"
+      width: 848        # 2026-09-13：1280×720 → 848×480，跟 record_omx.yaml 同框（取景檢查看到的 = 錄到的）
+      height: 480       #             且送 rerun 的資料量是 720p 的 44%
+      fps: 15           # 2026-09-13: 30 -> 15, same as record_omx.yaml; fixed exposure (~40 ms) exceeds a 30 fps frame
+      use_depth: false
+      # 2026-09-13 matched to AUTO (freeze does not hold on this D455; D022): brightness 0.0 %, B/R 4.2 % off.
+      # exposure is quantised (power_line_frequency=Auto); 400 is ~40 ms if the unit is 100 us ([AI推論]).
+      exposure: 400
+      gain: 70
+      white_balance: null   # = AUTO: fixed 3500 K looked green (D022 2026-09-13). exposure/gain were matched with WB 3500; re-check with freeze_realsense_exposure.py (--wb auto)
+
+# 2026-09-13：60 → 30。rerun 畫面延遲 ~4 秒的主因（[AI推論]）：teleop 迴圈每一圈都把兩張 raw 影像送給 rerun，
+# 60 Hz × (1280×720 + 640×480) ≈ 221 MB/s，viewer 消化不完開始排隊。相機本身只出 30 fps，
+# 所以 60 Hz 是把同一張圖送兩次 —— 純浪費。代價：手臂控制頻率 60 → 30 Hz
+# （lerobot-record 錄製時本來就只跑 15 Hz，所以 30 不會比錄製時差）。
+fps: 30
+display_data: true
+# 🔴 2026-09-13：不要開 JPEG 壓縮 —— 開了會把 teleop 迴圈卡死（手臂不跟、畫面全無）。
+# 證據（2026-09-13，只連相機、不連手臂，同樣 2 台相機 / 30 Hz / 848×480 + 640×480）：
+#   JPEG 壓縮：乾淨重現 2/2 次在 ~28 s 卡死（rr.log 不返回，`log_channel ... Sender has been blocked`），
+#              實機 teleop 1/1 次卡死 → 迴圈停住 → follower 不再跟、rerun 無畫面。
+#   raw      ：40 s、120 s 各 1 次，0 次卡死，rr.log 平均 3–4 ms；viewer 在 ~31 s 達 1 GiB 後丟最舊資料、持續正常。
+#   壓縮在「送出端」很便宜（1.7–2.5 ms/幀），問題在 viewer 消化不了（[AI推論]，機制未查證）。
+display_compressed_images: false

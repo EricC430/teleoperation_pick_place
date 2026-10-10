@@ -38,7 +38,7 @@ import scene_constants as SC        # noqa: E402
 from reach_logger import fk         # noqa: E402
 
 DATASET = _REPO / ".cache/lerobot/omx_pick_place_pilot_uvc_60/data/chunk-000/file-000.parquet"
-META = _REPO / "episode_meta/omx_pick_place_pilot_paper_cup.csv"
+META = _REPO / "episode_meta/omx_pick_place_pilot_uvc_60.csv"
 PLACEMENTS = _REPO / "configs/placements/campA_136sym_20260908_20260908_train.csv"
 BLUE, ORANGE = "#2a78d6", "#eb6834"
 INK, MUTED, GRID, SURFACE = "#1a1a1a", "#6b6b6b", "#d8d8d4", "#fcfcfb"
@@ -65,7 +65,7 @@ def chain_rz(q) -> list[tuple[float, float]]:
 def load() -> tuple[dict[int, list[float]], dict[int, float]]:
     place = {r["placement_id"]: r for r in csv.DictReader(PLACEMENTS.open(encoding="utf-8"))}
     cup_r = {}
-    for r in csv.DictReader(META.open(encoding="utf-8", errors="replace")):
+    for r in csv.DictReader(META.open(encoding="utf-8-sig")):
         pid = r["placement_id"]
         if pid.startswith("t") and pid[1:].isdigit():          # 't7' -> 'train_007'
             cup_r[int(r["episode_index"])] = float(place["train_%03d" % int(pid[1:])]["r_cm"]) / 100

@@ -1,20 +1,20 @@
 teleop:
   type: omx_leader
   port: COM9
-  id: 2026-09-13_omx_leader
+  id: 2026-09-17_omx_leader
   calibration_dir: ./calibration
 
 robot:
   type: omx_follower
   port: COM8
-  id: 2026-09-13_omx_follower
+  id: 2026-09-17_omx_follower
   calibration_dir: ./calibration
   cameras:
     wrist:
       # 2026-09-13：D405 → Innomaker U20CAM-720P（USB UVC，D022 §2026-09-13）
       # ⚠️ index 3 不是固定 ID —— 每個 lab day 先確認，理由見 record_omx.yaml 同一段
       type: opencv_uvc
-      index_or_path: 3
+      index_or_path: 2
       backend: DSHOW
       width: 640
       height: 480

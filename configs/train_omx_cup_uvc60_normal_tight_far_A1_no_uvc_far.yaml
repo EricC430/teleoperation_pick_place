@@ -1,0 +1,32 @@
+# Control version of configs/train_omx_cup_uvc60_normal_tight_far_A1.yaml (optional run, handoff 2026-10-09).
+#
+# Same merged dataset and hyper-parameters; additionally excludes uvc_60's 13 episodes at r >= 35.5
+# (old side-hook grasp, 9/13 camera position): 1, 2, 8, 9, 18, 19, 21, 22, 30, 34, 43, 45, 46
+# (list generated from episode_meta/*.csv, docs/meeting/2026-10-08.md §8).
+# Kept in the main version, the model can use the camera position to pick which grasp to do;
+# this run checks whether dropping them is better. Compare offline on the far dataset
+# (does the predicted wrist motion look like the wrist-turn grasp?), no closed loop needed.
+#
+#   ./scripts/run_container.sh lerobot-train --config_path configs/train_omx_cup_uvc60_normal_tight_far_A1_no_uvc_far.yaml
+dataset:
+  repo_id: ericc430/omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1_farwristA1   # local only
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1_farwristA1
+  exclude_episodes: [1, 2, 8, 9, 18, 19, 21, 22, 30, 34, 43, 45, 46, 73, 74, 75, 85, 86, 87, 98, 135]   # -> 116 of 137 remain
+  eval_split: 0.0
+policy:
+  type: act
+  chunk_size: 100
+  n_action_steps: 100
+  push_to_hub: false
+output_dir: /workspace/data/train/cup_uvc60_normal_tight_far_A1_no_uvc_far
+job_name: act_omx_cup_uvc60_normal_tight_far_A1_no_uvc_far
+steps: 100000
+batch_size: 32
+save_freq: 20000
+eval_steps: 0
+log_freq: 50
+seed: 1000
+num_workers: 4
+wandb:
+  enable: true
+  project: teleoperation_pick_place

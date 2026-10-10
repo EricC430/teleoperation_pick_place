@@ -1,0 +1,34 @@
+{
+  "camera": "front-left",
+  "frame": "world, pan-axis x/y, z = height above the table surface",
+  "convention": "ros optical (x right, y down, z forward)",
+  "pos_m": [
+    0.03822196447458572,
+    0.2505433373772939,
+    0.22000000000000003
+  ],
+  "quat_wxyz": [
+    0.207211148728342,
+    -0.35515325582286755,
+    0.7309769282415116,
+    -0.5446121877994484
+  ],
+  "method": "cup-base landmarks from uvc_60 ep 0-49 frame 0 (camera at A1): 32 detected of 50 (18 cups are out of frame), soft-L1 least squares with the camera height pinned to the hand-measured 22 cm, other 5 DOF free, started from the ArUco pose",
+  "landmark_median_err_px_all": 5.5,
+  "landmark_median_err_px_inliers": 4.8,
+  "landmark_5fold_cv_median_px": 6.3,
+  "aruco_median_err_px": 25.0,
+  "hand_measured": {
+    "height_m": 0.22,
+    "pitch_deg": 17.0
+  },
+  "result_bearing_deg": -43.3,
+  "result_pitch_deg": -18.7,
+  "backups": {
+    "aruco": "calibration/2026-10-07_camera_extrinsics_front-left.json",
+    "refit_11_landmarks_free_height": "calibration/2026-10-07_camera_extrinsics_front-left_refit.json",
+    "tape_measured": "sim/scene_constants.py (9/21; z changed to 0.22 on 10/07)"
+  },
+  "status": "provisional: one camera position (A1), landmarks all on the table plane, not yet used in sim/scene_constants.py",
+  "measured_at": "2026-10-07"
+}

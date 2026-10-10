@@ -58,16 +58,25 @@ def _rotation(axis: str, angle_rad: float) -> np.ndarray:
     return r
 
 
+def link_transform(joint_rad: Sequence[float], link: int) -> np.ndarray:
+    """4x4 transform of link `link` (0 = link0, the base plate; 5 = link5) in the arm base frame,
+    i.e. after joint `link`. The link frames are the ones the URDF meshes are drawn in, so a face
+    read off `follower_0N_*.stl` maps through this unchanged (S7)."""
+    if len(joint_rad) != N_JOINTS:
+        raise ValueError(f"expected {N_JOINTS} joint angles, got {len(joint_rad)}")
+    if not 0 <= link <= N_JOINTS:
+        raise ValueError(f"link must be 0..{N_JOINTS}, got {link}")
+    t = np.eye(4)
+    for (origin, axis), q in list(zip(_CHAIN, joint_rad))[:link]:
+        t = t @ _translation(origin) @ _rotation(axis, q)
+    return t
+
+
 def link5_transform(joint_rad: Sequence[float]) -> np.ndarray:
     """4x4 homogeneous transform of link5 (the wrist-camera mount, see scene_constants.py
     CAM_WRIST_PARENT_LINK) in the arm base frame — i.e. after joint5 (wrist_roll), before the
     fixed end-effector offset."""
-    if len(joint_rad) != N_JOINTS:
-        raise ValueError(f"expected {N_JOINTS} joint angles, got {len(joint_rad)}")
-    t = np.eye(4)
-    for (origin, axis), q in zip(_CHAIN, joint_rad):
-        t = t @ _translation(origin) @ _rotation(axis, q)
-    return t
+    return link_transform(joint_rad, N_JOINTS)
 
 
 def ee_transform(joint_rad: Sequence[float]) -> np.ndarray:

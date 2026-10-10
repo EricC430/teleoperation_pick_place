@@ -14,11 +14,19 @@ Opens the camera at the SAME index/backend/resolution/fourcc as the given lerobo
 id on Windows (configs/teleoperate_omx.yaml's own warning) -- run `uv run lerobot-find-cameras
 opencv` first if unsure which index is the wrist camera today.
 
-🔴 The interactive capture loop (cv2.VideoCapture / imshow) has NOT been run against the real
-camera in the environment this was written in -- no camera attached here. The
-calibrateCamera/undistortPoints math below WAS self-tested against synthetic data (see the
-conversation this was written in). Run this on the lab machine and report back anything that
-breaks. `[AI推論，互動迴圈未實測]`
+🔴 **The board does not need to see the table, and the arm does not need any particular pose.**
+This calibrates the LENS, not the scene -- hold the board close to wherever the lens is actually
+pointing and move IT through different angles/distances/tilts. If the wrist camera's mount means
+it stares inward at the arm in its home pose, either jog the arm so it looks outward, or just chase
+the lens with the board from whatever angle it happens to be at -- both work equally.
+
+🔴 2026-10-06: real run on the lab Windows machine hit `cv2.error: ... highgui ... not
+implemented` from `cv2.imshow` (opencv-python-headless shadowing the GUI build, likely from the
+conda base env + .venv both being active) -- added an auto-capture fallback (see capture_loop)
+that needs no GUI. The calibrateCamera/undistortPoints math was self-tested against synthetic
+data; the capture loop itself (both the original interactive path and this new headless
+fallback) has now been exercised for real once, interactive path failed, fallback not yet
+confirmed working end to end -- report back if it still misbehaves.
 """
 
 from __future__ import annotations
@@ -26,6 +34,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import time
 from pathlib import Path
 
 import cv2
@@ -54,37 +63,174 @@ def object_points(cols: int, rows: int, square_mm: float) -> np.ndarray:
     return objp
 
 
-def capture_loop(cap, cols: int, rows: int, square_mm: float, n_captures: int):
+def capture_loop(cap, cols: int, rows: int, square_mm: float, n_captures: int, auto_interval_s: float = 2.5, shots_dir: Path | None = None, objpoints: list | None = None, imgpoints: list | None = None):
+    """Interactive (SPACE to capture) when cv2's highgui has a GUI backend; auto-capture on a
+    timer otherwise. Some opencv-python builds (notably opencv-python-headless, or a conda/.venv
+    mix shadowing the GUI-enabled wheel) raise cv2.error out of imshow/waitKey -- rather than
+    require fixing that install mid-lab-day, this falls back to capturing automatically whenever
+    a board is detected and the interval has elapsed, with a print instead of a visual cue."""
     objp = object_points(cols, rows, square_mm)
-    objpoints, imgpoints = [], []
+    objpoints = [] if objpoints is None else objpoints  # --resume passes the already-kept captures in
+    imgpoints = [] if imgpoints is None else imgpoints
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-    print(f"live preview: SPACE to capture when the board is highlighted green, ESC to stop early (need >= 8), q to abort")
+    gui_ok = True
+    try:
+        cv2.namedWindow("calib_intrinsics_checkerboard")
+    except cv2.error:
+        gui_ok = False
+
+    if gui_ok:
+        print("live preview: SPACE to capture when the board is highlighted green, ESC to stop early (need >= 8), q to abort")
+    else:
+        print(
+            "cv2 has no GUI backend on this install (imshow/namedWindow unimplemented) -- auto-capture mode:\n"
+            f"  hold the board in front of the camera; a new pose is captured automatically every "
+            f"{auto_interval_s:g}s once a board is detected. MOVE IT to a new angle/distance between captures "
+            "(a pose repeated by holding still just wastes a capture slot, it is not wrong). Ctrl+C to abort."
+        )
+
+    # No cv2 GUI: show the live view with tkinter instead (as scripts/tune_uvc_exposure.py does),
+    # so you can SEE whether the board is fully in frame / glared out. Optional: falls back to prints.
+    preview = None
+    if not gui_ok:
+        try:
+            import tkinter as tk
+
+            from PIL import Image, ImageTk
+
+            root = tk.Tk()
+            root.title("calib_intrinsics_checkerboard -- green = board found, red = not found (close window to abort)")
+            label = tk.Label(root)
+            label.pack()
+            closed = {"v": False}
+            root.protocol("WM_DELETE_WINDOW", lambda: closed.update(v=True))
+            preview = (root, label, closed, Image, ImageTk)
+        except Exception as e:  # no tkinter / Pillow: keep the print-only behaviour
+            print(f"live preview unavailable ({type(e).__name__}: {e}) -- prints only")
+
+    last_capture_t = 0.0
+    last_notfound_t = time.monotonic()
+    prev_corners = None
     while len(objpoints) < n_captures:
         ok, frame = cap.read()
         if not ok:
             raise SystemExit("camera read failed -- check --index / --backend")
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         found, corners = cv2.findChessboardCorners(gray, (cols, rows), None)
-        vis = frame.copy()
         if found:
             corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-            cv2.drawChessboardCorners(vis, (cols, rows), corners, found)
-        cv2.putText(vis, f"captured {len(objpoints)}/{n_captures}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0) if found else (0, 0, 255), 2)
-        cv2.imshow("calib_intrinsics_checkerboard", vis)
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord(" ") and found:
-            objpoints.append(objp)
-            imgpoints.append(corners)
-            print(f"  captured {len(objpoints)}/{n_captures}")
-        elif key == 27:  # ESC
-            if len(objpoints) < 8:
-                print(f"only {len(objpoints)} captures, calibration needs >= 8 for a stable solve -- keep going")
-                continue
+
+        if preview is not None:
+            root, label, closed, Image, ImageTk = preview
+            if closed["v"]:
+                root.destroy()
+                raise SystemExit("aborted (preview window closed)")
+            vis = frame.copy()
+            if found:
+                cv2.drawChessboardCorners(vis, (cols, rows), corners, found)
+            cv2.putText(vis, f"captured {len(objpoints)}/{n_captures}  " + ("FOUND" if found else "not found"), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0) if found else (0, 0, 255), 2)
+            photo = ImageTk.PhotoImage(Image.fromarray(cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)))
+            label.configure(image=photo)
+            label.image = photo  # keep a reference or tk drops it
+            root.update()
+
+        key = -1
+        if gui_ok:
+            vis = frame.copy()
+            if found:
+                cv2.drawChessboardCorners(vis, (cols, rows), corners, found)
+            cv2.putText(vis, f"captured {len(objpoints)}/{n_captures}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0) if found else (0, 0, 255), 2)
+            try:
+                cv2.imshow("calib_intrinsics_checkerboard", vis)
+                key = cv2.waitKey(1) & 0xFF
+            except cv2.error:
+                gui_ok = False
+                print("GUI failed mid-run -- switching to headless auto-capture (see message above)")
+
+        if gui_ok:
+            if key == ord(" ") and found:
+                objpoints.append(objp)
+                imgpoints.append(corners)
+                print(f"  captured {len(objpoints)}/{n_captures}")
+            elif key == 27:  # ESC
+                if len(objpoints) < 8:
+                    print(f"only {len(objpoints)} captures, calibration needs >= 8 for a stable solve -- keep going")
+                    continue
+                break
+            elif key == ord("q"):
+                raise SystemExit("aborted")
+        elif found:
+            now = time.monotonic()
+            # Motion blur (capture_03, 2026-10-07): only capture once the board has held still, i.e. the
+            # corners moved < 1 px since the previous frame. A blurred frame still "detects" but with
+            # badly localised corners, which poisons calibrateCamera.
+            still = prev_corners is not None and float(np.linalg.norm(corners.reshape(-1, 2) - prev_corners.reshape(-1, 2), axis=1).mean()) < 1.0
+            prev_corners = corners
+            if still and now - last_capture_t >= auto_interval_s:
+                objpoints.append(objp)
+                imgpoints.append(corners)
+                last_capture_t = now
+                print(f"  captured {len(objpoints)}/{n_captures} -- move the board to a new angle now")
+                if shots_dir is not None:
+                    # raw frame (re-detectable later by --resume) + a corner overlay for eyeballing
+                    k = len(list(shots_dir.glob("raw_*.png"))) + 1
+                    cv2.imwrite(str(shots_dir / f"raw_{k:03d}.png"), frame)
+                    vis = frame.copy()
+                    cv2.drawChessboardCorners(vis, (cols, rows), corners, found)
+                    cv2.imwrite(str(shots_dir / f"capture_{k:03d}.png"), vis)
+        else:
+            prev_corners = None
+            now = time.monotonic()
+            if now - last_notfound_t >= 2.0:
+                last_notfound_t = now
+                print(f"  board not found (mean brightness {gray.mean():.0f}, blown-out {(gray >= 250).mean() * 100:.1f}%)")
+                if shots_dir is not None:  # last frame the detector rejected, to see what it saw
+                    cv2.imwrite(str(shots_dir / "last_notfound.png"), frame)
+    if gui_ok:
+        cv2.destroyAllWindows()
+    if preview is not None:
+        preview[0].destroy()
+    return objpoints, imgpoints
+
+
+def solve_and_prune(objpoints: list, imgpoints: list, size: tuple[int, int], drop_above_px: float, min_keep: int = 10, label: str = ""):
+    """calibrateCamera, then repeatedly drop the single worst image while its mean reprojection error
+    exceeds drop_above_px (never below min_keep). Mutates the lists; returns (rms, K, dist, rvecs, tvecs, dropped)
+    where dropped = original indices removed. One bad (blurred) frame drags every image's error, so drop one
+    at a time and re-solve rather than dropping everything above the threshold at once."""
+    keep = list(range(len(objpoints)))
+    dropped = []
+    while True:
+        rms, K, dist, rvecs, tvecs = cv2.calibrateCamera([objpoints[i] for i in keep], [imgpoints[i] for i in keep], size, None, None)
+        errs = [
+            float(np.linalg.norm(cv2.projectPoints(objpoints[i], r, t, K, dist)[0].reshape(-1, 2) - imgpoints[i].reshape(-1, 2), axis=1).mean())
+            for i, r, t in zip(keep, rvecs, tvecs)
+        ]
+        w = int(np.argmax(errs))
+        if errs[w] <= drop_above_px or len(keep) <= min_keep:
             break
-        elif key == ord("q"):
-            raise SystemExit("aborted")
-    cv2.destroyAllWindows()
+        print(f"  {label}dropping image #{keep[w] + 1} (err {errs[w]:.2f} px > {drop_above_px:g}); RMS was {rms:.2f}")
+        dropped.append(keep[w])
+        keep.pop(w)
+    objpoints[:] = [objpoints[i] for i in keep]
+    imgpoints[:] = [imgpoints[i] for i in keep]
+    return rms, K, dist, rvecs, tvecs, dropped
+
+
+def load_raw_shots(shots_dir: Path, cols: int, rows: int, square_mm: float):
+    """Re-detect the board in every raw_*.png of an earlier run (--resume)."""
+    objp = object_points(cols, rows, square_mm)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    objpoints, imgpoints = [], []
+    for f in sorted(shots_dir.glob("raw_*.png")):
+        gray = cv2.cvtColor(cv2.imread(str(f)), cv2.COLOR_BGR2GRAY)
+        found, corners = cv2.findChessboardCorners(gray, (cols, rows), None)
+        if not found:
+            print(f"  {f.name}: board not re-detected, skipped")
+            continue
+        imgpoints.append(cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria))
+        objpoints.append(objp)
     return objpoints, imgpoints
 
 
@@ -106,8 +252,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--rows", type=int, default=6, help="inner corners, vertical")
     ap.add_argument("--square-mm", type=float, required=True, help="MEASURED printed square edge length, not the requested one")
     ap.add_argument("--captures", type=int, default=15)
+    ap.add_argument("--auto-interval-s", type=float, default=2.5, help="headless fallback only: seconds between auto-captures, give yourself time to move the board")
     ap.add_argument("--max-accept-px", type=float, default=5.0)
     ap.add_argument("--out", type=Path, default=None)
+    ap.add_argument("--drop-above-px", type=float, default=1.5, help="drop the worst image(s) whose mean reprojection error is above this, one at a time")
+    ap.add_argument("--resume", type=Path, default=None, help="a calibration/shots/intrinsics_* dir from an earlier run: re-detect its raw_*.png, drop the bad ones, capture only the missing")
     args = ap.parse_args(argv)
 
     block = load_camera_block(args.config, args.camera)
@@ -124,12 +273,26 @@ def main(argv: list[str] | None = None) -> int:
     if not cap.isOpened():
         raise SystemExit(f"could not open camera index {index} with backend {args.backend or block.get('backend')}")
 
+    if args.resume is not None:
+        shots_dir = args.resume
+        objpoints, imgpoints = load_raw_shots(shots_dir, args.cols, args.rows, args.square_mm)
+        print(f"resumed {len(objpoints)} detectable raw shots from {shots_dir}")
+        if len(objpoints) >= 8:
+            solve_and_prune(objpoints, imgpoints, (width, height), args.drop_above_px, label="[resume] ")
+        print(f"keeping {len(objpoints)}; capturing {max(args.captures - len(objpoints), 0)} more")
+    else:
+        shots_dir = _REPO / "calibration" / "shots" / f"intrinsics_{args.camera}_{dt.datetime.now():%Y%m%d_%H%M%S}"
+        objpoints, imgpoints = [], []
+    shots_dir.mkdir(parents=True, exist_ok=True)
+    print(f"saving images to {shots_dir}")
     try:
-        objpoints, imgpoints = capture_loop(cap, args.cols, args.rows, args.square_mm, args.captures)
+        objpoints, imgpoints = capture_loop(cap, args.cols, args.rows, args.square_mm, args.captures, args.auto_interval_s, shots_dir, objpoints, imgpoints)
     finally:
         cap.release()
 
-    rms, K, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, (width, height), None, None)
+    rms, K, dist, rvecs, tvecs, dropped = solve_and_prune(objpoints, imgpoints, (width, height), args.drop_above_px)
+    if dropped:
+        print(f"dropped {len(dropped)} bad image(s) from the final solve; {len(objpoints)} kept (re-run with --resume {shots_dir} to top up)")
     print(f"cv2.calibrateCamera RMS reprojection error: {rms:.3f} px")
 
     per_image_err = []
@@ -153,6 +316,7 @@ def main(argv: list[str] | None = None) -> int:
         "fy": float(K[1, 1]),
         "cx": float(K[0, 2]),
         "cy": float(K[1, 2]),
+        "distortion_model": "opencv_brown_conrady",
         "distortion_coeffs": dist.ravel().tolist(),
         "calibration_rms_px": float(rms),
         "per_image_err_p50_px": float(np.percentile(per_image_err, 50)),

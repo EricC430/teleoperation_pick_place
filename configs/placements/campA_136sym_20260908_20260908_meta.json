@@ -3,7 +3,7 @@
   "counts": {
     "eval-close": 36,
     "eval-open": 12,
-    "train": 60
+    "train": 70
   },
   "d_min_cm": 2.0,
   "feasibility": {
@@ -71,5 +71,16 @@
     "theta_max": 65.06175489676501,
     "theta_min": -65.06175489676501
   },
-  "seed": 20260908
+  "seed": 20260908,
+  "manual_additions_20261008": {
+    "date": "2026-10-08",
+    "source": "[Eric決定] (stated in Boyu's session) far zone r>=35.5 cm is re-recorded with the wrist-rotation grasp; add points to push the training edge past the eval-close points at r 38.3-39.0 (docs/meeting/2026-10-08.md §8)",
+    "count": 10,
+    "ids": { "train": ["train_061", "train_062", "train_063", "train_064", "train_065", "train_066", "train_067", "train_068", "train_069", "train_070"] },
+    "method": "greedy farthest-point over a polar grid r 36.0-40.5 cm (0.25 cm) x theta -65..65 deg (0.5 deg); every point >=2.5 cm from all 108 existing points, >=3 cm apart",
+    "r_range_cm": [36.0, 40.5],
+    "reach_note": "paper cup reach from the chassis front edge (2026-10-08): rim grasp 29 cm (r~36.1), wrist-rotation grasp 35 cm (r~42.1); datum offset 7.13 cm",
+    "moved": "2026-10-09 train_065 moved from (39.30, 9.80) to (39.00, 9.50) on site: the original spot was too far to reach (ep 9 of omx_pick_place_pilot_paper_cup_far_wrist_A1 is that failed attempt)",
+    "check_before_recording": "teleop-test both sector edges first: train_061/062 (left) pass ~10 cm from the D455, train_070 (theta -65, right) is near the bin - from the sim/scene_constants.py top-down plan, not measured"
+  }
 }

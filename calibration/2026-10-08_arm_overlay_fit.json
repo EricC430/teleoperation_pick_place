@@ -1,0 +1,70 @@
+{
+ "what": "arm silhouette (URDF meshes by FK) vs dark pixels in front-left frames of normal_A1",
+ "camera": "calibration/2026-10-07_camera_extrinsics_front-left.json",
+ "riser_m": 0.146,
+ "n_frames": 69,
+ "A_base_offset_on_paper": {
+  "dx_cm": 6.835205253790024,
+  "dy_cm": -10.3131773465849,
+  "yaw_deg": -5.076870935585656,
+  "iou_nominal": 0.241211930377908,
+  "iou_fit": 0.36130585851054614,
+  "subsets": {
+   "low (pinch < 12 cm above table)": {
+    "n": 13,
+    "dx_cm": 0.7827276381241521,
+    "dy_cm": -0.4833131827687818,
+    "yaw_deg": 2.1098711441312528,
+    "iou_nominal": 0.46014540251715147,
+    "iou_fit": 0.4916655587678571
+   },
+   "high (pinch >= 12 cm)": {
+    "n": 56,
+    "dx_cm": 4.406714634156405,
+    "dy_cm": -1.2411783544553536,
+    "yaw_deg": -8.516125893944128,
+    "iou_nominal": 0.1903880886312979,
+    "iou_fit": 0.32638268763890316
+   },
+   "left (pan > 0)": {
+    "n": 38,
+    "dx_cm": 6.9698426220950305,
+    "dy_cm": -10.245615999630315,
+    "yaw_deg": 1.765107959135735,
+    "iou_nominal": 0.2154866310965974,
+    "iou_fit": 0.36348855434244953
+   },
+   "right (pan <= 0)": {
+    "n": 31,
+    "dx_cm": 6.9099684179141345,
+    "dy_cm": -10.472755017627994,
+    "yaw_deg": -3.4877656393943823,
+    "iou_nominal": 0.27274616820661146,
+    "iou_fit": 0.3661867812982227
+   }
+  }
+ },
+ "B_camera_from_arm": {
+  "move_cm": [
+   -1.5997321560919204,
+   -0.26160099812831505,
+   0.7223397169705603
+  ],
+  "rvec_deg": [
+   0.37663240086565075,
+   -8.470320403301402,
+   0.2810396715262243
+  ],
+  "rotation_deg": 8.48334621460964,
+  "iou_nominal": 0.241211930377908,
+  "iou_fit": 0.34133713173494895
+ },
+ "joint_mapping_offsets": {
+  "shoulder_pan": -0.03890655,
+  "shoulder_lift": 0.1243287,
+  "elbow_flex": -0.07452414,
+  "wrist_flex": 1.95878635,
+  "wrist_roll": -0.02788842
+ },
+ "overlay_png": "outputs/arm_overlay/2026-10-08_normal_A1_arm_overlay.png"
+}

@@ -109,7 +109,21 @@ def candidates() -> dict[str, tuple[dict, dict]]:
                                               "elbow_flex": -0.02231385, "wrist_flex": 1.95185293,
                                               "wrist_roll": roll}),
         "current joint_mapping.py": (cur_s, cur_o),
+        **EXTRA,
     }
+
+
+# --candidate-json: constant sets written by `measure_link_tilt.py solve --out` (S7) or any JSON of
+# the same shape {name: {"scale": {joint: rad/unit}, "offset": {joint: rad}}}, scored beside the rest.
+EXTRA: dict[str, tuple[dict, dict]] = {}
+
+
+def load_extra(paths: list[str]) -> None:
+    import json  # noqa: PLC0415
+
+    for path in paths:
+        for name, c in json.loads(Path(path).read_text(encoding="utf-8")).items():
+            EXTRA[name[:27]] = (c["scale"], c["offset"])
 
 
 def use(scale: dict, offset: dict) -> None:
@@ -229,4 +243,10 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--candidate-json", nargs="*", default=[],
+                    help="extra constant sets to score, e.g. the S7 fit (measure_link_tilt.py solve --out)")
+    load_extra(ap.parse_args().candidate_json)
     sys.exit(main())

@@ -1,0 +1,101 @@
+# RECORDED real-robot (closed-loop) evaluation of ACT ericc430/act_omx_b4a_plastic_bottle_20k.
+# Object: opaque plastic bottle (L2 in experiment_spec section 2).
+# Placements: eval-close c1..c36 of campA_136sym_20260908.
+#
+#   uv run lerobot-rollout --config_path configs/rollout_omx_b4a_plastic_bottle_20k_eval.yaml
+#
+# KEEP THIS FILE ASCII-ONLY: lerobot's parser opens the YAML with the Windows default
+# encoding (cp950) when the config has a path field (policy.path) -> non-ASCII comments crash it.
+#
+# The robot block matches the recording that produced the training data,
+# config_records/2026-09-13_omx_follower/record_omx__15ae6083.yaml (repo_id
+# omx_pick_place_pilot_60_plastic_bottle, 60 episodes). The model's input_features confirm it
+# needs both cameras at these sizes (read off its config.json 2026-09-21):
+#   observation.state             [6]
+#   observation.images.wrist      [3, 480, 640]
+#   observation.images.front-left [3, 480, 848]
+# Calibration: 2026-09-13 / 2026-09-17 / 2026-09-18 _omx_follower.json are all byte-identical,
+# so the id below is interchangeable with the training day's.
+#
+# Training data caveat: exclude_episodes is null in this model's train_config.json -- all 60
+# episodes were used, including any failed demos. That makes it comparable to the UNCORRECTED
+# act_omx_alcan60, not to act_omx_alcan60_fixed. The 60 training episodes have no episode_meta
+# annotation yet, so how many of them failed is unknown.
+#
+# ACT re-plans every n_action_steps=100 frames = 6.67 s at 15 fps (chunk_size 100).
+# image_transforms was OFF during training, so the scene must look like the training scene:
+# same lighting, and NO placement mat in frame (docs/assets/placement_card_*.md step 6).
+#
+# Check before every session: wrist OpenCV index (lerobot-find-cameras). It was 3 on 2026-09-13
+# (the plastic-bottle recording day) and 2 on 2026-09-17/18 -- the number is not a stable id.
+# D455 is found by serial, nothing to index there.
+#
+# Flow per trial: place the bottle on cross c<N> -> remove the mat -> policy runs up to
+# episode_time_s -> arm returns to its start pose -> reset_time_s to re-place for the next trial.
+# Keys (episodic): Right arrow = end episode / skip reset, Left arrow = discard and redo,
+#   Esc = stop the session (saved episodes are kept).
+# Dataset name must start with "rollout_"; lerobot appends _YYYYMMDD_HHMMSS, so re-runs never
+# collide and nothing needs deleting between sessions.
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-09-18_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: opencv_uvc
+      index_or_path: 2          # VERIFY with lerobot-find-cameras: 3 on the 2026-09-13 recording day
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 15
+      fourcc: YUY2
+      exposure: -5
+      gain: 0
+      white_balance: null
+    front-left:
+      type: intelrealsense_pinned
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+      exposure: 400
+      gain: 70
+      white_balance: null
+
+policy:
+  path: ericc430/act_omx_b4a_plastic_bottle_20k  # private; already cached in D:\hf\hub
+
+strategy:
+  type: episodic
+  reset_to_initial_position: true   # no teleop: arm goes back to its startup pose between trials
+
+inference:
+  type: sync
+
+dataset:
+  repo_id: ericc430/rollout_omx_b4a_plastic_bottle_20k   # must start with rollout_; timestamp appended
+  single_task: "Pick up the object and place it into the box"   # same string as training
+  fps: 15                  # must match camera fps
+  num_episodes: 36         # eval-close c1..c36 of campA_136sym_20260908
+  episode_time_s: 30       # plastic-bottle demos: mean 27.9 s, median 26.5, p90 36.1 (60 eps,
+                           # meta/episodes/*.parquet) -- 35 s covers 88.3% of them. This is an
+                           # UPPER bound: press Right arrow the moment a trial is decided.
+  reset_time_s: 120        # time to re-place the bottle; Right arrow skips the rest
+  video: true
+  push_to_hub: false       # upload later by hand once the session looks right
+  private: true            # personal account: without this a push would be PUBLIC
+  streaming_encoding: false
+  encoder_threads: 2
+  rgb_encoder:
+    vcodec: h264
+    preset: veryfast
+    crf: 23
+    pix_fmt: yuv420p
+
+fps: 15
+task: "Pick up the object and place it into the box"
+display_data: true
+return_to_initial_position: true

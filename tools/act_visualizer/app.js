@@ -160,6 +160,7 @@ function bindEvents() {
     elements.badgeROIWrist.textContent = "No ROI Set";
     elements.badgeROIFront.classList.remove("active");
     elements.badgeROIWrist.classList.remove("active");
+    computeFullEpisodeAoTR();
     renderCurrentFrame();
   });
 
@@ -182,8 +183,9 @@ function bindEvents() {
 
   // Jump button
   elements.btnJumpFirstLost.addEventListener("click", () => {
-    const firstLostIdx = state.aotrTimeline.front.findIndex(v => v !== null && v < 0.28);
-    if (firstLostIdx !== -1) seekFrame(firstLostIdx);
+    const values = state.aotrTimeline.front;
+    const measured = values.filter(v => v !== null && v !== undefined);
+    if (measured.length) seekFrame(values.indexOf(Math.min(...measured)));
   });
 
   // Canvas Mouse Events for ROI Bounding Box
@@ -282,11 +284,13 @@ async function loadDefaultData() {
   elements.btnLoadDefault.textContent = "⏳ Loading...";
   try {
     // Attempt to load from relative output directory
-    const defaultUrl = "../../outputs/act_analysis/phase_b1_uvc60_ep0/ep0_data.json";
+    const configuredUrl = new URLSearchParams(window.location.search).get("data");
+    const defaultUrl = configuredUrl || "../../outputs/act_analysis/phase_b1_uvc60_ep0/ep0_data.json";
     const res = await fetch(defaultUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    onDataLoaded(data, "../../outputs/act_analysis/phase_b1_uvc60_ep0");
+    const bundleUrl = new URL(defaultUrl, window.location.href);
+    onDataLoaded(data, new URL(".", bundleUrl).href.replace(/\/$/, ""));
   } catch (err) {
     console.warn("Could not load default file via relative path:", err);
     elements.btnLoadDefault.textContent = "⚡ Load Phase B1 (Ep 0)";
@@ -302,7 +306,9 @@ function handleFileUpload(e) {
     try {
       const data = JSON.parse(event.target.result);
       // Path base assuming relative to tools/act_visualizer/
-      const basePath = `../../outputs/act_analysis/${data.metadata.run_name}_ep${data.metadata.episode}`;
+      const basePath = data.metadata.bundle_path
+        ? `../../${data.metadata.bundle_path}`
+        : `../../outputs/act_analysis/${data.metadata.run_name}_ep${data.metadata.episode}`;
       onDataLoaded(data, basePath);
     } catch (err) {
       alert("Error parsing JSON file: " + err.message);
@@ -315,6 +321,18 @@ function onDataLoaded(data, basePath) {
   state.data = data;
   state.basePath = basePath;
   state.currentFrame = 0;
+  state.cachedImages = {front: {}, wrist: {}};
+  state.roiKeyframes = {front: {}, wrist: {}};
+  state.interpolatedROI = {front: [], wrist: []};
+  state.aotrTimeline = {front: [], wrist: []};
+  elements.badgeROIFront.textContent = "No ROI Set";
+  elements.badgeROIWrist.textContent = "No ROI Set";
+  elements.badgeROIFront.classList.remove("active");
+  elements.badgeROIWrist.classList.remove("active");
+  elements.valMeanAoTRFront.textContent = "--";
+  elements.valMeanAoTRWrist.textContent = "--";
+  elements.valLostFrameCount.textContent = "0 frames";
+  elements.btnJumpFirstLost.disabled = true;
 
   const totalFrames = data.metadata.total_frames;
   elements.timelineScrubber.max = totalFrames - 1;
@@ -323,7 +341,7 @@ function onDataLoaded(data, basePath) {
   elements.badgeCheckpoint.textContent = `Model: ${data.metadata.run_name}`;
   elements.badgeDataset.textContent = `Dataset: ${data.metadata.dataset_repo_id}`;
   elements.badgeEpisode.textContent = `Ep: ${data.metadata.episode}`;
-  elements.btnLoadDefault.textContent = "✅ Loaded Ep 0";
+  elements.btnLoadDefault.textContent = `✅ Loaded Ep ${data.metadata.episode}`;
 
   // Preload first few images
   preloadImagesAround(0);
@@ -528,14 +546,12 @@ function renderROI(canvas, camKey, fIdx) {
   const pxW = roi.w * canvas.width;
   const pxH = roi.h * canvas.height;
 
-  const isLost = aotrVal !== null && aotrVal < 0.28;
-
   // Draw ROI Box
-  ctx.strokeStyle = isLost ? "#f85149" : "#38bdf8";
+  ctx.strokeStyle = "#38bdf8";
   ctx.lineWidth = 2.5;
   ctx.strokeRect(pxX, pxY, pxW, pxH);
 
-  ctx.fillStyle = isLost ? "rgba(248, 81, 73, 0.18)" : "rgba(56, 189, 248, 0.12)";
+  ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
   ctx.fillRect(pxX, pxY, pxW, pxH);
 
   // Draw Keyframe indicator corner
@@ -547,14 +563,14 @@ function renderROI(canvas, camKey, fIdx) {
   }
 
   // Label
-  const aotrPct = aotrVal !== null ? (aotrVal * 100).toFixed(1) : "--";
-  ctx.fillStyle = isLost ? "#f85149" : "#38bdf8";
+  const aotrPct = aotrVal != null ? (aotrVal * 100).toFixed(1) : "--";
+  ctx.fillStyle = "#38bdf8";
   ctx.font = "bold 12px JetBrains Mono, monospace";
   ctx.fillText(`Target (${aotrPct}%)`, pxX + 4, pxY - 6 > 14 ? pxY - 6 : pxY + 16);
 
   // Update Footer Readout
   aotrLabel.textContent = `${aotrPct}%`;
-  aotrLabel.classList.toggle("lost", isLost);
+  aotrLabel.classList.remove("lost");
 }
 
 function interpolateAllROIs() {
@@ -572,9 +588,7 @@ function interpolateAllROIs() {
 
     if (keyframes.length === 1) {
       const singleROI = state.roiKeyframes[camKey][keyframes[0]];
-      for (let i = 0; i < total; i++) {
-        state.interpolatedROI[camKey][i] = { ...singleROI };
-      }
+      state.interpolatedROI[camKey][keyframes[0]] = { ...singleROI };
       return;
     }
 
@@ -596,19 +610,8 @@ function interpolateAllROIs() {
       }
     }
 
-    // Hold before first keyframe
-    const firstF = keyframes[0];
-    const firstROI = state.roiKeyframes[camKey][firstF];
-    for (let f = 0; f < firstF; f++) {
-      state.interpolatedROI[camKey][f] = { ...firstROI };
-    }
-
-    // Hold after last keyframe
-    const lastF = keyframes[keyframes.length - 1];
-    const lastROI = state.roiKeyframes[camKey][lastF];
-    for (let f = lastF + 1; f < total; f++) {
-      state.interpolatedROI[camKey][f] = { ...lastROI };
-    }
+    // Visibility is unknown outside the annotated interval. Do not extrapolate
+    // a target box to frames where the object may not yet be in view.
   });
 }
 
@@ -622,7 +625,8 @@ function computeFullEpisodeAoTR() {
 
     let sumAoTR = 0;
     let countAoTR = 0;
-    let dropCount = 0;
+    const meanLabel = camKey === "front" ? elements.valMeanAoTRFront : elements.valMeanAoTRWrist;
+    meanLabel.textContent = "--";
 
     for (let f = 0; f < total; f++) {
       const roi = state.interpolatedROI[camKey][f];
@@ -631,7 +635,9 @@ function computeFullEpisodeAoTR() {
       const fInfo = state.data.frames[f];
       if (!fInfo || !fInfo.heatmaps || !fInfo.heatmaps[fullCamKey]) continue;
 
-      const map2d = fInfo.heatmaps[fullCamKey]["t0"];
+      // Per-camera display heatmaps have had their minimum subtracted; their
+      // sums are not attention mass. Older bundles must be re-exported.
+      const map2d = fInfo.heatmaps_raw?.[fullCamKey]?.["t0"];
       if (!map2d) continue;
 
       const rows = map2d.length;
@@ -655,20 +661,19 @@ function computeFullEpisodeAoTR() {
         }
       }
 
-      const aotr = totalSum > 1e-6 ? (roiSum / totalSum) : 0;
+      if (totalSum <= 1e-12) continue;
+      const aotr = roiSum / totalSum;
       state.aotrTimeline[camKey][f] = aotr;
       sumAoTR += aotr;
       countAoTR++;
-      if (aotr < 0.28) dropCount++;
     }
 
     if (countAoTR > 0) {
       const meanVal = ((sumAoTR / countAoTR) * 100).toFixed(1) + "%";
-      if (camKey === "front") elements.valMeanAoTRFront.textContent = meanVal;
-      else elements.valMeanAoTRWrist.textContent = meanVal;
-      elements.valLostFrameCount.textContent = `${dropCount} frames`;
-      elements.btnJumpFirstLost.disabled = dropCount === 0;
+      meanLabel.textContent = meanVal;
     }
+    if (camKey === "wrist") elements.valLostFrameCount.textContent = `${countAoTR} frames`;
+    if (camKey === "front") elements.btnJumpFirstLost.disabled = countAoTR === 0;
   });
 
   drawAoTRTimelineChart();
@@ -679,28 +684,17 @@ function updateDiagnosticStatus() {
   const aotrFront = state.aotrTimeline.front[f];
   const aotrWrist = state.aotrTimeline.wrist[f];
 
-  if (aotrFront === null && aotrWrist === null) {
+  if (aotrFront == null && aotrWrist == null) {
     elements.cardAlertBox.className = "diagnosis-card";
     elements.alertTitle.textContent = "Visual Status: Monitoring";
-    elements.alertDesc.textContent = "Draw an ROI bounding box on the paper cup to track attention precision.";
+    elements.alertDesc.textContent = "Draw an ROI on visible objects. ROI measurements require a bundle with raw attention weights; older bundles need re-exporting.";
     return;
   }
 
-  const isFrontLost = aotrFront !== null && aotrFront < 0.28;
-  const isWristLost = aotrWrist !== null && aotrWrist < 0.28;
-
-  if (isFrontLost || isWristLost) {
-    elements.cardAlertBox.className = "diagnosis-card danger";
-    elements.alertTitle.textContent = "🚨 ATTENTION LOST! (Model Distracted)";
-    const lostCams = [];
-    if (isFrontLost) lostCams.push(`Front-Left (${(aotrFront * 100).toFixed(1)}%)`);
-    if (isWristLost) lostCams.push(`Wrist (${(aotrWrist * 100).toFixed(1)}%)`);
-    elements.alertDesc.textContent = `Model visual attention fell below 28% in: ${lostCams.join(", ")}. Decision rules diverging from human focus!`;
-  } else {
-    elements.cardAlertBox.className = "diagnosis-card";
-    elements.alertTitle.textContent = "✅ Target Well-Focused";
-    elements.alertDesc.textContent = `High attention density concentrated inside paper cup ROI (Front: ${(aotrFront*100).toFixed(0)}%, Wrist: ${(aotrWrist*100).toFixed(0)}%).`;
-  }
+  elements.cardAlertBox.className = "diagnosis-card";
+  elements.alertTitle.textContent = "ROI attention mass (descriptive)";
+  const pct = value => value == null ? "--" : `${(value * 100).toFixed(1)}%`;
+  elements.alertDesc.textContent = `Within-camera ROI mass: Front ${pct(aotrFront)}, Wrist ${pct(aotrWrist)}. Interpret relative to ROI area and visibility. Heatmaps alone cannot establish camera use or a failure cause; the action trace re-queries every frame.`;
 }
 
 // Sidebar Trajectory Readout
@@ -856,19 +850,6 @@ function drawAoTRTimelineChart() {
   });
   ctx.stroke();
 
-  // Danger threshold line (0.28)
-  const dangerY = h - 20 - 0.28 * (h - 30);
-  ctx.strokeStyle = "rgba(248, 81, 73, 0.45)";
-  ctx.setLineDash([6, 4]);
-  ctx.beginPath();
-  ctx.moveTo(0, dangerY);
-  ctx.lineTo(w, dangerY);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = "rgba(248, 81, 73, 0.8)";
-  ctx.font = "11px JetBrains Mono, monospace";
-  ctx.fillText("Lost Threshold (28%)", 10, dangerY - 4);
-
   // Plot Front-Left AoTR (Blue)
   if (aotrFront && aotrFront.length > 0) {
     ctx.strokeStyle = "#38bdf8";
@@ -946,7 +927,8 @@ function drawChunkRolloutChart() {
 
   ctx.fillStyle = "#f0f6fc";
   ctx.font = "12px JetBrains Mono, monospace";
-  ctx.fillText(`Action Chunk Predicted at Frame ${bestChunk.frame_idx} (50 Future Steps Preview)`, 20, 24);
+  const stride = state.data.metadata.chunk_sample_stride || 2;
+  ctx.fillText(`Predicted at Frame ${bestChunk.frame_idx}: query offsets 0..${(cLen - 1) * stride}, stride ${stride}`, 20, 24);
 
   // Plot each joint in the chunk with distinct colors
   const jointColors = ["#38bdf8", "#3fb950", "#eab308", "#a371f7", "#ec4899", "#f85149"];

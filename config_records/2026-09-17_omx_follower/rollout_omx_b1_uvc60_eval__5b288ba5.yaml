@@ -1,0 +1,92 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/rollout_omx_b1_uvc60_eval.yaml
+# saved_at:      2026-09-18T01:52:08
+# entrypoint:    lerobot-rollout
+# cli overrides: --policy.path=ericc430/act_omx_b1_uvc60_100k --dataset.repo_id=ericc430/rollout_omx_b1_uvc60_100k_lamp_without_light_paper_cup
+# ids:           robot=2026-09-17_omx_follower
+# git:           d2df836 (config file has UNCOMMITTED changes)
+# digest:        5b288ba5  (sha256[:8] of the YAML below + the CLI overrides)
+# RECORDED real-robot evaluation of ACT model ericc430/act_omx_b1_uvc60 (paper cup).
+# Same model/cameras as rollout_omx_b1_uvc60.yaml, but strategy=episodic: every trial is saved
+# as one episode (both camera videos + joint states + actions) in a LeRobot v3 dataset.
+#
+#   uv run lerobot-rollout --config_path configs/rollout_omx_b1_uvc60_eval.yaml
+#
+# KEEP THIS FILE ASCII-ONLY: lerobot's parser opens the YAML with the Windows default
+# encoding (cp950) when the config has a path field (policy.path) -> non-ASCII comments crash it.
+#
+# Flow per trial: place the cup -> policy runs up to episode_time_s -> arm returns to its start
+# pose -> reset_time_s to re-place the cup for the next trial.
+# Keys (lerobot-rollout episodic): Right arrow = end this episode / reset early,
+#   Left arrow = discard this episode and redo it, Esc = stop the session (saved episodes are kept).
+#
+# Dataset name: lerobot REQUIRES the name to start with "rollout_" and appends _YYYYMMDD_HHMMSS,
+# so each session gets its own folder. root is left unset on purpose: a fixed root would collide
+# on the second session. Output lands in $HF_LEROBOT_HOME/<stamped repo_id>
+# (on this laptop HF_HOME=D:\hf -> D:\hf\lerobot\ericc430\rollout_omx_b1_uvc60_paper_cup_<stamp>).
+#
+# Check before every session: wrist OpenCV index (lerobot-find-cameras) -- index 2 was used on
+# 2026-09-17, 3 on 2026-09-13. Cameras MUST match the training data: robot block is copied from
+# rollout_omx_b1_uvc60.yaml -- change both together.
+# Calibration 2026-09-17_omx_follower.json is byte-identical to 2026-09-13_omx_follower.json.
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-09-17_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: opencv_uvc
+      index_or_path: 2
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 15
+      fourcc: YUY2
+      exposure: -5
+      gain: 0
+      white_balance: null
+    front-left:
+      type: intelrealsense_pinned
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+      exposure: 400
+      gain: 70
+      white_balance: null
+
+policy:
+  path: ericc430/act_omx_b1_uvc60  # private repo; cached at D:\hf\hub after the first run
+
+strategy:
+  type: episodic
+  reset_to_initial_position: true   # no teleop: arm goes back to its startup pose between trials
+
+inference:
+  type: sync
+
+dataset:
+  repo_id: ericc430/rollout_omx_b1_uvc60_paper_cup   # must start with rollout_; timestamp appended
+  single_task: "Pick up the object and place it into the box"   # same string as training
+  fps: 15                  # must match camera fps
+  num_episodes: 36         # 2026-09-14 protocol: 9 zones x 1 + 1 random
+  episode_time_s: 20       # same as the 2026-09-14 run (duration: 20) so results are comparable
+  reset_time_s: 120         # time to re-place the cup; Right arrow skips the rest
+  video: true
+  push_to_hub: false       # upload later by hand once the session looks right
+  private: true            # personal account: without this a push would be PUBLIC
+  streaming_encoding: false
+  encoder_threads: 2
+  rgb_encoder:
+    vcodec: h264
+    preset: veryfast
+    crf: 23
+    pix_fmt: yuv420p
+
+fps: 15
+task: "Pick up the object and place it into the box"
+display_data: true
+return_to_initial_position: true

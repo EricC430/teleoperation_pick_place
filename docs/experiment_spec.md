@@ -86,6 +86,8 @@
 | `repetition_loop` | 死循環重複動作（局部震盪/原地重複軌跡） |
 | `timeout` | 到達時間上限 |
 | **`self_recovered`** | ⭐ **偏離後自行修正並完成**（`outcome` 為 `success` 時也可標） |
+| `bad_aim` | 夾爪下降／閉合的位置**明顯偏離物體**（約超過物體寬度一半），沒碰到或只碰到邊緣。依影片看到的判斷，不是推測模型內部；可與 `pushed_away` 並標（2026-10-06 新增） |
+| `chunk_gap_rush` | 手臂在 chunk 切換時（每 `n_action_steps` 幀；N=30 ≈ 每 2 s）**突然加速／跳位**。成功時也可標；可用資料驗證：第 k·N 幀的 action 是否跳變（2026-10-06 新增） |
 | `other` | 需在 notes 詳述 |
 
 > ⭐ **`self_recovered` 是刻意放進來的正向標籤。**
@@ -150,7 +152,7 @@
 | 手臂基座位置（相對桌緣） | ___ cm, ___ cm | |
 | **外部相機位置**（x, y, z） | | |
 | **外部相機角度**（俯角） | ___ ° | |
-| 手腕相機安裝方式 | Innomaker U20CAM-720P，已裝上腕部（link5）。精確安裝位置／角度 ___（待 T2 量測，見 `docs/specs/S4_sim_teleop_collect.md` §5-5） | |
+| 手腕相機安裝方式 | Innomaker U20CAM-720P，已裝上腕部（link5）。精確安裝位置／角度 ___（待 T2 量測，見 `docs/specs/S4_sim_teleop_collect.md` §5-5；2026-10-07 量了兩個姿態但**一致性檢查未通過，未採用**，目前沿用 CAD 值，細節見該節紀錄） | |
 | 光源類型與位置 | | |
 | 光照強度 | ___ lux（手機 app 可測） | |
 | 背景 | 材質／顏色 | |
@@ -485,6 +487,7 @@ lerobot-find-cameras     # 列出相機並可預覽確認
 | v2 | 2026-08-12 | §1-3 改為兩軸失敗分類（草案） | 原 F1–F7 混淆結果與機制 | 尚未收資料，無影響 |
 | v3 | 2026-08-13 | §1-3 兩軸分類正式決議通過（D015）；§5 評估次數改為每物體 30 回合（D016） | 8/13 同儕會議決議 | 尚未收資料，無影響 |
 | schema v4 | 2026-09-18 | `configs/episode_meta_schema.yaml` 的 `valid` 題目由「納入訓練?」改為「有效試驗?（0 = 受場外干擾）」，對齊 §1-3 ③；本文件定義不變 | 題目與 §1-3 ③ 不一致，標註時被理解成兩種意思（`docs/meeting/2026-09-18.md` §3-3） | 已查：`omx_pick_place_pilot.csv` 8 集全為 success／valid=1，兩種解讀結果相同，無需改 |
+| schema v5 | 2026-10-06 | §1-3 ② `mechanism` 新增 `bad_aim`、`chunk_gap_rush`（D015 Amendment 2026-10-06） | Eric 提議（柏宇轉述）：手伸錯位置的失敗原本只能塞進 `pushed_away`／`other`；chunk 切換的暴衝是 N 實驗（E6）要觀察的行為 | 舊資料不受影響（只新增值）。既有標註若有符合者可回補；9/18 紙杯 100k 的 `outcome=failed`／`mechanism=other` 本來就不合詞彙，回補時一併處理 |
 
 ---
 

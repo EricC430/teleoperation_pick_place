@@ -1,0 +1,10 @@
+surface,direction,reading_deg,reading_rev_deg,note
+riser_top,x_forward,2.0,2.4,sign flipped to arrow-end-higher-positive (see App sign test)
+riser_top,y_left,-0.3,0.1,SIGN UNVERIFIED: the App sign test covered the x direction only
+base_plate_top,x_forward,-0.8,-1.4,sign flipped to arrow-end-higher-positive (see App sign test)
+base_plate_top,y_left,0.0,-0.6,SIGN UNVERIFIED: the App sign test covered the x direction only
+desk,x_forward,2.1,2.4,second reading first written as 2.4; minus sign was left out [柏宇說 2026-10-10]; sign flipped to arrow-end-higher-positive (see App sign test)
+desk,y_left,0.0,0.4,SIGN UNVERIFIED: the App sign test covered the x direction only
+app_sign_test,x_forward,-2.2,,"RAW App reading (not converted): phone flat on the desk, long edge forward"
+app_sign_test,x_forward,-5.0,,"RAW: card under the FORWARD end"
+app_sign_test,x_forward,-5.0,,"RAW: phone turned 180 deg, card under the forward end again -> App reads NEGATIVE when the forward end is higher (screen auto-rotates); all x rows above are negated to arrow-end-higher-positive"

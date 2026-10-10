@@ -1,0 +1,43 @@
+# ACT on paper cup: the old 60 + the 10-07 normal 16 + the 10-07 recovery_tight 12 (= 88 episodes).
+#
+# [柏宇決定] 2026-10-07: train on uvc_60 + normal_A1 + recovery_A1_tight (minus ep 11), chunk 100, 100k.
+# Hyper-parameters are those of act_omx_b1_uvc60_100k (read off its checkpoint train_config.json:
+# chunk_size 100, n_action_steps 100, batch 32, seed 1000, lr 1e-5, no image_transforms) -- the
+# only change is the data, so this run is directly comparable to `2bdff2b3871e` (docs/models.md).
+# recovery_A1 (release-in-place variant) is NOT in this run.
+#
+# Merged locally 2026-10-07 with `lerobot-edit-dataset --operation.type merge`, in this order
+# (per-episode action arrays checked identical to the sources; verify_dataset.py all pass):
+#   merged ep  0-59  <- ericc430/omx_pick_place_pilot_uvc_60              ep 0-59 (ep<->t: episode_meta/README.md)
+#   merged ep 60-75  <- ericc430/omx_pick_place_pilot_paper_cup_normal_A1  ep 0-15
+#   merged ep 76-88  <- ericc430/omx_pick_place_pilot_paper_cup_recovery_A1_tight ep 0-12
+# merged ep 87 = tight ep 11 (valid=0, camera_dropout, 900 frames with no motion) -> excluded below,
+# not deleted from the dataset, so merged ep = source ep + offset holds throughout.
+# Not on the Hub; the merge is reproducible from the three source repos with the command above.
+#
+# Not decided before this run (docs/meeting/2026-10-07.md §5): whether to trim the deliberate
+# "aim off" opening of each recovery episode. This run trains on them untrimmed.
+#
+#   ./scripts/run_container.sh lerobot-train --config_path configs/train_omx_cup_uvc60_normal_tight_A1.yaml
+dataset:
+  repo_id: ericc430/omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1   # local only
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1
+  exclude_episodes: [87]   # tight ep 11, void -> 88 of 89 remain
+  eval_split: 0.0
+policy:
+  type: act
+  chunk_size: 100
+  n_action_steps: 100
+  push_to_hub: false
+output_dir: /workspace/data/train/cup_uvc60_normal_tight_A1
+job_name: act_omx_cup_uvc60_normal_tight_A1
+steps: 100000
+batch_size: 32
+save_freq: 20000
+eval_steps: 0
+log_freq: 50
+seed: 1000
+num_workers: 4
+wandb:
+  enable: true
+  project: teleoperation_pick_place

@@ -1,0 +1,1222 @@
+{
+ "what": "paper frame P vs arm FK frame A from grasps: c_P = Rot(psi) p_A + t, pinch on the cup wall (radius R)",
+ "convention": "t_cm = where the FK origin (pan axis) lands on the paper; psi_deg CCW; --paper-offset-m = -t/100 when psi = 0",
+ "joint_mapping": {
+  "scale": {
+   "shoulder_pan": 0.03141593,
+   "shoulder_lift": 0.03141593,
+   "elbow_flex": 0.03141593,
+   "wrist_flex": 0.03141593,
+   "wrist_roll": 0.03141593
+  },
+  "offset": {
+   "shoulder_pan": -0.03890655,
+   "shoulder_lift": 0.1243287,
+   "elbow_flex": -0.07452414,
+   "wrist_flex": 1.95878635,
+   "wrist_roll": -0.02788842
+  }
+ },
+ "placements_csv": "configs/placements/campA_136sym_20260908_20260908_train.csv",
+ "created": "2026-10-08",
+ "datasets": {
+  "omx_pick_place_pilot_paper_cup_normal_A1": {
+   "n": 16,
+   "by_radius": {
+    "3.0": {
+     "none": {
+      "params": {},
+      "fit_rms_cm": 1.2912262703133626,
+      "loo_rms_cm": 1.2912262703133626
+     },
+     "translation": {
+      "params": {
+       "tx": 0.541909211440904,
+       "ty": 0.8312942580698344
+      },
+      "fit_rms_cm": 1.1797990119604562,
+      "loo_rms_cm": 1.3628751649310122
+     },
+     "rotation": {
+      "params": {
+       "psi": 2.1967479844349467
+      },
+      "fit_rms_cm": 1.1556704712841854,
+      "loo_rms_cm": 1.2130173341579744
+     },
+     "translation+rotation": {
+      "params": {
+       "tx": 0.5552924393125652,
+       "ty": -0.1427689697264675,
+       "psi": 2.6947357185706777
+      },
+      "fit_rms_cm": 1.1304265523506027,
+      "loo_rms_cm": 1.3462250345077373
+     }
+    },
+    "3.4": {
+     "none": {
+      "params": {},
+      "fit_rms_cm": 1.17674532183977,
+      "loo_rms_cm": 1.17674532183977
+     },
+     "translation": {
+      "params": {
+       "tx": 0.22162902636574602,
+       "ty": 0.7537818614213567
+      },
+      "fit_rms_cm": 1.1043322936124793,
+      "loo_rms_cm": 1.2786283114871688
+     },
+     "rotation": {
+      "params": {
+       "psi": 2.157095489796967
+      },
+      "fit_rms_cm": 1.0639897470208817,
+      "loo_rms_cm": 1.1126910682787647
+     },
+     "translation+rotation": {
+      "params": {
+       "tx": 0.13580934003545259,
+       "ty": -0.247387884312054,
+       "psi": 2.825077164715822
+      },
+      "fit_rms_cm": 1.063126557665498,
+      "loo_rms_cm": 1.2971149976330898
+     }
+    },
+    "3.75": {
+     "none": {
+      "params": {},
+      "fit_rms_cm": 1.183220516167911,
+      "loo_rms_cm": 1.183220516167911
+     },
+     "translation": {
+      "params": {
+       "tx": -0.20660395980112964,
+       "ty": 0.6662642241443808
+      },
+      "fit_rms_cm": 1.105843881282512,
+      "loo_rms_cm": 1.317439038263343
+     },
+     "rotation": {
+      "params": {
+       "psi": 2.136591638832073
+      },
+      "fit_rms_cm": 1.102835875943707,
+      "loo_rms_cm": 1.1552144830037503
+     },
+     "translation+rotation": {
+      "params": {
+       "tx": -0.37623188851978273,
+       "ty": -0.7354026718169471,
+       "psi": 4.314554454698079
+      },
+      "fit_rms_cm": 1.0604976961450936,
+      "loo_rms_cm": 1.291632561401929
+     }
+    }
+   },
+   "best_model_R3.4": "rotation",
+   "bootstrap_R3.4": {
+    "translation": {
+     "ci95": {
+      "tx": [
+       -0.9251288616516661,
+       1.3159645276117797
+      ],
+      "ty": [
+       -0.2665325012424132,
+       1.5829738026257656
+      ]
+     },
+     "corr": [
+      [
+       1.0,
+       0.32
+      ],
+      [
+       0.32,
+       1.0
+      ]
+     ]
+    },
+    "translation+rotation": {
+     "ci95": {
+      "tx": [
+       -0.9335523209941058,
+       1.5069220736415416
+      ],
+      "ty": [
+       -2.5489085361586525,
+       2.83902583802245
+      ],
+      "psi": [
+       -3.4367086158557685,
+       8.464440897839694
+      ]
+     },
+     "corr": [
+      [
+       1.0,
+       0.09,
+       -0.05
+      ],
+      [
+       0.09,
+       1.0,
+       -0.95
+      ],
+      [
+       -0.05,
+       -0.95,
+       1.0
+      ]
+     ]
+    }
+   },
+   "grasp_rule": "first",
+   "episodes": [
+    {
+     "episode": 0,
+     "placement": "t51",
+     "grasp_frame": 126,
+     "cup_xy_cm": [
+      20.0,
+      -3.0
+     ],
+     "pinch_xyz_cm": [
+      17.97256093522456,
+      -1.6559090533893195,
+      9.06664150843304
+     ],
+     "gripper": 49.67033004760742,
+     "wall_residual_cm_identity": -0.9674931379051972,
+     "wall_residual_cm_fitted": -0.6992494611020001,
+     "dist_pinch_to_cup_centre_cm_identity": 2.4325068620948027
+    },
+    {
+     "episode": 1,
+     "placement": "t52",
+     "grasp_frame": 139,
+     "cup_xy_cm": [
+      19.0,
+      6.0
+     ],
+     "pinch_xyz_cm": [
+      15.962956244194485,
+      4.481164898702111,
+      7.932696858122965
+     ],
+     "gripper": 49.57265090942383,
+     "wall_residual_cm_identity": -0.004341766371085853,
+     "wall_residual_cm_fitted": -0.10772971985405899,
+     "dist_pinch_to_cup_centre_cm_identity": 3.395658233628914
+    },
+    {
+     "episode": 2,
+     "placement": "t53",
+     "grasp_frame": 144,
+     "cup_xy_cm": [
+      18.0,
+      1.0
+     ],
+     "pinch_xyz_cm": [
+      14.807435581436035,
+      -2.677201229987539,
+      7.736357584159901
+     ],
+     "gripper": 49.79243087768555,
+     "wall_residual_cm_identity": 1.4697306344912486,
+     "wall_residual_cm_fitted": 0.9411851340531032,
+     "dist_pinch_to_cup_centre_cm_identity": 4.8697306344912485
+    },
+    {
+     "episode": 3,
+     "placement": "t54",
+     "grasp_frame": 140,
+     "cup_xy_cm": [
+      16.0,
+      -6.0
+     ],
+     "pinch_xyz_cm": [
+      14.93713577895589,
+      -4.986376933225274,
+      5.811553811037289
+     ],
+     "gripper": 50.769229888916016,
+     "wall_residual_cm_identity": -1.9312889753687064,
+     "wall_residual_cm_fitted": -1.7372317046057353,
+     "dist_pinch_to_cup_centre_cm_identity": 1.4687110246312935
+    },
+    {
+     "episode": 4,
+     "placement": "t55",
+     "grasp_frame": 132,
+     "cup_xy_cm": [
+      14.0,
+      -2.0
+     ],
+     "pinch_xyz_cm": [
+      12.23111270465599,
+      -2.330591054841472,
+      6.855023357164111
+     ],
+     "gripper": 49.597068786621094,
+     "wall_residual_cm_identity": -1.600485424018287,
+     "wall_residual_cm_fitted": -1.8666747594074733,
+     "dist_pinch_to_cup_centre_cm_identity": 1.7995145759817128
+    },
+    {
+     "episode": 5,
+     "placement": "t56",
+     "grasp_frame": 153,
+     "cup_xy_cm": [
+      12.0,
+      4.0
+     ],
+     "pinch_xyz_cm": [
+      10.600499831461091,
+      1.3012705689075599,
+      7.2374275731787625
+     ],
+     "gripper": 49.81684875488281,
+     "wall_residual_cm_identity": -0.35997676588073446,
+     "wall_residual_cm_fitted": -0.6288528598357224,
+     "dist_pinch_to_cup_centre_cm_identity": 3.0400232341192654
+    },
+    {
+     "episode": 6,
+     "placement": "t57",
+     "grasp_frame": 142,
+     "cup_xy_cm": [
+      16.0,
+      10.0
+     ],
+     "pinch_xyz_cm": [
+      17.228968251291125,
+      7.496538054507799,
+      6.681185325133528
+     ],
+     "gripper": 49.67033004760742,
+     "wall_residual_cm_identity": -0.6111499367644089,
+     "wall_residual_cm_fitted": -1.2551175932499463,
+     "dist_pinch_to_cup_centre_cm_identity": 2.788850063235591
+    },
+    {
+     "episode": 7,
+     "placement": "t58",
+     "grasp_frame": 91,
+     "cup_xy_cm": [
+      13.0,
+      16.0
+     ],
+     "pinch_xyz_cm": [
+      13.889384351360725,
+      11.852382495122836,
+      7.2276199472366525
+     ],
+     "gripper": 49.57265090942383,
+     "wall_residual_cm_identity": 0.8419023434314012,
+     "wall_residual_cm_fitted": 0.34891590099708125,
+     "dist_pinch_to_cup_centre_cm_identity": 4.241902343431401
+    },
+    {
+     "episode": 8,
+     "placement": "t59",
+     "grasp_frame": 112,
+     "cup_xy_cm": [
+      12.0,
+      -8.0
+     ],
+     "pinch_xyz_cm": [
+      12.419505926818474,
+      -5.374986106194753,
+      6.8728632649775925
+     ],
+     "gripper": 49.42612838745117,
+     "wall_residual_cm_identity": -0.7416766251438842,
+     "wall_residual_cm_fitted": -0.297432226951559,
+     "dist_pinch_to_cup_centre_cm_identity": 2.6583233748561157
+    },
+    {
+     "episode": 9,
+     "placement": "t60",
+     "grasp_frame": 135,
+     "cup_xy_cm": [
+      13.0,
+      -13.7
+     ],
+     "pinch_xyz_cm": [
+      12.870987642510098,
+      -8.315252003437584,
+      6.929137278484843
+     ],
+     "gripper": 49.597068786621094,
+     "wall_residual_cm_identity": 1.986293268553807,
+     "wall_residual_cm_fitted": 2.3957254778812387,
+     "dist_pinch_to_cup_centre_cm_identity": 5.386293268553807
+    },
+    {
+     "episode": 10,
+     "placement": "t16",
+     "grasp_frame": 131,
+     "cup_xy_cm": [
+      23.85,
+      -11.44
+     ],
+     "pinch_xyz_cm": [
+      24.20039998858324,
+      -8.66487565269606,
+      7.091235475797928
+     ],
+     "gripper": 50.158729553222656,
+     "wall_residual_cm_identity": -0.6028415677694885,
+     "wall_residual_cm_fitted": 0.4342928174524423,
+     "dist_pinch_to_cup_centre_cm_identity": 2.7971584322305114
+    },
+    {
+     "episode": 11,
+     "placement": "t21",
+     "grasp_frame": 147,
+     "cup_xy_cm": [
+      25.72,
+      -4.14
+     ],
+     "pinch_xyz_cm": [
+      21.272655682241382,
+      -6.438688857856535,
+      8.440535337030578
+     ],
+     "gripper": 49.597068786621094,
+     "wall_residual_cm_identity": 1.606280250438807,
+     "wall_residual_cm_fitted": 0.8872172902752165,
+     "dist_pinch_to_cup_centre_cm_identity": 5.006280250438807
+    },
+    {
+     "episode": 12,
+     "placement": "t4",
+     "grasp_frame": 135,
+     "cup_xy_cm": [
+      23.82,
+      12.66
+     ],
+     "pinch_xyz_cm": [
+      22.941415565707977,
+      7.581397010727398,
+      8.65756128720665
+     ],
+     "gripper": 49.47496795654297,
+     "wall_residual_cm_identity": 1.7540390889892223,
+     "wall_residual_cm_fitted": 0.9574340298197597,
+     "dist_pinch_to_cup_centre_cm_identity": 5.154039088989221
+    },
+    {
+     "episode": 13,
+     "placement": "t2",
+     "grasp_frame": 149,
+     "cup_xy_cm": [
+      30.8,
+      -19.28
+     ],
+     "pinch_xyz_cm": [
+      27.14614829478334,
+      -17.609920019062724,
+      10.953211881647835
+     ],
+     "gripper": 49.81684875488281,
+     "wall_residual_cm_identity": 0.6174369225218892,
+     "wall_residual_cm_fitted": 0.4650706051803586,
+     "dist_pinch_to_cup_centre_cm_identity": 4.017436922521889
+    },
+    {
+     "episode": 14,
+     "placement": "t20",
+     "grasp_frame": 138,
+     "cup_xy_cm": [
+      34.64,
+      -9.35
+     ],
+     "pinch_xyz_cm": [
+      31.15507776647817,
+      -8.408303234624944,
+      8.785959004674083
+     ],
+     "gripper": 49.621490478515625,
+     "wall_residual_cm_identity": 0.20991354073925717,
+     "wall_residual_cm_fitted": 0.32209515400859656,
+     "dist_pinch_to_cup_centre_cm_identity": 3.609913540739257
+    },
+    {
+     "episode": 15,
+     "placement": "t45",
+     "grasp_frame": 154,
+     "cup_xy_cm": [
+      27.41,
+      23.4
+     ],
+     "pinch_xyz_cm": [
+      27.627326580257723,
+      19.22127480596651,
+      10.475078340555752
+     ],
+     "gripper": 49.69474792480469,
+     "wall_residual_cm_identity": 0.7843727235676252,
+     "wall_residual_cm_fitted": -0.24901825001984612,
+     "dist_pinch_to_cup_centre_cm_identity": 4.184372723567625
+    }
+   ]
+  },
+  "omx_pick_place_pilot_paper_cup_recovery_A1": {
+   "n": 12,
+   "by_radius": {
+    "3.0": {
+     "none": {
+      "params": {},
+      "fit_rms_cm": 1.3306731468723194,
+      "loo_rms_cm": 1.3306731468723194
+     },
+     "translation": {
+      "params": {
+       "tx": 1.26497534680657,
+       "ty": 0.8624187216622097
+      },
+      "fit_rms_cm": 1.1642029592573404,
+      "loo_rms_cm": 1.5974292844071654
+     },
+     "rotation": {
+      "params": {
+       "psi": -1.2683295116827231
+      },
+      "fit_rms_cm": 1.3036607430341591,
+      "loo_rms_cm": 1.7844369853368809
+     },
+     "translation+rotation": {
+      "params": {
+       "tx": 1.954166217906677,
+       "ty": 3.164131493941565,
+       "psi": -6.782592005812594
+      },
+      "fit_rms_cm": 0.717169833357207,
+      "loo_rms_cm": 1.1707854904776875
+     }
+    },
+    "3.4": {
+     "none": {
+      "params": {},
+      "fit_rms_cm": 1.3921659060115497,
+      "loo_rms_cm": 1.3921659060115497
+     },
+     "translation": {
+      "params": {
+       "tx": 1.5550191126103214,
+       "ty": 0.5060773032921551
+      },
+      "fit_rms_cm": 1.3375682336679027,
+      "loo_rms_cm": 1.9716698223417939
+     },
+     "rotation": {
+      "params": {
+       "psi": -1.666303681358629
+      },
+      "fit_rms_cm": 1.3176295277157264,
+      "loo_rms_cm": 1.4888281982915244
+     },
+     "translation+rotation": {
+      "params": {
+       "tx": 2.1754974712131347,
+       "ty": 3.3605312123049784,
+       "psi": -7.529275581087629
+      },
+      "fit_rms_cm": 0.7537532188173934,
+      "loo_rms_cm": 1.1817150582250344
+     }
+    },
+    "3.75": {
+     "none": {
+      "params": {},
+      "fit_rms_cm": 1.5320350632926458,
+      "loo_rms_cm": 1.5320350632926458
+     },
+     "translation": {
+      "params": {
+       "tx": 0.02509184341693874,
+       "ty": -0.6244176320091506
+      },
+      "fit_rms_cm": 1.5066361188895645,
+      "loo_rms_cm": 2.4625109031603256
+     },
+     "rotation": {
+      "params": {
+       "psi": -1.988316742127183
+      },
+      "fit_rms_cm": 1.4058356030223862,
+      "loo_rms_cm": 1.6241489122640156
+     },
+     "translation+rotation": {
+      "params": {
+       "tx": 2.3852321710439557,
+       "ty": 3.6118248228085346,
+       "psi": -8.441450807583784
+      },
+      "fit_rms_cm": 0.8989095178912418,
+      "loo_rms_cm": 1.6431429848751942
+     }
+    }
+   },
+   "best_model_R3.4": "translation+rotation",
+   "bootstrap_R3.4": {
+    "translation": {
+     "ci95": {
+      "tx": [
+       -1.6919697639286135,
+       3.027749672346818
+      ],
+      "ty": [
+       -1.9787806062204605,
+       2.5123219854170853
+      ]
+     },
+     "corr": [
+      [
+       1.0,
+       0.03
+      ],
+      [
+       0.03,
+       1.0
+      ]
+     ]
+    },
+    "translation+rotation": {
+     "ci95": {
+      "tx": [
+       -1.3742362835585284,
+       2.8102370726780936
+      ],
+      "ty": [
+       -2.3108975373928566,
+       3.8726868970323602
+      ],
+      "psi": [
+       -8.969655450771915,
+       5.449096015405551
+      ]
+     },
+     "corr": [
+      [
+       1.0,
+       0.42,
+       -0.44
+      ],
+      [
+       0.42,
+       1.0,
+       -0.89
+      ],
+      [
+       -0.44,
+       -0.89,
+       1.0
+      ]
+     ]
+    }
+   },
+   "grasp_rule": "last",
+   "episodes": [
+    {
+     "episode": 0,
+     "placement": "t60",
+     "grasp_frame": 238,
+     "cup_xy_cm": [
+      13.0,
+      -13.7
+     ],
+     "pinch_xyz_cm": [
+      14.37711188656832,
+      -12.934061086200668,
+      10.12406107036336
+     ],
+     "gripper": 49.57265090942383,
+     "wall_residual_cm_identity": -1.8242146187377362,
+     "wall_residual_cm_fitted": -0.47627945146757655,
+     "dist_pinch_to_cup_centre_cm_identity": 1.5757853812622638
+    },
+    {
+     "episode": 1,
+     "placement": "t54",
+     "grasp_frame": 235,
+     "cup_xy_cm": [
+      16.0,
+      -6.0
+     ],
+     "pinch_xyz_cm": [
+      15.78325910047086,
+      -9.794478540261634,
+      11.568019224135208
+     ],
+     "gripper": 49.621490478515625,
+     "wall_residual_cm_identity": 0.4006636275833153,
+     "wall_residual_cm_fitted": -0.9229607627043324,
+     "dist_pinch_to_cup_centre_cm_identity": 3.800663627583315
+    },
+    {
+     "episode": 2,
+     "placement": "t55",
+     "grasp_frame": 230,
+     "cup_xy_cm": [
+      14.0,
+      -2.0
+     ],
+     "pinch_xyz_cm": [
+      13.147721788365613,
+      -6.903968113025415,
+      9.566633074541004
+     ],
+     "gripper": 49.597068786621094,
+     "wall_residual_cm_identity": 1.5774774136701768,
+     "wall_residual_cm_fitted": -0.17881414035678134,
+     "dist_pinch_to_cup_centre_cm_identity": 4.977477413670177
+    },
+    {
+     "episode": 3,
+     "placement": "t53",
+     "grasp_frame": 269,
+     "cup_xy_cm": [
+      18.0,
+      1.0
+     ],
+     "pinch_xyz_cm": [
+      14.54850164258518,
+      3.639281249453751,
+      6.917677129382859
+     ],
+     "gripper": 49.621490478515625,
+     "wall_residual_cm_identity": 0.9449564353345772,
+     "wall_residual_cm_fitted": 0.7659964498851584,
+     "dist_pinch_to_cup_centre_cm_identity": 4.344956435334577
+    },
+    {
+     "episode": 4,
+     "placement": "t52",
+     "grasp_frame": 273,
+     "cup_xy_cm": [
+      19.0,
+      6.0
+     ],
+     "pinch_xyz_cm": [
+      17.78352922069827,
+      2.4069850725449164,
+      6.337639018696763
+     ],
+     "gripper": 49.47496795654297,
+     "wall_residual_cm_identity": 0.39335701270128487,
+     "wall_residual_cm_fitted": -0.5837755509350848,
+     "dist_pinch_to_cup_centre_cm_identity": 3.7933570127012852
+    },
+    {
+     "episode": 5,
+     "placement": "t57",
+     "grasp_frame": 302,
+     "cup_xy_cm": [
+      16.0,
+      10.0
+     ],
+     "pinch_xyz_cm": [
+      17.70109331008167,
+      8.349606992491518,
+      8.106503517554358
+     ],
+     "gripper": 49.377288818359375,
+     "wall_residual_cm_identity": -1.0298701451529055,
+     "wall_residual_cm_fitted": 1.4659726726773346,
+     "dist_pinch_to_cup_centre_cm_identity": 2.3701298548470944
+    },
+    {
+     "episode": 6,
+     "placement": "t34",
+     "grasp_frame": 252,
+     "cup_xy_cm": [
+      19.7,
+      -20.82
+     ],
+     "pinch_xyz_cm": [
+      17.465840953709133,
+      -20.254120861048275,
+      8.253954548426933
+     ],
+     "gripper": 49.71916961669922,
+     "wall_residual_cm_identity": -1.0952905076725918,
+     "wall_residual_cm_fitted": -0.011358409506008194,
+     "dist_pinch_to_cup_centre_cm_identity": 2.304709492327408
+    },
+    {
+     "episode": 7,
+     "placement": "t12",
+     "grasp_frame": 251,
+     "cup_xy_cm": [
+      29.64,
+      4.85
+     ],
+     "pinch_xyz_cm": [
+      29.800477805954756,
+      3.223563471709924,
+      11.46282859199032
+     ],
+     "gripper": 49.42612838745117,
+     "wall_residual_cm_identity": -1.7656656074229098,
+     "wall_residual_cm_fitted": -0.06972745517672418,
+     "dist_pinch_to_cup_centre_cm_identity": 1.6343343925770901
+    },
+    {
+     "episode": 8,
+     "placement": "t17",
+     "grasp_frame": 282,
+     "cup_xy_cm": [
+      20.21,
+      21.2
+     ],
+     "pinch_xyz_cm": [
+      18.10584713079032,
+      20.60409890818494,
+      9.872037695687789
+     ],
+     "gripper": 49.69474792480469,
+     "wall_residual_cm_identity": -1.2130941016518997,
+     "wall_residual_cm_fitted": -0.7761670152289404,
+     "dist_pinch_to_cup_centre_cm_identity": 2.1869058983481002
+    },
+    {
+     "episode": 9,
+     "placement": "t36",
+     "grasp_frame": 297,
+     "cup_xy_cm": [
+      20.38,
+      -27.37
+     ],
+     "pinch_xyz_cm": [
+      19.873765047852878,
+      -27.16774280607487,
+      7.810153297367104
+     ],
+     "gripper": 49.74359130859375,
+     "wall_residual_cm_identity": -2.8548561664387404,
+     "wall_residual_cm_fitted": -1.0178390386595244,
+     "dist_pinch_to_cup_centre_cm_identity": 0.5451438335612596
+    },
+    {
+     "episode": 10,
+     "placement": "t9",
+     "grasp_frame": 212,
+     "cup_xy_cm": [
+      36.69,
+      -0.45
+     ],
+     "pinch_xyz_cm": [
+      34.50976761357487,
+      3.2423414104181147,
+      10.711094481591955
+     ],
+     "gripper": 49.4993896484375,
+     "wall_residual_cm_identity": 0.8879830165131755,
+     "wall_residual_cm_fitted": -0.8939932116908533,
+     "dist_pinch_to_cup_centre_cm_identity": 4.287983016513175
+    },
+    {
+     "episode": 11,
+     "placement": "t35",
+     "grasp_frame": 242,
+     "cup_xy_cm": [
+      34.36,
+      9.92
+     ],
+     "pinch_xyz_cm": [
+      31.60563388883358,
+      6.927642535178934,
+      8.820553988915705
+     ],
+     "gripper": 49.42612838745117,
+     "wall_residual_cm_identity": 0.667030350466097,
+     "wall_residual_cm_fitted": 0.4333441196606511,
+     "dist_pinch_to_cup_centre_cm_identity": 4.067030350466097
+    }
+   ]
+  },
+  "omx_pick_place_pilot_paper_cup_recovery_A1_tight": {
+   "n": 12,
+   "by_radius": {
+    "3.0": {
+     "none": {
+      "params": {},
+      "fit_rms_cm": 2.550248787305947,
+      "loo_rms_cm": 2.550248787305947
+     },
+     "translation": {
+      "params": {
+       "tx": 2.1659622223435853,
+       "ty": 1.7650601110728568
+      },
+      "fit_rms_cm": 1.7625919289976526,
+      "loo_rms_cm": 2.0118577094259695
+     },
+     "rotation": {
+      "params": {
+       "psi": 4.256096525750003
+      },
+      "fit_rms_cm": 2.13757985875762,
+      "loo_rms_cm": 2.259770080814254
+     },
+     "translation+rotation": {
+      "params": {
+       "tx": 1.9193090094743752,
+       "ty": 2.293408298907799,
+       "psi": -1.3260074072793044
+      },
+      "fit_rms_cm": 1.7984971452153613,
+      "loo_rms_cm": 2.0454016537638084
+     }
+    },
+    "3.4": {
+     "none": {
+      "params": {},
+      "fit_rms_cm": 2.478466238572216,
+      "loo_rms_cm": 2.478466238572216
+     },
+     "translation": {
+      "params": {
+       "tx": 3.044768197640783,
+       "ty": 1.946787233690893
+      },
+      "fit_rms_cm": 1.6732946629976169,
+      "loo_rms_cm": 2.221094174936456
+     },
+     "rotation": {
+      "params": {
+       "psi": 4.652659747777217
+      },
+      "fit_rms_cm": 2.0430392970093405,
+      "loo_rms_cm": 2.237427335576195
+     },
+     "translation+rotation": {
+      "params": {
+       "tx": 1.8100089756700666,
+       "ty": 3.0932885824727525,
+       "psi": -2.9513246429067244
+      },
+      "fit_rms_cm": 1.7647001025698903,
+      "loo_rms_cm": 2.348762756275477
+     }
+    },
+    "3.75": {
+     "none": {
+      "params": {},
+      "fit_rms_cm": 2.467679610890727,
+      "loo_rms_cm": 2.467679610890727
+     },
+     "translation": {
+      "params": {
+       "tx": 0.9313592710572686,
+       "ty": 2.206830069636266
+      },
+      "fit_rms_cm": 1.8314320925706051,
+      "loo_rms_cm": 2.568877636804139
+     },
+     "rotation": {
+      "params": {
+       "psi": 5.024738823119027
+      },
+      "fit_rms_cm": 2.018355366719143,
+      "loo_rms_cm": 2.29799805399295
+     },
+     "translation+rotation": {
+      "params": {
+       "tx": 1.9443011069573142,
+       "ty": 3.800539501847185,
+       "psi": -4.171406053558909
+      },
+      "fit_rms_cm": 1.746163787405425,
+      "loo_rms_cm": 2.719983634537303
+     }
+    }
+   },
+   "best_model_R3.4": "translation",
+   "bootstrap_R3.4": {
+    "translation": {
+     "ci95": {
+      "tx": [
+       -1.604920079479503,
+       4.341474639806799
+      ],
+      "ty": [
+       -0.9188237797899393,
+       3.2546140018779104
+      ]
+     },
+     "corr": [
+      [
+       1.0,
+       0.64
+      ],
+      [
+       0.64,
+       1.0
+      ]
+     ]
+    },
+    "translation+rotation": {
+     "ci95": {
+      "tx": [
+       -1.5466525973078133,
+       4.414017878394002
+      ],
+      "ty": [
+       -3.4134138128216853,
+       4.593803689491843
+      ],
+      "psi": [
+       -6.820771264591566,
+       9.832881376089754
+      ]
+     },
+     "corr": [
+      [
+       1.0,
+       0.44,
+       -0.2
+      ],
+      [
+       0.44,
+       1.0,
+       -0.89
+      ],
+      [
+       -0.2,
+       -0.89,
+       1.0
+      ]
+     ]
+    }
+   },
+   "grasp_rule": "last",
+   "episodes": [
+    {
+     "episode": 0,
+     "placement": "t60",
+     "grasp_frame": 300,
+     "cup_xy_cm": [
+      13.0,
+      -13.7
+     ],
+     "pinch_xyz_cm": [
+      13.463984562534904,
+      -9.910164274998163,
+      10.255018169468016
+     ],
+     "gripper": 49.71916961669922,
+     "wall_residual_cm_identity": 0.41813259287454585,
+     "wall_residual_cm_fitted": 3.044054199084766,
+     "dist_pinch_to_cup_centre_cm_identity": 3.8181325928745458
+    },
+    {
+     "episode": 1,
+     "placement": "t54",
+     "grasp_frame": 240,
+     "cup_xy_cm": [
+      16.0,
+      -6.0
+     ],
+     "pinch_xyz_cm": [
+      11.852461072722365,
+      -7.070435032048285,
+      8.588483226521463
+     ],
+     "gripper": 49.64590835571289,
+     "wall_residual_cm_identity": 0.8834460789321867,
+     "wall_residual_cm_fitted": -0.3331311488547719,
+     "dist_pinch_to_cup_centre_cm_identity": 4.283446078932187
+    },
+    {
+     "episode": 2,
+     "placement": "t55",
+     "grasp_frame": 256,
+     "cup_xy_cm": [
+      14.0,
+      -2.0
+     ],
+     "pinch_xyz_cm": [
+      11.754636830967872,
+      -4.646498876890136,
+      6.565244733613081
+     ],
+     "gripper": 49.4505500793457,
+     "wall_residual_cm_identity": 0.07067890566482005,
+     "wall_residual_cm_fitted": -2.693221552246395,
+     "dist_pinch_to_cup_centre_cm_identity": 3.4706789056648195
+    },
+    {
+     "episode": 3,
+     "placement": "t53",
+     "grasp_frame": 227,
+     "cup_xy_cm": [
+      18.0,
+      1.0
+     ],
+     "pinch_xyz_cm": [
+      16.490113936465338,
+      2.5075412182508567,
+      6.09686737211724
+     ],
+     "gripper": 49.79243087768555,
+     "wall_residual_cm_identity": -1.2663560630739075,
+     "wall_residual_cm_fitted": 0.3705377151963196,
+     "dist_pinch_to_cup_centre_cm_identity": 2.1336439369260924
+    },
+    {
+     "episode": 4,
+     "placement": "t52",
+     "grasp_frame": 232,
+     "cup_xy_cm": [
+      19.0,
+      6.0
+     ],
+     "pinch_xyz_cm": [
+      17.618526731236066,
+      0.790945259579687,
+      6.979781647676775
+     ],
+     "gripper": 49.52381134033203,
+     "wall_residual_cm_identity": 1.9891297702880233,
+     "wall_residual_cm_fitted": -0.34335263057214016,
+     "dist_pinch_to_cup_centre_cm_identity": 5.389129770288023
+    },
+    {
+     "episode": 5,
+     "placement": "t57",
+     "grasp_frame": 246,
+     "cup_xy_cm": [
+      16.0,
+      10.0
+     ],
+     "pinch_xyz_cm": [
+      16.770744339286207,
+      8.193431236512039,
+      8.22193875743065
+     ],
+     "gripper": 49.71916961669922,
+     "wall_residual_cm_identity": -1.4358875964568236,
+     "wall_residual_cm_fitted": -0.39123841831702144,
+     "dist_pinch_to_cup_centre_cm_identity": 1.9641124035431763
+    },
+    {
+     "episode": 6,
+     "placement": "t34",
+     "grasp_frame": 255,
+     "cup_xy_cm": [
+      19.7,
+      -20.82
+     ],
+     "pinch_xyz_cm": [
+      19.174315959944945,
+      -20.530016271026135,
+      7.523861837616966
+     ],
+     "gripper": 49.69474792480469,
+     "wall_residual_cm_identity": -2.7996382148752366,
+     "wall_residual_cm_fitted": -0.9683436978613855,
+     "dist_pinch_to_cup_centre_cm_identity": 0.6003617851247632
+    },
+    {
+     "episode": 7,
+     "placement": "t17",
+     "grasp_frame": 296,
+     "cup_xy_cm": [
+      20.21,
+      21.2
+     ],
+     "pinch_xyz_cm": [
+      19.301582227710412,
+      21.29898753171983,
+      6.996448857148289
+     ],
+     "gripper": 49.67033004760742,
+     "wall_residual_cm_identity": -2.4862049570896305,
+     "wall_residual_cm_fitted": -0.4672265439173233,
+     "dist_pinch_to_cup_centre_cm_identity": 0.9137950429103694
+    },
+    {
+     "episode": 8,
+     "placement": "t36",
+     "grasp_frame": 296,
+     "cup_xy_cm": [
+      20.38,
+      -27.37
+     ],
+     "pinch_xyz_cm": [
+      17.863858353443327,
+      -26.63676995817983,
+      5.499594035272365
+     ],
+     "gripper": 49.621490478515625,
+     "wall_residual_cm_identity": -0.7791995345382485,
+     "wall_residual_cm_fitted": 0.21542014395563314,
+     "dist_pinch_to_cup_centre_cm_identity": 2.6208004654617514
+    },
+    {
+     "episode": 9,
+     "placement": "t9",
+     "grasp_frame": 297,
+     "cup_xy_cm": [
+      36.69,
+      -0.45
+     ],
+     "pinch_xyz_cm": [
+      33.90201445757693,
+      1.1883949956085977,
+      10.019542381610801
+     ],
+     "gripper": 49.79243087768555,
+     "wall_residual_cm_identity": -0.16624033880139244,
+     "wall_residual_cm_fitted": -0.26429208949429306,
+     "dist_pinch_to_cup_centre_cm_identity": 3.2337596611986075
+    },
+    {
+     "episode": 10,
+     "placement": "t35",
+     "grasp_frame": 228,
+     "cup_xy_cm": [
+      34.36,
+      9.92
+     ],
+     "pinch_xyz_cm": [
+      32.29779929086755,
+      5.272330781347474,
+      8.276188140085626
+     ],
+     "gripper": 49.47496795654297,
+     "wall_residual_cm_identity": 1.6846338049810972,
+     "wall_residual_cm_fitted": -0.17560541431940324,
+     "dist_pinch_to_cup_centre_cm_identity": 5.084633804981097
+    },
+    {
+     "episode": 12,
+     "placement": "t12",
+     "grasp_frame": 362,
+     "cup_xy_cm": [
+      29.64,
+      4.85
+     ],
+     "pinch_xyz_cm": [
+      22.440071573468302,
+      -2.51848761666949,
+      6.467507240470082
+     ],
+     "gripper": 50.20756912231445,
+     "wall_residual_cm_identity": 6.902115273291734,
+     "wall_residual_cm_fitted": 4.362106425685379,
+     "dist_pinch_to_cup_centre_cm_identity": 10.302115273291735
+    }
+   ]
+  }
+ },
+ "overlay_png": "outputs/paper_to_pan/2026-10-08_normal_A1_grasps.png"
+}

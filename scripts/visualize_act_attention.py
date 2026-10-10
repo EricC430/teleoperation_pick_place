@@ -11,6 +11,7 @@ Hooks into LeRobot's ACT policy during open-loop or closed-loop replay:
 """
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -61,6 +62,10 @@ def parse_args():
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
         help="Inference device (cuda / cpu).",
+    )
+    parser.add_argument(
+        "--num-threads", type=int, default=4,
+        help="CPU threads for recorded-video decoding and tensor work (default: 4).",
     )
     parser.add_argument(
         "--output-dir",
@@ -174,6 +179,7 @@ def compute_heatmap_overlay(orig_bgr, norm_map_2d, colormap=cv2.COLORMAP_TURBO, 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     args = parse_args()
+    torch.set_num_threads(args.num_threads)
 
     checkpoint_path = Path(args.checkpoint).resolve()
     if not checkpoint_path.exists():
@@ -253,7 +259,9 @@ def main():
     # In ACT forward:
     # Token 0: VAE latent token
     # Token 1: Robot state token (if config.robot_state_feature)
-    token_offset = 1 + (1 if policy.config.robot_state_feature else 0)
+    token_offset = (1 + int(bool(policy.config.robot_state_feature))
+                    + int(bool(policy.config.env_state_feature)))
+    non_image_tokens = token_offset
     for c_key in cam_keys:
         cam_token_info[c_key]["start"] = token_offset
         cam_token_info[c_key]["end"] = token_offset + cam_token_info[c_key]["num_tokens"]
@@ -331,6 +339,8 @@ def main():
 
         # Extract camera attention maps for query t=0, t=10, t=20, t=50, and chunk average
         cam_heatmaps = {}
+        cam_heatmaps_raw = {}
+        attention_mass = {}
         for c_key in cam_keys:
             info = cam_token_info[c_key]
             tokens_slice = cross_attn_heads_mean[:, info["start"] : info["end"]]  # [100, H*W]
@@ -356,6 +366,23 @@ def main():
                 "t50": norm_01(t50_map),
                 "chunk_avg": norm_01(avg_map),
             }
+            # Display scaling destroys absolute attention mass. Keep the raw weights
+            # separately for ROI fractions and comparisons between camera token groups.
+            cam_heatmaps_raw[c_key] = {
+                query: m.tolist() for query, m in [
+                    ("t0", t0_map), ("t10", t10_map), ("t20", t20_map),
+                    ("t50", t50_map), ("chunk_avg", avg_map)]
+            }
+
+        for query, index in [("t0", 0), ("t10", 10), ("t20", 20), ("t50", 50), ("chunk_avg", None)]:
+            weights = (cross_attn_heads_mean.mean(axis=0) if index is None
+                       else cross_attn_heads_mean[min(index, len(cross_attn_heads_mean)-1)])
+            attention_mass[query] = {
+                c_key: float(weights[info["start"]:info["end"]].sum())
+                for c_key, info in cam_token_info.items()
+            }
+            attention_mass[query]["non_image_tokens"] = float(weights[:non_image_tokens].sum())
+            attention_mass[query]["total"] = float(weights.sum())
 
         # Encoder Layers Latent Analysis (Layers 0..3)
         # Latent shape: [tokens=707, batch=1, dim=512]
@@ -403,6 +430,8 @@ def main():
             "frame_idx": frame_idx,
             "time_sec": round(frame_idx / fps, 3),
             "heatmaps": cam_heatmaps,
+            "heatmaps_raw": cam_heatmaps_raw,
+            "attention_mass": attention_mass,
             "layer_latents": layer_latent_stats,
             "entropy_per_layer": entropy_per_layer,
         }
@@ -492,8 +521,14 @@ def main():
     json_payload = {
         "metadata": {
             "checkpoint": str(checkpoint_path),
+            "weights_sha256_12": hashlib.sha256((checkpoint_path / "model.safetensors").read_bytes()).hexdigest()[:12],
+            "inference_mode": "full chunk re-queried every frame; plotted action is query k=0 (N=1 without ensembling)",
+            "configured_n_action_steps": policy.config.n_action_steps,
+            "chunk_sample_stride": 2,
+            "attention_measure": "raw decoder cross-attention averaged over heads; camera tokens contain mixed encoder information; not a causal importance score",
             "run_name": run_name,
             "dataset_repo_id": args.dataset_repo_id,
+            "bundle_path": str(output_base),
             "episode": args.episode,
             "total_frames": total_frames,
             "fps": fps,
