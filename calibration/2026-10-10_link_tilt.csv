@@ -1,0 +1,22 @@
+pose_id,source,face,kind,reading_deg,reading_rev_deg,lean,value_deg,approach,support,note,state_shoulder_pan,state_shoulder_lift,state_elbow_flex,state_wrist_flex,state_wrist_roll,state_gripper
+B0,start,base_x,elev,-0.8,-1.4,,-1.1,,,"sign flipped: App reads negative when the forward end is higher (App sign test, calibration/2026-10-10_level_check.csv)",0.405,-63.956,54.774,-1.128,-0.562,59.248
+B0,start,base_y,elev,-0.2,0.4,,0.1,,,SIGN UNVERIFIED (App sign test covered x only),0.405,-63.956,54.774,-1.128,-0.562,59.248
+P00,ep3 f255,upper,pitch,-23.8,-24.1,b,-156.05,traj,held,sign checked by eye: elbow end lower [柏宇說 2026-10-10],0.855,-64.884,55.018,-1.685,1.705,60.0
+P00,ep3 f255,forearm,pitch,16.4,15.7,f,16.05,traj,held,"reading_deg typed -14.9, corrected to -16.4 [柏宇說 2026-10-10]; sign set by eye (arrow end higher) -- the App shows the line angle, not which end is up [柏宇說 2026-10-10]",0.855,-64.884,55.018,-1.685,1.705,60.0
+P00,ep3 f255,gripper,pitch,-73.4,-72.2,f,-72.8,traj,held,"sign set by eye (arrow end lower) -- the App shows the line angle, not which end is up [柏宇說 2026-10-10]",0.855,-64.884,55.018,-1.685,1.705,60.0
+P00,ep3 f255,forearm,pitch,17.7,17.2,f,17.45,traj,resting,,0.855,-64.835,55.057,-1.685,1.734,60.0
+P00,ep3 f255,upper,pitch,-24.0,-24.2,b,-155.9,from_plus,held,,0.855,-64.933,55.438,-1.636,1.724,60.0
+P00,ep3 f255,forearm,pitch,16.6,16.5,f,16.55,from_plus,held,sign corrected to + (wrist end higher) [柏宇說 2026-10-10],0.855,-64.933,55.438,-1.636,1.724,60.0
+P00,ep3 f255,gripper,pitch,-72.7,-73.8,f,-73.25,from_plus,held,,0.855,-64.933,55.438,-1.636,1.724,60.0
+P00,ep3 f255,upper,pitch,-24.5,-24.3,b,-155.6,from_minus,held,,0.855,-65.568,54.969,-1.587,1.636,60.0
+P00,ep3 f255,forearm,pitch,16.5,16.2,f,16.35,from_minus,held,,0.855,-65.568,54.969,-1.587,1.636,60.0
+P00,ep3 f255,gripper,pitch,-76.5,-75.6,f,-76.05,from_minus,held,,0.855,-65.568,54.969,-1.587,1.636,60.0
+P01,ep5 f69,upper,pitch,-21.2,-21.1,b,-158.85,traj,held,,3.443,-60.977,45.836,-1.783,1.685,59.365
+P01,ep5 f69,forearm,pitch,25.0,24.8,f,24.9,traj,held,,3.443,-60.977,45.836,-1.783,1.685,59.365
+P01,ep5 f69,gripper,pitch,-65.8,-66.3,f,-66.05,traj,held,,3.443,-60.977,45.836,-1.783,1.685,59.365
+P02,ep5 f159,upper,pitch,66.0,65.0,f,65.5,traj,held,,4.625,9.695,26.447,-42.457,2.125,50.623
+P02,ep5 f159,forearm,pitch,-74.4,-74.5,f,-74.45,traj,held,,4.625,9.695,26.447,-42.457,2.125,50.623
+P02,ep5 f159,gripper,pitch,-87.1,-87.5,b,-92.7,traj,held,,4.625,9.695,26.447,-42.457,2.125,50.623
+P03,ep6 f147,upper,pitch,52.9,52.8,f,52.85,traj,held,,13.553,16.484,16.239,-51.306,1.685,50.623
+P03,ep6 f147,forearm,pitch,-69.0,-69.5,f,-69.25,traj,held,,13.553,16.484,16.239,-51.306,1.685,50.623
+P03,ep6 f147,gripper,pitch,-72.8,-71.5,f,-72.15,traj,held,,13.553,16.484,16.239,-51.306,1.685,50.623

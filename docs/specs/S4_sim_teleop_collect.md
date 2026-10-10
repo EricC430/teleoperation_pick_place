@@ -399,6 +399,10 @@ wrist（Innomaker U20CAM-720P）是一般 UVC 鏡頭，沒有出廠內參可讀�
   - 用今天的杯子當地標（9 個中／遠場、杯底完整入鏡的位置，**不做任何擬合**）：ArUco 外參（不加偏移）中位數 **8.7 px**；加座標紙偏移 (−1, −2.6) cm 反而 32.7 px；`scene_constants` 現在的 refit32（擬合自 uvc_60）28.5 px。uvc_60 上則相反（refit32 8.8、ArUco 31.9 px）。→ 前一天的 25 px 是**兩個相機位置的差**，不是標記座標錯；座標紙偏移的證據 (a)(b) 都用了 uvc_60 的杯子或由它擬合的相機，已被汙染；只剩 (c)（wrist A/B 一致性）獨立，單獨不足以支持。
   - 渲染（本機 Isaac Sim 6.1，ArUco 相機、底座 14.6 cm、運動學擺姿）：今天 normal_A1 ep 12（t4）、ep 13（t2），接近與夾取瞬間夾爪、手臂、杯子目測都在縮圖約 5–10 px 內（全解析約 10–20 px），明顯比 uvc_60 ＋ refit32 的 36–56 px 好。影片：`outputs/outputs/videos/today_normalA1_ep{12,13}_front-left_aruco_real_vs_sim.mp4`。表示前一天「手臂偏 3–5 cm 是關節映射」的歸因也要重審：至少有一部分是相機與底座高度（uvc_60 錄製時 15 cm）的組合。
   - **相機外參需要時間軸**（與 `ARM_RISER_HEIGHT` 同一個問題）：refit32 只對 uvc_60 有效，ArUco 只對今天的錄製有效；`scene_constants.py` 目前只放得下一組。
+- **2026-10-10 第三視角相機第三個位置（S7／S8 第 0 步，`[已查證]` 量測）：** `calibration/2026-10-10_camera_extrinsics_front-left.json`（標記照 `aruco_points.csv` 擺回，重投影中位數 0.69 px）。
+  - 相對 10/07 的 ArUco 解：位置只差 0.31 cm，**旋轉 2.92°**；7 個標記在畫面上一致往右移 22–29 px。不看標記的木紋相位相關也量到今天比 10/07 錄影偏 23 px，兩種方法一致 → 是相機轉了約 3°，不是標記擺錯。位置差 0.3 cm 也給出座標紙相對 10/07 的移動上限約 0.3 cm（`[柏宇說]`「座標紙只會有微小偏移」，相符）。
+  - **far_wrist_A1（10/08 錄）**：48 集第一幀，乾淨的集（r ≥ 0.3）一致比 10/07 錄影偏 dx ≈ +20、dy ≈ −4.3 px；今天比 far_wrist 中位數只差 3.4 px。→ 相機在 10/07 錄完、10/08 錄 far_wrist 之前轉過，之後大致沒動。**far_wrist_A1 用 10/10 的解，normal／recovery／tight 用 10/07 的解。**
+  - ⚠️ 和 `scripts/align_camera.py` 10/08 的註記「10-07 demos 對 uvc_60 只差 ~1° roll / 3–6 px」不一致：那是桌緣線的角度與高度，**看不到水平轉動**（該腳本自己的說明也寫了）；木紋相位相關量到 10/07 對 uvc_60 的水平差約 41 px。
 - **2026-10-08 實驗：鏡頭模型、wrist_flex、腕部三組外參（today normal_A1 ep 12／13，本機 Isaac Sim 6.1，暫存區腳本 `iso_render2.py`）：**
   - Isaac 的 link5 位置與 `reach_logger/fk.py` 相同（差 < 0.1 mm）`[已查證]`，所以 USD 資產與手寫 FK 是同一套運動學。
   - 前左加上主點＋畸變（padded 理想渲染＋`camera_distortion` remap）：與不加只差幾 px，**不是主要誤差**。之前的輪廓 IoU 計算本來就含鏡頭模型。

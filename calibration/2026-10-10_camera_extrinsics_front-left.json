@@ -1,0 +1,53 @@
+{
+  "camera": "front-left",
+  "frame": "world",
+  "pos_m": [
+    0.04415259855296433,
+    0.24666855333910553,
+    0.9683116030949961
+  ],
+  "quat_wxyz": [
+    0.24141442678129227,
+    -0.38537921331891134,
+    0.7223125382969553,
+    -0.5210245037448495
+  ],
+  "reprojection_err_p50_px": 0.6879644490919349,
+  "reprojection_err_max_px": 1.3890162550160503,
+  "used_marker_ids": [
+    0,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "source_images": [
+    "calibration\\shots\\2026-10-10_fl_world.png"
+  ],
+  "source_points_csv": "calibration\\aruco_points.csv",
+  "source_intrinsics_json": "calibration\\2026-10-07_camera_intrinsics_front-left.json",
+  "table_top_z": 0.75,
+  "arm_base_height_m": null,
+  "paper_offset_m": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "world_from_camera_paper_frame": {
+    "pos_m": [
+      0.04415259855296433,
+      0.24666855333910553,
+      0.9683116030949961
+    ],
+    "quat_wxyz": [
+      0.24141442678129227,
+      -0.38537921331891134,
+      0.7223125382969553,
+      -0.5210245037448495
+    ]
+  },
+  "lens_model": "rs_bc",
+  "measured_at": "2026-10-10"
+}
