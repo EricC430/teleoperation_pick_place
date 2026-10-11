@@ -182,9 +182,15 @@ python scripts/measure_link_tilt.py plan \
 
 ```bash
 python scripts/measure_link_tilt.py solve --csv calibration/<日期>_link_tilt.csv \
-    --touch-csv calibration/2026-09-22_touch_calibration.csv --out calibration/<日期>_link_tilt_fit.json --date <日期>
+    --touch-csv calibration/2026-09-22_touch_calibration.csv --out calibration/<日期>_link_tilt_fit.json --date <日期> \
+    --tilt-from-b0
 python3 scripts/eval_joint_calibration.py --candidate-json calibration/<日期>_link_tilt_fit.json
 ```
+
+**`--tilt-from-b0`（2026-10-12 加）**：底座傾斜直接用 B0 的兩筆讀數，不參與擬合。
+- 理由：10/10 的資料讓傾斜自由擬合時，tilt_x 和 o_wrist_roll 相關 −0.75，tilt_y 和 o_shoulder_lift 相關 −0.91。
+- 結果擬合出的 tilt_x 是 +1.96°，跟 B0 實測差 1.86°，RMS 卻只好 0.16°（1.26 對 1.42）。
+- 固定後，關節常數不含底座傾斜。模擬裡的底座要另外擺上「相對座標紙」的傾斜（level check）。
 
 `solve` 會印出以下幾項：
 

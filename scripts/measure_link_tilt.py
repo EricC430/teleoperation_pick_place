@@ -31,7 +31,7 @@ Five subcommands. Only `session` needs the arm.
 
     # 2. anywhere: fit, diagnose, print the block to paste into sim/joint_mapping.py
     python scripts/measure_link_tilt.py solve --csv calibration/<date>_link_tilt.csv \\
-        --touch-csv calibration/2026-09-22_touch_calibration.csv
+        --touch-csv calibration/2026-09-22_touch_calibration.csv --tilt-from-b0
 
     # 3. anywhere: the faces this script knows, and the arithmetic against a synthetic arm
     python scripts/measure_link_tilt.py faces
@@ -678,6 +678,20 @@ def cmd_solve(args) -> int:
     p0 = nominal_params()
     main = [r for r in rows_all if r["support"] in ("held", "") and r["approach"] in ("traj", "")]
     print(f"{len(rows_all)} rows; {len(main)} used for the fit (held phone, approached along the recorded path)")
+    p_init, fixed = dict(p0), ()
+    if args.tilt_from_b0:
+        # the base tilt is measured directly at B0; left free it trades against o_wrist_roll (tilt_x) and
+        # o_shoulder_lift (tilt_y) -- correlations -0.75 / -0.91 on the 10-10 data (S7 §7)
+        b0 = [r for r in main if r["pose_id"] == "B0"]
+        if {r["face"] for r in b0} != {"base_x", "base_y"}:
+            raise SystemExit("--tilt-from-b0 needs both B0 rows (base_x, base_y)")
+        p_init, _, _ = fit(b0, ["tilt_x", "tilt_y"], p0)
+        fixed = ("tilt_x", "tilt_y")
+        print(f"base tilt fixed from B0: tilt_x {p_init['tilt_x']:+.2f}, tilt_y {p_init['tilt_y']:+.2f} deg "
+              "(not fitted below; the joint constants exclude it)")
+
+    def free_for(rows, with_scale):
+        return [f for f in free_params(rows, with_scale) if f not in fixed]
 
     rev = [abs(r["reading"] - r["reading_rev"]) for r in rows_all if not math.isnan(r["reading_rev"])]
     if rev:
@@ -692,16 +706,16 @@ def cmd_solve(args) -> int:
 
     results = {}
     for label, with_scale in (("offsets only (scales = nominal 1.80 deg/unit)", False), ("offsets + scales", True)):
-        free = free_params(main, with_scale)
-        p, res, se = fit(main, free, p0)
+        free = free_for(main, with_scale)
+        p, res, se = fit(main, free, p_init)
         # leave-one-pose-out: does the model predict a pose it has not seen?
         loo = []
         for pid in sorted({r["pose_id"] for r in main}):
             train = [r for r in main if r["pose_id"] != pid]
             test = [r for r in main if r["pose_id"] == pid]
-            if not test or len(train) <= len(free_params(train, with_scale)):
+            if not test or len(train) <= len(free_for(train, with_scale)):
                 continue
-            pp, _, _ = fit(train, free_params(train, with_scale), p0, iters=30)
+            pp, _, _ = fit(train, free_for(train, with_scale), p_init, iters=30)
             loo += [wrap(r["value"] - predict_deg(FACES[r["face"]], r["state"], pp)) for r in test]
         results[label] = (p, res, se, free, loo)
         print(f"\n=== fit: {label}")
@@ -764,7 +778,10 @@ def cmd_solve(args) -> int:
                   f"3D RMS {math.sqrt(np.mean(eh ** 2 + ev ** 2)):5.2f} cm")
 
     tilt = (p_sc.get("tilt_x", 0.0), p_sc.get("tilt_y", 0.0))
-    if max(abs(tilt[0]), abs(tilt[1])) > 0.5:
+    if fixed:
+        print(f"\nbase tilt ({tilt[0]:+.2f}, {tilt[1]:+.2f}) deg is the B0 measurement, kept OUT of the joint constants: "
+              "the sim's base pose carries the base tilt relative to the paper (level check), not these numbers.")
+    elif max(abs(tilt[0]), abs(tilt[1])) > 0.5:
         print(f"\n⚠️  base plate tilt ({tilt[0]:+.2f}, {tilt[1]:+.2f}) deg > 0.5: the sim assumes a level base. Shim "
               "the riser level and re-measure B0 rather than carry a tilt into the constants.")
 
@@ -776,7 +793,7 @@ def cmd_solve(args) -> int:
                 scale[j] = math.radians(pp[f"s_{j}"]) / JM.SIGN[j]
                 offset[j] = math.radians(pp[f"o_{j}"])
             sets[label] = {"scale": scale, "offset": offset, "tilt_deg": [pp.get("tilt_x", 0.0), pp.get("tilt_y", 0.0)],
-                           "source": Path(args.csv).name}
+                           "tilt_from_b0": bool(fixed), "source": Path(args.csv).name}
         Path(args.out).write_text(json.dumps(sets, indent=1), encoding="utf-8")
         print(f"\nwrote {args.out} (both fits; shoulder_pan left as now -- S8)")
 
@@ -933,6 +950,8 @@ def main() -> int:
     so.add_argument("--riser-m", type=float, default=ARM_RISER_HEIGHT_M)
     so.add_argument("--date", default="YYYY-MM-DD")
     so.add_argument("--out", default=None, help="JSON of both fits, for eval_joint_calibration.py --candidate-json")
+    so.add_argument("--tilt-from-b0", action="store_true",
+                    help="fix the base tilt to the B0 readings instead of fitting it (S7 §7: recommended)")
     so.set_defaults(func=cmd_solve)
 
     fa = sub.add_parser("faces", help="list the measurement faces")
