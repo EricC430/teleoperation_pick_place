@@ -1,0 +1,44 @@
+{
+ "S7 offsets only": {
+  "scale": {
+   "shoulder_pan": 0.03141593,
+   "shoulder_lift": 0.03141593,
+   "elbow_flex": 0.03141593,
+   "wrist_flex": 0.03141593,
+   "wrist_roll": 0.03141593
+  },
+  "offset": {
+   "shoulder_pan": -0.03890655,
+   "shoulder_lift": 0.18369643368971514,
+   "elbow_flex": 0.048126070325173145,
+   "wrist_flex": 1.6146792900776756,
+   "wrist_roll": 0.06470767318425492
+  },
+  "tilt_deg": [
+   -2.2682424314117116,
+   -5.588077489449349
+  ],
+  "source": "2026-10-10_link_tilt.csv"
+ },
+ "S7 offsets+scales": {
+  "scale": {
+   "shoulder_pan": 0.03141593,
+   "shoulder_lift": 0.032719627406400165,
+   "elbow_flex": 0.03080996571658619,
+   "wrist_flex": 0.030478707088830076,
+   "wrist_roll": 0.032221900263845235
+  },
+  "offset": {
+   "shoulder_pan": -0.03890655,
+   "shoulder_lift": 0.09160380847485766,
+   "elbow_flex": 0.054155393825141895,
+   "wrist_flex": 1.61757713660434,
+   "wrist_roll": -0.01228971480364745
+  },
+  "tilt_deg": [
+   1.9615441313330668,
+   1.479436669502888
+  ],
+  "source": "2026-10-10_link_tilt.csv"
+ }
+}
