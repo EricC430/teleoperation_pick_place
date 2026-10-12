@@ -9,7 +9,7 @@
 # policy.n_action_steps must be given on the command line together with --policy.path (2026-10-05 note).
 # Copied from rollout_omx_b1_papercup_60_16_12rcvry_100k_eval.yaml; only policy.path and dataset.repo_id differ.
 # Comparison target is the 10-08 evening ntA1 run C (record __2a7a2415): N=30, 30 s, c1..c36, started from HOME.
-# Before running: align_camera.py, lerobot-find-cameras opencv (wrist index), read_joint_pose.py --goto-home --home-episode 10.
+# Before running, in this order: read_joint_pose.py --goto-home --home-episode 10, align_camera.py, lerobot-find-cameras opencv (wrist index).
 
 robot:
   type: omx_follower
