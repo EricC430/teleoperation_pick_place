@@ -12,7 +12,9 @@
   2026-10-10 加的 `cup_uvc60_normal_tight_far_A1`／`cup_uvc60_normal_tightcut_far_A1` 六列同樣只在本機，hash 是直接 `sha256sum` 本機檔案算的；
   `tight_far_A1` 三列也和 10-09 開環的 `metrics.json` 對過，一致。
 >   2026-10-12：三組的 100k 已推上 Hub（只有 main，20k／40k 沒推），Hub LFS oid ＝ 本機 hash `[已查證]`；
->   `tight_far_A1`／`tightcut_far_A1` 六列「閉環用過」改為 —（[柏宇說] 還沒跑過閉環）。
+>   `tight_far_A1`／`tightcut_far_A1` 六列「閉環用過」記為 — `[推論]`：`config_records/` 沒有對應的 rollout record、
+>   Hub 上 10/6 之後沒有新的 rollout dataset、`docs/meeting/2026-10-10_open_loop.md` 的「閉環評估（ntfA1／ntcfA1）」待辦仍未勾。
+>   這是「沒有紀錄」，不等於確定沒跑過；之後如果跑了閉環，用 record digest 取代 —。
 
 ## ACT／Diffusion 模型
 
@@ -34,7 +36,7 @@
 | `02bf0d69a088` | `alcan60_fixed` / 100k | `act_omx_alcan60_fixed_100k` | 鋁罐 | 同上 | 9/20 `__b504fd10`、`__a6f2a67a`（**沒有對應的 rollout 資料夾** `[未確認]`）；9/21 `__039dfb74` |
 | `24df8d1ce78b` | `cup_uvc60_normal_tight_A1` / 20k | —（`push_to_hub: false`） | 紙杯 | `omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1`（本機 merge：uvc_60 ＋ normal_A1 ＋ recovery_A1_tight，`exclude_episodes: [87]` → 88 集；`configs/train_omx_cup_uvc60_normal_tight_A1.yaml`） | — |
 | `dbf3d7b250de` | `cup_uvc60_normal_tight_A1` / 40k | — | 紙杯 | 同上 | — |
-| `e6ef7c0e9528` | `cup_uvc60_normal_tight_A1` / 100k | `act_omx_b1_paper-cup_60-16-12rcvry_100k` | 紙杯 | 同上 | — |
+| `e6ef7c0e9528` | `cup_uvc60_normal_tight_A1` / 100k | `act_omx_b1_paper-cup_60-16-12rcvry_100k` | 紙杯 | 同上 | 10/8 `__03d8e780`、`__2a7a2415`、`__9c5e6c68`（`config_records/2026-10-08_omx_follower/`） |
 | `9eb05d355edc` | `cup_uvc60_normal_tight_far_A1` / 20k | — | 紙杯 | `omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1_farwristA1`（本機 merge：uvc_60 ＋ normal_A1 ＋ recovery_A1_tight ＋ far_wrist_A1 = 137 集，`exclude_episodes` 8 集 → 129 集；排除理由見 `configs/train_omx_cup_uvc60_normal_tight_far_A1.yaml` 檔頭） | — |
 | `c39680beee6a` | `cup_uvc60_normal_tight_far_A1` / 40k | — | 紙杯 | 同上 | — |
 | `e97526c13766` | `cup_uvc60_normal_tight_far_A1` / 100k | `act_omx_b1_paper-cup_60-13-10rcvry-46far_100k` | 紙杯 | 同上 | — |
