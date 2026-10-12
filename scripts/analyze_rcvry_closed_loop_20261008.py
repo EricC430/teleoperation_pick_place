@@ -196,7 +196,7 @@ def ann(n):
     t = open(f"D:/teleoperation_pick_place/episode_meta/{n}.csv", "rb").read().decode("utf-8-sig")
     return {int(r["episode_index"]): r for r in csv.DictReader(io.StringIO(t)) if r["episode_index"].isdigit()}
 for name, an in [("CL 10-06 (old model, 20 s)", ann("rollout_omx_b1_uvc60_100k_nas30_A1_paper_cup_20261006_close_loop")),
-                 ("CL 10-08 (rcvry model, 30 s)", ann("rollout_omx_b1_papercup_60_16_12rcvry_100k_paper_cup_20261008_171620"))]:
+                 ("CL 10-08 (rcvry model, 30 s)", ann("rollout_omx_b1_papercup_60_16_12rcvry_100k_nas100_paper_cup_20261008_171620"))]:
     x = df[df.set == name]
     for lab, sub in [("1 close", x[x.n_close == 1]), (">=2 closes", x[x.n_close >= 2])]:
         valid = [e for e in sub.ep if an[e]["valid"] != "0"]
@@ -207,7 +207,7 @@ print("\nrelease time (end of last close) for 10-08 successes / misplaced:")
 root = SETS["CL 10-08 (rcvry model, 30 s)"]
 d = pd.concat(pd.read_parquet(p) for p in sorted(glob.glob(root + "/data/*/*.parquet")))
 a = np.stack(d["action"].values)[:, 5]
-an = ann("rollout_omx_b1_papercup_60_16_12rcvry_100k_paper_cup_20261008_171620")
+an = ann("rollout_omx_b1_papercup_60_16_12rcvry_100k_nas100_paper_cup_20261008_171620")
 for ep in sorted(an):
     if an[ep]["outcome"] in ("success", "misplaced"):
         ev = events(a[d.episode_index.values == ep], 15)
