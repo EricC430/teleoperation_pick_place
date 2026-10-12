@@ -426,8 +426,36 @@ class Arm:
         self.bus.disconnect(False)   # torque stays ON: the arm keeps holding wherever it is
         return False
 
+    def _reconnect(self, err: Exception) -> None:
+        """Reopen the port after the USB link dropped. [已查證 2026-10-12] it dropped 3 times in a day (ClearCommError,
+        'device does not recognise the command') and came back as the same COM port; the servos kept torque and goal
+        throughout, so nothing is re-sent -- only the port is reopened."""
+        print(f"\n    ⚠️  USB 連線斷了（{err.__class__.__name__}），重新連線中；手臂的扭力和目標不受影響……")
+        last = err
+        for _ in range(20):
+            try:
+                self.bus.port_handler.closePort()
+            except Exception:  # noqa: BLE001 -- the dead handle may refuse to close
+                pass
+            self.bus.port_handler.is_open = False
+            time.sleep(0.5)
+            try:
+                self.bus.connect(handshake=True)
+                print("    已重新連上，繼續。")
+                return
+            except Exception as e:  # noqa: BLE001
+                last = e
+        raise ConnectionError("USB 10 秒內沒有重新連上：檢查線材，重插後用同一個 CSV 重跑（會從中斷處繼續）") from last
+
+    def _io(self, fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except OSError as e:   # serial.SerialException and lerobot's ConnectionError are both OSError
+            self._reconnect(e)
+            return fn(*a, **k)
+
     def read(self) -> dict[str, float]:
-        return self.bus.sync_read("Present_Position", num_retry=2)
+        return self._io(self.bus.sync_read, "Present_Position", num_retry=2)
 
     def read_avg(self, n: int = 5) -> dict[str, float]:
         acc = {j: 0.0 for j in JOINTS}
@@ -446,12 +474,12 @@ class Arm:
         steps = max(int(seconds * 50), 1)
         for i in range(1, steps + 1):
             t = i / steps
-            self.bus.sync_write("Goal_Position", {k: start[k] * (1 - t) + target[k] * t for k in target})
+            self._io(self.bus.sync_write, "Goal_Position", {k: start[k] * (1 - t) + target[k] * t for k in target})
             time.sleep(1 / 50)
         self.goal.update(target)
 
     def set_goal(self, pos: dict[str, float]) -> None:
-        self.bus.sync_write("Goal_Position", pos)
+        self._io(self.bus.sync_write, "Goal_Position", pos)
         self.goal.update(pos)
 
     def hold(self, target: dict[str, float], joints: list[str], tol: float = 0.3, max_correction: float = 10.0,
