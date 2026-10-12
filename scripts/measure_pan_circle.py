@@ -184,23 +184,26 @@ def append_row(path: Path, row: dict) -> None:
 # session
 # --------------------------------------------------------------------------------------------------
 
-def hand_pose(arm, joints: list[str]) -> bool:
-    """Release `joints` so the operator can place the fingertip; hold everything again on Enter."""
+def hand_pose(arm, joints: list[str]) -> dict[str, float] | None:
+    """Release `joints` so the operator can place the fingertip; hold everything again on Enter and take the
+    gravity sag back out. Returns the locked pose (None = quit)."""
     bus = arm.bus
-    pos = arm.read()
-    bus.sync_write("Goal_Position", pos)
+    arm.set_goal(arm.read())
     print(f"    🔴 即將放掉 {', '.join(joints)}：手臂這幾節會往下掉，先用手托住前臂和夾爪。其他關節保持出力。")
     if S7._ask("    托好了按 Enter（q 結束）: ").lower() == "q":
-        return False
+        return None
     bus.disable_torque(joints, num_retry=2)
-    print("    把夾爪擺成『尖端朝正下方、離紙面 3–5 mm、不要碰到紙』，扶著不要動。")
+    print("    指尖下方墊一疊 8–10 mm 厚的卡片，把夾爪擺成『尖端朝正下方、輕靠在卡片上』，扶著不要動。")
     ok = S7._ask("    擺好、手還扶著時按 Enter，我會在這個姿勢鎖住（q 結束）: ").lower() != "q"
-    pos = arm.read()
-    bus.sync_write("Goal_Position", pos)
+    pos = arm.read_avg()
+    arm.set_goal(pos)
     bus.enable_torque(num_retry=2)
-    time.sleep(0.3)
-    print("    已鎖住，可以放手。")
-    return ok
+    print("    已鎖住。慢慢放手（卡片先不要抽），手完全離開後按 Enter：我會把下垂補回鎖住的位置。")
+    if not ok or S7._ask("    放開了按 Enter（q 結束）: ").lower() == "q":
+        return None
+    left = arm.hold(pos, joints)
+    print(f"    已補回，剩餘誤差 {left}（單位；< 0.3 算到位）。現在抽掉卡片。")
+    return pos
 
 
 def ask_xy(prompt: str):
@@ -233,7 +236,7 @@ def cmd_session(args) -> int:
     print("  * 讀座標時眼睛在指尖正上方往下看，避免視差；讀到 0.1 cm")
     print("=" * 76)
     with S7.Arm(args.port, args.id) as arm:
-        arm.move_to(dict(arm.read(), gripper=args.gripper_closed), 1.5)
+        arm.move_to(dict(arm.goal, gripper=args.gripper_closed), 1.5)
         for k in range(args.circles):
             circle = f"C{k}"
             print(f"\n--- 圓 {circle}：" + ("夾爪伸近一點（半徑約 12–15 cm）" if k == 0 else "夾爪伸遠一點（半徑約 22–25 cm）"))
@@ -242,10 +245,11 @@ def cmd_session(args) -> int:
                 return 0
             if go == "s":
                 continue
-            arm.move_to(dict(arm.read(), shoulder_pan=targets[0] - args.preload_units), 2.5)
-            if not hand_pose(arm, ["shoulder_lift", "elbow_flex", "wrist_flex"]):
+            arm.move_to(dict(arm.goal, shoulder_pan=targets[0] - args.preload_units), 2.5)
+            pitch = ["shoulder_lift", "elbow_flex", "wrist_flex"]
+            held = hand_pose(arm, pitch)
+            if held is None:
                 return 0
-            held = arm.read_avg()
             gap = S7._ask_float("    指尖離紙面的間隙（mm；用已知厚度的卡片墊著擺姿勢最準，鎖住後抽掉卡片；空白=沒量）: ")
             if gap == "q":
                 return 0
@@ -257,12 +261,13 @@ def cmd_session(args) -> int:
                     continue
                 if sweep == "down":
                     print("    反向掃描（量 pan 背隙）：每隔一站再讀一次")
-                    arm.move_to(dict(arm.read(), shoulder_pan=seq[0] + args.preload_units), 1.5)
+                    arm.move_to(dict(arm.goal, shoulder_pan=seq[0] + args.preload_units), 1.5)
                 for tgt in seq:
                     if (circle, sweep, f"{tgt:.2f}") in done:
                         continue
-                    arm.move_to(dict(arm.read(), shoulder_pan=float(tgt)), 1.5)
+                    arm.move_to(dict(arm.goal, shoulder_pan=float(tgt)), 1.5)
                     time.sleep(args.settle)
+                    arm.hold(held, pitch)   # keep the pitch joints on the locked pose, so every station is on one circle
                     st = arm.read_avg()
                     drift = {j: round(st[j] - held[j], 1) for j in ("shoulder_lift", "elbow_flex", "wrist_flex")
                              if abs(st[j] - held[j]) > 1.0}
@@ -278,7 +283,7 @@ def cmd_session(args) -> int:
                                           "tip_gap_mm": "" if gap is None else gap, "fk_tip_above_table_cm": round(fk_z, 3),
                                           **{f"state_{j}": round(st[j], 3) for j in JOINTS}})
             print("    這個圓量完。把夾爪抬離紙面……")
-            arm.move_to(dict(arm.read(), wrist_flex=arm.read()["wrist_flex"] - 8.0), 1.5)
+            arm.move_to(dict(arm.goal, wrist_flex=arm.goal["wrist_flex"] - 8.0), 1.5)
         print(f"\n完成，扭力開著。下一步：python scripts/measure_pan_circle.py solve --csv {csv_path}")
     return 0
 

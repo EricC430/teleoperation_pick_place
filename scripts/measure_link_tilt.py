@@ -419,6 +419,7 @@ class Arm:
         pos = self.read()
         self.bus.sync_write("Goal_Position", pos)
         self.bus.enable_torque(num_retry=2)
+        self.goal = dict(pos)   # last COMMANDED goal; see move_to
         return self
 
     def __exit__(self, *exc):
@@ -437,12 +438,37 @@ class Arm:
         return acc
 
     def move_to(self, target: dict[str, float], seconds: float) -> None:
-        start = self.read()
+        # Interpolate from the last commanded goal, NOT from Present: under gravity Present sags below the goal, so
+        # starting from it (or passing dict(arm.read(), ...) as the target) re-commands the sag on every call and a
+        # pitch joint ratchets down. [已查證 2026-10-12] S7's roll sweep crept wrist_flex -36.2 -> -34.0 over 5 calls;
+        # S8's first circle lowered the fingertip onto the paper. Callers build targets from `arm.goal`.
+        start = dict(self.goal)
         steps = max(int(seconds * 50), 1)
         for i in range(1, steps + 1):
             t = i / steps
             self.bus.sync_write("Goal_Position", {k: start[k] * (1 - t) + target[k] * t for k in target})
             time.sleep(1 / 50)
+        self.goal.update(target)
+
+    def set_goal(self, pos: dict[str, float]) -> None:
+        self.bus.sync_write("Goal_Position", pos)
+        self.goal.update(pos)
+
+    def hold(self, target: dict[str, float], joints: list[str], tol: float = 0.3, max_correction: float = 10.0,
+             iters: int = 12) -> dict[str, float]:
+        """Bring the PRESENT position of `joints` onto `target` by offsetting their goals (position control leaves a
+        gravity sag of a few units on an extended arm). Returns the remaining error (units)."""
+        g = {j: self.goal[j] for j in joints}
+        err = {}
+        for _ in range(iters):
+            time.sleep(0.3)
+            p = self.read_avg(3)
+            err = {j: target[j] - p[j] for j in joints}
+            if max(abs(e) for e in err.values()) < tol:
+                break
+            g = {j: min(max(g[j] + err[j], target[j] - max_correction), target[j] + max_correction) for j in joints}
+            self.set_goal(g)
+        return {j: round(e, 2) for j, e in err.items()}
 
     def follow(self, path: list[list[float]], seconds_per_point: float) -> None:
         for pt in path:
@@ -635,21 +661,20 @@ def cmd_session(args) -> int:
         roll = plan["roll"]
         print(f"\n--- R 腕部自轉（wrist_roll）：先把 wrist_flex 轉到 {roll['wrist_flex']}，讓夾爪接近水平朝前")
         if _ask("    Enter = 移動，s = 跳過，q = 結束: ").lower() not in ("s", "q"):
-            st0 = arm.read()
-            arm.move_to(dict(st0, wrist_flex=roll["wrist_flex"]), 3.0)
+            arm.move_to(dict(arm.goal, wrist_flex=roll["wrist_flex"]), 3.0)
             for k, rt in enumerate(roll["targets"]):
                 pid = f"R{k:02d}"
                 if (pid, "gripper_across", "traj", "held") in done:
                     continue
-                arm.move_to(dict(arm.read(), wrist_roll=rt), 2.0)
+                arm.move_to(dict(arm.goal, wrist_roll=rt), 2.0)
                 time.sleep(args.settle)
                 st = arm.read_avg()
                 print(f"    {pid}: wrist_roll = {st['wrist_roll']:.1f}")
                 shot(pid, "traj", st)
                 if faces_at(pid, "roll sweep", ["gripper_across", "gripper"], st, "traj", "held", None) == "q":
                     return 0
-            arm.move_to(dict(arm.read(), wrist_roll=start["wrist_roll"]), 2.0)
-            arm.move_to(dict(arm.read(), wrist_flex=start["wrist_flex"]), 3.0)
+            arm.move_to(dict(arm.goal, wrist_roll=start["wrist_roll"]), 2.0)
+            arm.move_to(dict(arm.goal, wrist_flex=start["wrist_flex"]), 3.0)
         print(f"\n完成。手臂停在起始姿勢、扭力開著。下一步：\n  python scripts/measure_link_tilt.py solve --csv {csv_path}")
     return 0
 
