@@ -222,29 +222,38 @@ def hand_pose(arm, joints: list[str]) -> dict[str, float] | None:
     return pos
 
 
-def choose_arc(arm, lo: float, hi: float, step_deg: float = 10.0, min_span_deg: float = 60.0):
-    """Turn pan to each end of the sweep and let the operator pull it in (S8 §4). [柏宇說 2026-10-12] on P02 the
-    first stop (-60 deg) was too far right. Pulling in ONE end of the near circle costs little: simulated centre error
-    (95%, 0.12 cm reading noise) 0.24 cm with both circles +-60 deg, 0.28-0.29 cm with the near one at -35 or -20..+60,
-    but 0.36 cm with both at +-45. Returns (lo, hi) in pan units, or None to quit."""
+def choose_arc(arm, lo_max: float, hi_max: float, first_deg: float = 30.0, step_deg: float = 10.0,
+               min_span_deg: float = 60.0):
+    """Let the operator open each end of the sweep outward from +-first_deg, never past (lo_max, hi_max) (S8 §4).
+    Returns the two VERIFIED pan positions (units) -- the outermost the arm will go, preload included -- or None.
+
+    [已查證 2026-10-12] on P02 pan was sent to -65 deg, something stopped it at -55 deg, and shoulder_pan tripped
+    Overload (Hardware_Error_Status 32). So the arm only ever goes one step past a point the operator has passed.
+    Cost of a shorter arc (simulated centre error 95%, 0.12 cm reading noise): 0.24 cm with both circles +-60 deg,
+    0.28-0.29 cm with the near one at -35 or -20..+60, 0.36 cm with both at +-45."""
     du = deg_per_unit_nominal()
-    for end in ("start", "end"):
+    centre = (lo_max + hi_max) / 2
+    ends = {}
+    for end, sign, lim in (("start", -1, lo_max), ("end", +1, hi_max)):
+        val = centre + sign * first_deg / du
         while True:
-            val = lo if end == "start" else hi
             arm.move_to(dict(arm.goal, shoulder_pan=val), 2.5)
-            k = S7._ask(f"    pan {val:+.1f}（掃描的{'起點' if end == 'start' else '終點'}，約 {val * du:+.0f}°）：指尖在紙上方、手臂沒碰到任何東西？"
-                        f"Enter = 可以，n = 往中間縮 {step_deg:.0f}°，q = 結束: ").lower()
+            k = S7._ask(f"    pan {val:+.1f}（約 {val * du:+.0f}°，掃描的{'起點' if end == 'start' else '終點'}那一端）：指尖在紙上方、手臂和線"
+                        f"都沒碰到任何東西？Enter = 用這裡，w = 再往外 {step_deg:.0f}°，q = 結束: ").lower()
             if k == "q":
                 return None
-            if k != "n":
+            if k != "w":
                 break
-            if end == "start":
-                lo += step_deg / du
-            else:
-                hi -= step_deg / du
-            if (hi - lo) * du < min_span_deg:
-                print(f"    ⚠️  範圍只剩 {(hi - lo) * du:.0f}°，圓心會不準；換一個半徑比較大的姿勢（--poses）比較好")
-    return lo, hi
+            nxt = val + sign * step_deg / du
+            if sign * (nxt - lim) > 1e-6:
+                print(f"    已經到上限（約 {lim * du:+.0f}°）")
+                continue
+            val = nxt
+        ends[end] = val
+    span = (ends["end"] - ends["start"]) * du
+    if span < min_span_deg:
+        print(f"    ⚠️  範圍只有 {span:.0f}°，圓心會不準；換一個半徑比較大的姿勢（--poses）比較好")
+    return ends["start"], ends["end"]
 
 
 def ask_xy(prompt: str):
@@ -316,10 +325,11 @@ def cmd_session(args) -> int:
             circle_targets = targets
             if ps:
                 arm.follow([pt[:5] + [args.gripper_closed] for pt in ps["path"]], 0.4)
-                arc = choose_arc(arm, targets[0], targets[-1])
+                # the preload approach and the reverse sweep's start stay inside the verified ends
+                arc = choose_arc(arm, targets[0] - args.preload_units, targets[-1] + args.preload_units)
                 if arc is None:
                     return 0
-                circle_targets = list(np.linspace(arc[0], arc[1], args.points))
+                circle_targets = list(np.linspace(arc[0] + args.preload_units, arc[1] - args.preload_units, args.points))
                 arm.move_to(dict(arm.goal, shoulder_pan=circle_targets[0] - args.preload_units), 3.0)
                 time.sleep(1.0)
                 held = arm.read_avg()
