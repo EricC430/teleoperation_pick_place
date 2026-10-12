@@ -165,8 +165,8 @@ def bootstrap(rows, alpha, n=400, seed=0, fix_scale=False):
 def read_rows(path: Path) -> list[dict]:
     rows = []
     for r in csv.DictReader(path.open(encoding="utf-8")):
-        if not r.get("paper_x_cm"):
-            continue
+        if not r.get("paper_x_cm") or "EXCLUDED" in r.get("note", ""):
+            continue   # a row is left out by writing EXCLUDED and why into its note, never by deleting it
         st = {j: float(r[f"state_{j}"]) for j in JOINTS}
         rows.append({"circle": r["circle"], "sweep": r["sweep"], "target": float(r["pan_target"]),
                      "pan": st["shoulder_pan"], "x": float(r["paper_x_cm"]), "y": float(r["paper_y_cm"]), "state": st})
@@ -401,10 +401,18 @@ def cmd_solve(args) -> int:
         st = {j: float(np.mean([r["state"][j] for r in rows if r["circle"] == c])) for j in JOINTS}
         rho_fk[c], alpha[c] = tip_polar_in_arm_plane(st)
     up = [r for r in rows if r["sweep"] == "up"]
-    P, res = fit(up, alpha)
+    # The encoder makes the scale 4095/200*360/4096 deg/unit exactly; on 10-12's short arcs a free scale came out
+    # 1.83 with a 95% range of -0.25..1.98 and dragged the centre with it, so it is fixed unless --free-scale.
+    fix = not args.free_scale
+    P, res = fit(up, alpha, fix_scale=fix)
     rms = float(np.sqrt((res ** 2).sum(1).mean()))
-    B = bootstrap(up, alpha, n=args.bootstrap)
-    lo, hi = np.percentile(B, 2.5, axis=0), np.percentile(B, 97.5, axis=0)
+    B = bootstrap(up, alpha, n=args.bootstrap, fix_scale=fix)
+    B[:, 3] = P["o"] + np.array([S7.wrap(v - P["o"]) for v in B[:, 3]])   # an angle: percentiles around the estimate
+    # resamples that collapsed onto 2 stations, or flipped to the mirror solution (radius < 0, zero + 180 deg)
+    keep = (np.hypot(B[:, 0] - P["cx"], B[:, 1] - P["cy"]) < 5.0) & (np.abs(B[:, 3] - P["o"]) < 30.0)
+    if (~keep).any():
+        print(f"(bootstrap: {int((~keep).sum())} of {len(B)} resamples diverged and are left out)")
+    lo, hi = np.percentile(B[keep], 2.5, axis=0), np.percentile(B[keep], 97.5, axis=0)
     s_nom = deg_per_unit_nominal()
     o_now = math.degrees(JM.OFFSET_RAD["shoulder_pan"])
     print(f"{len(up)} points on {len(circles)} circle(s) (up-sweep); fit residual RMS {rms:.2f} cm")
@@ -422,7 +430,7 @@ def cmd_solve(args) -> int:
     if len(circles) > 1:
         cs = []
         for c in circles:
-            Pc, _ = fit([r for r in up if r["circle"] == c], {c: alpha[c]})
+            Pc, _ = fit([r for r in up if r["circle"] == c], {c: alpha[c]}, fix_scale=fix)
             cs.append((c, Pc["cx"], Pc["cy"]))
         print("each circle alone (agreement = the axis is vertical and the readings are consistent):")
         for c, x, y in cs:
@@ -522,6 +530,7 @@ def main() -> int:
     so = sub.add_parser("solve", help="fit the circle(s) (no hardware)")
     so.add_argument("--csv", required=True)
     so.add_argument("--bootstrap", type=int, default=400)
+    so.add_argument("--free-scale", action="store_true", help="fit the pan scale too (default: fixed at the encoder's 1.7996 deg/unit)")
     so.add_argument("--date", default="YYYY-MM-DD")
     so.set_defaults(func=cmd_solve)
     st = sub.add_parser("selftest")
