@@ -12,7 +12,7 @@
 | ntcfA1（轉腕＋recovery 剪前段） | `configs/train_omx_cup_uvc60_normal_tightcut_far_A1_aug.yaml` | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far_100k` | `0319057c1d65` |
 
 資料、`exclude_episodes`、超參數、seed（1000）全部跟舊 config 一樣，合併資料集也沿用 10-09 在 4090 上做好的那兩份（`root:` 沒變）。
-差別只有 `dataset.image_transforms`、`output_dir`、`job_name`（多了 `_aug`）。
+差別只有 `dataset.image_transforms`、`output_dir`、`job_name`（多了 `_aug`），以及 `num_workers` 4 → 12（見下）。
 
 ## 步驟
 
@@ -29,6 +29,11 @@ ls data/huggingface/lerobot/ericc430/omx_pick_place_pilot_paper_cup_uvc60_normal
 （舊模型 Hub 上的 `train_config.json` 是 `enable: false`，**原本沒有任何增強**。）
 
 增強在 dataloader（CPU）做，每步可能比 10-09 慢；請記下實際花了多久。
+
+2026-10-13 實測：`num_workers: 4` 時每步 0.55 s（其中等資料 0.25 s，GPU 更新 0.30 s），100k 約 15 h；
+改成 12 後每步 0.31 s（等資料 0.007 s），跟 10-09 沒增強的 run 一樣（約 8.7 h）`[已查證]`。
+`num_workers` 不改資料、超參數或 seed，但每個 worker 抽到的增強亂數不同，所以這次的結果無法跟 4 worker 逐位元重現。
+4 worker 那次跑到 step 1662 就停了（沒有 checkpoint），留在 `data/train/aborted_cup_uvc60_normal_tight_far_A1_aug_w4`。
 
 ## 推上 Hub（private）
 

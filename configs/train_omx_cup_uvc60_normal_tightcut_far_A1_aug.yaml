@@ -59,7 +59,7 @@ save_freq: 20000
 eval_steps: 0
 log_freq: 50
 seed: 1000
-num_workers: 4
+num_workers: 12   # 2026-10-13: was 4; with the CPU-side RandomAffine, 4 workers left the GPU waiting (data_s 0.25 of step_s 0.55)
 wandb:
   enable: true
   project: teleoperation_pick_place
