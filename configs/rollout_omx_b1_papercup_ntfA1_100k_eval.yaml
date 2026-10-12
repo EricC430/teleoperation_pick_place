@@ -7,7 +7,8 @@
 #
 # KEEP THIS FILE ASCII-ONLY (lerobot opens it as cp950 when policy.path is set).
 # policy.n_action_steps must be given on the command line together with --policy.path (2026-10-05 note).
-# Copied from rollout_omx_b1_papercup_60_16_12rcvry_100k_eval.yaml; only policy.path and dataset.repo_id differ.
+# Copied from rollout_omx_b1_papercup_60_16_12rcvry_100k_eval.yaml; only policy.path and dataset.repo_id differ
+# (repo_id carries nas30 so runs with different n_action_steps are told apart by name, unlike the two 10-08 files).
 # Comparison target is the 10-08 evening ntA1 run C (record __2a7a2415): N=30, 30 s, c1..c36, started from HOME.
 # Before running, in this order: read_joint_pose.py --goto-home --home-episode 10, lerobot-find-cameras opencv (wrist index), align_camera.py.
 
@@ -50,7 +51,7 @@ inference:
   type: sync
 
 dataset:
-  repo_id: ericc430/rollout_omx_b1_papercup_60_13_10rcvry_46far_100k_paper_cup   # must start with rollout_; timestamp appended
+  repo_id: ericc430/rollout_omx_b1_papercup_60_13_10rcvry_46far_100k_nas30_paper_cup   # must start with rollout_; timestamp appended; nas30 = n_action_steps (keep in sync with the CLI)
   single_task: "Pick up the object and place it into the box"   # same string as training
   fps: 15                  # must match camera fps
   num_episodes: 36         # same as 10-06 / 10-08 (template paper_cup_A1 = c1..c36)
