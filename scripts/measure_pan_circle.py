@@ -20,8 +20,10 @@ from FK. `o` is the pan zero IN THE PAPER FRAME: it carries any yaw of the base 
 too, and the two cannot be separated by turning pan -- for the sim that is fine as long as the
 base mesh is left unrotated (spec §5).
 
-    # lab day (needs the arm; clear the table within ~30 cm of the arm first)
-    uv run python scripts/measure_pan_circle.py session --csv calibration/<date>_pan_circle.csv
+    # lab day (needs the arm; clear the table within ~30 cm of the arm first). Recommended: plumb line,
+    # the arm parked on two S7 poses along their recorded paths (spec §4); no hand posing, nothing touches the paper
+    uv run python scripts/measure_pan_circle.py session --csv calibration/<date>_pan_circle.csv \\
+        --plan configs/s7_link_tilt_plan_normalA1.json --poses P02,P03
 
     # anywhere
     python scripts/measure_pan_circle.py solve --csv calibration/<date>_pan_circle.csv
@@ -34,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import math
 import os
 import sys
@@ -246,24 +249,57 @@ def cmd_session(args) -> int:
     print("  * 手臂周圍 30 cm 內清空（杯子、收納盒移走），座標紙不要動")
     print(f"  * pan 會在 {args.pan_center_units - span:+.1f} 到 {args.pan_center_units + span:+.1f} 單位之間轉"
           f"（約 ±{args.pan_range_deg:.0f}°），每站停下來等你讀座標")
-    print("  * 讀座標時眼睛在指尖正上方往下看，避免視差；讀到 0.1 cm")
+    plan_poses = []
+    if args.plan:
+        # [2026-10-12] hand posing near the paper failed 3 times: link play the encoders cannot see dropped the tip
+        # onto the paper when the card came out, and shoulder_lift tripped Overload (Hardware_Error_Status 32).
+        # A plumb line from a fixed S7 pose needs neither: the play is loaded one way all round the circle.
+        plan = json.loads(Path(args.plan).read_text(encoding="utf-8"))
+        by_id = {ps["id"]: ps for ps in plan["poses"]}
+        plan_poses = [by_id[i] for i in args.poses.split(",")]
+        print("  * 鉛垂線：手臂沿錄影路徑移到 " + "、".join(ps["id"] for ps in plan_poses) + "，你在閉合的指尖綁一條細線、吊一個小重物")
+        print("    讀『重物正下方』的座標；每站轉完等重物停止擺動再讀")
+    else:
+        print("  * 讀座標時眼睛在指尖正上方往下看，避免視差；讀到 0.1 cm")
     print("=" * 76)
+    settle = args.settle if args.settle is not None else (3.0 if plan_poses else 1.0)
+    pitch = ["shoulder_lift", "elbow_flex", "wrist_flex"]
     with S7.Arm(args.port, args.id) as arm:
+        if plan_poses:
+            now = arm.read()
+            far = {j: round(now[j] - v, 1) for j, v in zip(JOINTS, plan["start"])
+                   if j != "gripper" and abs(now[j] - v) > 8.0}
+            if far:
+                print(f"🔴 手臂不在計畫的起始姿勢（差 {far}）。先執行：")
+                print("   uv run python scripts/read_joint_pose.py --goto " + " ".join(f"{v:.2f}" for v in plan["start"]))
+                return 1
         arm.move_to(dict(arm.goal, gripper=args.gripper_closed), 1.5)
-        for k in range(args.circles):
+        n_circles = len(plan_poses) or args.circles
+        for k in range(n_circles):
             circle = f"C{k}"
-            print(f"\n--- 圓 {circle}：" + ("夾爪伸近一點（半徑約 12–15 cm）" if k == 0 else "夾爪伸遠一點（半徑約 22–25 cm）"))
-            go = S7._ask("    Enter = 先把 pan 轉到起點再擺姿勢，s = 跳過這個圓，q = 結束: ").lower()
+            ps = plan_poses[k] if plan_poses else None
+            if ps:
+                print(f"\n--- 圓 {circle}：姿勢 {ps['id']}（{ps['source']}，S7 計畫說指尖約在桌面上 {ps['tip_above_table_cm']} cm）")
+                go = S7._ask("    Enter = 沿錄影路徑移過去（夾爪保持閉合），s = 跳過這個圓，q = 結束: ").lower()
+            else:
+                print(f"\n--- 圓 {circle}：" + ("夾爪伸近一點（半徑約 12–15 cm）" if k == 0 else "夾爪伸遠一點（半徑約 22–25 cm）"))
+                go = S7._ask("    Enter = 先把 pan 轉到起點再擺姿勢，s = 跳過這個圓，q = 結束: ").lower()
             if go == "q":
                 return 0
             if go == "s":
                 continue
-            arm.move_to(dict(arm.goal, shoulder_pan=targets[0] - args.preload_units), 2.5)
-            pitch = ["shoulder_lift", "elbow_flex", "wrist_flex"]
-            held = hand_pose(arm, pitch)
-            if held is None:
-                return 0
-            gap = S7._ask_float("    指尖離紙面的間隙（mm；拿卡片或直尺從旁邊比一下；空白=沒量）: ")
+            if ps:
+                arm.follow([pt[:5] + [args.gripper_closed] for pt in ps["path"]], 0.4)
+                arm.move_to(dict(arm.goal, shoulder_pan=targets[0] - args.preload_units), 3.0)
+                time.sleep(1.0)
+                held = arm.read_avg()
+                print("    在閉合的指尖綁一條細線，下面吊一個小重物；調整線長，讓重物離紙約 2–3 mm（不要碰到紙）。")
+                gap = S7._ask_float("    用直尺量指尖（夾爪最下緣）離紙的高度（mm；空白=沒量）: ")
+            else:
+                held = hand_pose(arm, pitch)
+                if held is None:
+                    return 0
+                gap = S7._ask_float("    指尖離紙面的間隙（mm；拿卡片或直尺從旁邊比一下；空白=沒量）: ")
             if gap == "q":
                 return 0
             fk_z = fk_tip_above_table_cm(held, args.riser_m)
@@ -279,26 +315,34 @@ def cmd_session(args) -> int:
                     if (circle, sweep, f"{tgt:.2f}") in done:
                         continue
                     arm.move_to(dict(arm.goal, shoulder_pan=float(tgt)), 1.5)
-                    time.sleep(args.settle)
-                    left = arm.hold(held, pitch)   # keep the pitch joints on the locked pose, so every station is on one circle
-                    if max(abs(v) for v in left.values()) >= 0.3:
-                        print(f"    ⚠️  補不回鎖住的位置，剩 {left}（單位）")
+                    time.sleep(settle)
+                    if not ps:   # hand-posed: keep the pitch joints on the locked pose, so every station is on one circle
+                        left = arm.hold(held, pitch)
+                        if max(abs(v) for v in left.values()) >= 0.3:
+                            print(f"    ⚠️  補不回鎖住的位置，剩 {left}（單位）")
                     st = arm.read_avg()
                     drift = {j: round(st[j] - held[j], 1) for j in ("shoulder_lift", "elbow_flex", "wrist_flex")
                              if abs(st[j] - held[j]) > 1.0}
                     if drift:
                         print(f"    ⚠️  其他關節跑掉了 {drift}（單位），這一站的點會落在不同半徑上")
-                    xy = ask_xy(f"    pan {st['shoulder_pan']:+6.1f}：指尖正下方的座標 x y（cm）: ")
+                    xy = ask_xy(f"    pan {st['shoulder_pan']:+6.1f}：{'重物' if ps else '指尖'}正下方的座標 x y（cm）: ")
                     if xy == "q":
                         return 0
                     if xy is None:
                         continue
                     append_row(csv_path, {"circle": circle, "sweep": sweep, "pan_target": round(float(tgt), 2),
-                                          "paper_x_cm": xy[0], "paper_y_cm": xy[1], "note": "",
+                                          "paper_x_cm": xy[0], "paper_y_cm": xy[1],
+                                          "note": f"plumb line, pose {ps['id']}" if ps else "",
                                           "tip_gap_mm": "" if gap is None else gap, "fk_tip_above_table_cm": round(fk_z, 3),
                                           **{f"state_{j}": round(st[j], 3) for j in JOINTS}})
-            print("    這個圓量完。把夾爪抬離紙面……")
-            arm.move_to(dict(arm.goal, wrist_flex=arm.goal["wrist_flex"] - 8.0), 1.5)
+            if ps:
+                if S7._ask("    這個圓量完。把線和重物拆掉，拆好按 Enter，手臂沿原路徑退回起始姿勢（q = 停在這裡）: ").lower() == "q":
+                    return 0
+                arm.move_to(dict(arm.goal, shoulder_pan=ps["path"][-1][0]), 3.0)
+                arm.follow([pt[:5] + [args.gripper_closed] for pt in reversed(ps["path"])], 0.4)
+            else:
+                print("    這個圓量完。把夾爪抬離紙面……")
+                arm.move_to(dict(arm.goal, wrist_flex=arm.goal["wrist_flex"] - 8.0), 1.5)
         print(f"\n完成，扭力開著。下一步：python scripts/measure_pan_circle.py solve --csv {csv_path}")
     return 0
 
@@ -428,7 +472,10 @@ def main() -> int:
                     help="approach every stop from the same side: start this far past the first stop")
     se.add_argument("--no-reverse", dest="reverse", action="store_false", help="skip the backlash sweep")
     se.add_argument("--gripper-closed", type=float, default=50.5)
-    se.add_argument("--settle", type=float, default=1.0)
+    se.add_argument("--settle", type=float, default=None, help="seconds after each pan stop (default 3 with --plan, else 1)")
+    se.add_argument("--plan", default=None, help="S7 pose plan JSON: park the arm on --poses along their recorded paths "
+                    "and read a plumb line (recommended, spec §4)")
+    se.add_argument("--poses", default="P02,P03", help="with --plan: one circle per pose id, near first")
     se.add_argument("--riser-m", type=float, default=0.146,
                     help="table -> underside of the base plate (scene_constants.ARM_RISER_HEIGHT); for the closure print")
     se.set_defaults(func=cmd_session)
