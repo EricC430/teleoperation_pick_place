@@ -198,11 +198,24 @@ def hand_pose(arm, joints: list[str]) -> dict[str, float] | None:
     pos = arm.read_avg()
     arm.set_goal(pos)
     bus.enable_torque(num_retry=2)
-    print("    已鎖住。慢慢放手（卡片先不要抽），手完全離開後按 Enter：我會把下垂補回鎖住的位置。")
-    if not ok or S7._ask("    放開了按 Enter（q 結束）: ").lower() == "q":
+    print("    已鎖住。慢慢放手，再把卡片抽掉（指尖若掉到紙上沒關係，下一步會補回）。")
+    # The sag only appears once the CARD is gone too: resting on the card the servos carry no load, so a hold() done
+    # there corrects nothing [已查證 2026-10-12: residual 0.0, then the tip dropped onto the paper when the card came out].
+    if not ok or S7._ask("    手放開、卡片抽掉後按 Enter（q 結束）: ").lower() == "q":
         return None
     left = arm.hold(pos, joints)
-    print(f"    已補回，剩餘誤差 {left}（單位；< 0.3 算到位）。現在抽掉卡片。")
+    sag = {j: round(arm.goal[j] - pos[j], 2) for j in joints}
+    print(f"    已把下垂補回：補了 {sag}（單位），剩餘誤差 {left}（< 0.3 算到位）。")
+    # Encoders cannot see link flex (S7 load test: up to ~4 deg), so the operator checks the real gap and nudges lift.
+    while True:
+        k = S7._ask("    看指尖離紙的高度：u = 抬高一點（lift −0.3 單位，約 1–2 mm），d = 降低一點，Enter = 高度可以了，q = 結束: ").lower()
+        if k == "q":
+            return None
+        if k not in ("u", "d"):
+            break
+        step = -0.3 if k == "u" else 0.3
+        pos["shoulder_lift"] += step
+        arm.move_to(dict(arm.goal, shoulder_lift=arm.goal["shoulder_lift"] + step), 0.3)
     return pos
 
 
@@ -250,7 +263,7 @@ def cmd_session(args) -> int:
             held = hand_pose(arm, pitch)
             if held is None:
                 return 0
-            gap = S7._ask_float("    指尖離紙面的間隙（mm；用已知厚度的卡片墊著擺姿勢最準，鎖住後抽掉卡片；空白=沒量）: ")
+            gap = S7._ask_float("    指尖離紙面的間隙（mm；拿卡片或直尺從旁邊比一下；空白=沒量）: ")
             if gap == "q":
                 return 0
             fk_z = fk_tip_above_table_cm(held, args.riser_m)
@@ -267,7 +280,9 @@ def cmd_session(args) -> int:
                         continue
                     arm.move_to(dict(arm.goal, shoulder_pan=float(tgt)), 1.5)
                     time.sleep(args.settle)
-                    arm.hold(held, pitch)   # keep the pitch joints on the locked pose, so every station is on one circle
+                    left = arm.hold(held, pitch)   # keep the pitch joints on the locked pose, so every station is on one circle
+                    if max(abs(v) for v in left.values()) >= 0.3:
+                        print(f"    ⚠️  補不回鎖住的位置，剩 {left}（單位）")
                     st = arm.read_avg()
                     drift = {j: round(st[j] - held[j], 1) for j in ("shoulder_lift", "elbow_flex", "wrist_flex")
                              if abs(st[j] - held[j]) > 1.0}
