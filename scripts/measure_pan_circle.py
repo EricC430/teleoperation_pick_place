@@ -222,6 +222,31 @@ def hand_pose(arm, joints: list[str]) -> dict[str, float] | None:
     return pos
 
 
+def choose_arc(arm, lo: float, hi: float, step_deg: float = 10.0, min_span_deg: float = 60.0):
+    """Turn pan to each end of the sweep and let the operator pull it in (S8 §4). [柏宇說 2026-10-12] on P02 the
+    first stop (-60 deg) was too far right. Pulling in ONE end of the near circle costs little: simulated centre error
+    (95%, 0.12 cm reading noise) 0.24 cm with both circles +-60 deg, 0.28-0.29 cm with the near one at -35 or -20..+60,
+    but 0.36 cm with both at +-45. Returns (lo, hi) in pan units, or None to quit."""
+    du = deg_per_unit_nominal()
+    for end in ("start", "end"):
+        while True:
+            val = lo if end == "start" else hi
+            arm.move_to(dict(arm.goal, shoulder_pan=val), 2.5)
+            k = S7._ask(f"    pan {val:+.1f}（掃描的{'起點' if end == 'start' else '終點'}，約 {val * du:+.0f}°）：指尖在紙上方、手臂沒碰到任何東西？"
+                        f"Enter = 可以，n = 往中間縮 {step_deg:.0f}°，q = 結束: ").lower()
+            if k == "q":
+                return None
+            if k != "n":
+                break
+            if end == "start":
+                lo += step_deg / du
+            else:
+                hi -= step_deg / du
+            if (hi - lo) * du < min_span_deg:
+                print(f"    ⚠️  範圍只剩 {(hi - lo) * du:.0f}°，圓心會不準；換一個半徑比較大的姿勢（--poses）比較好")
+    return lo, hi
+
+
 def ask_xy(prompt: str):
     while True:
         raw = S7._ask(prompt)
@@ -288,9 +313,14 @@ def cmd_session(args) -> int:
                 return 0
             if go == "s":
                 continue
+            circle_targets = targets
             if ps:
                 arm.follow([pt[:5] + [args.gripper_closed] for pt in ps["path"]], 0.4)
-                arm.move_to(dict(arm.goal, shoulder_pan=targets[0] - args.preload_units), 3.0)
+                arc = choose_arc(arm, targets[0], targets[-1])
+                if arc is None:
+                    return 0
+                circle_targets = list(np.linspace(arc[0], arc[1], args.points))
+                arm.move_to(dict(arm.goal, shoulder_pan=circle_targets[0] - args.preload_units), 3.0)
                 time.sleep(1.0)
                 held = arm.read_avg()
                 print("    在閉合的指尖綁一條細線，下面吊一個小重物；調整線長，讓重物離紙約 2–3 mm（不要碰到紙）。")
@@ -305,7 +335,7 @@ def cmd_session(args) -> int:
             fk_z = fk_tip_above_table_cm(held, args.riser_m)
             print(f"    FK（現行常數、底座 {args.riser_m * 100:.1f} cm）說指尖在桌面上 {fk_z:.2f} cm"
                   + ("" if gap is None else f"；你量 {gap / 10:.2f} cm → 差 {fk_z - gap / 10:+.2f} cm"))
-            for sweep, seq in (("up", targets), ("down", targets[::-1][::2] if args.reverse else [])):
+            for sweep, seq in (("up", circle_targets), ("down", circle_targets[::-1][::2] if args.reverse else [])):
                 if not seq:
                     continue
                 if sweep == "down":
