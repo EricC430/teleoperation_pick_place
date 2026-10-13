@@ -65,13 +65,19 @@ class Joint:
         return math.radians(self.factory_lo_deg), math.radians(self.factory_hi_deg)
 
 
+# 🔴 [已查證 2026-10-12, read off OUR follower's bus] the motors are NOT the ROBOTIS OMX-F spec page's (09-03):
+#    IDs 11-13 (shoulder_pan, shoulder_lift, elbow_flex) report model 1060 = XL430-W250 at 11.6-11.7 V, and IDs 14-16
+#    (wrist_flex, wrist_roll, gripper) report model 1200 = XL330-M288 at 5.0 V. The spec page lists lift/elbow as
+#    XL330-M288 and the gripper as XL330-M077; that made the sim's lift/elbow ~1/3 and its gripper ~40% of the real
+#    torque. Changed 2026-10-14 [柏宇決定]. Assets built before this (assets/omx_f_generated/omx_f.usd) still carry
+#    the old maxForce/stiffness until convert_omx_urdf.py is rerun.
 JOINTS: tuple[Joint, ...] = (
     Joint("joint1", "shoulder_pan", XL430_W250, -270.0, 360.0),
-    Joint("joint2", "shoulder_lift", XL330_M288, -120.0, 90.0),
-    Joint("joint3", "elbow_flex", XL330_M288, -120.0, 90.0),
+    Joint("joint2", "shoulder_lift", XL430_W250, -120.0, 90.0),
+    Joint("joint3", "elbow_flex", XL430_W250, -120.0, 90.0),
     Joint("joint4", "wrist_flex", XL330_M288, -100.0, 100.0),
     Joint("joint5", "wrist_roll", XL330_M288, -270.0, 270.0),
-    Joint("gripper_joint_1", "gripper", XL330_M077, 0.0, 100.0),
+    Joint("gripper_joint_1", "gripper", XL330_M288, 0.0, 100.0),
 )
 
 # `gripper_joint_2` mirrors `gripper_joint_1` with multiplier -1.

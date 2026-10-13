@@ -1779,6 +1779,8 @@ URDF 七個 joint 全部是 `lower="-6.283" upper="6.283" effort="1000" velocity
 OMX-F 整體：**5+1 DOF、full reach 400 mm、560 g、12 VDC、payload 100 g @full reach / 250 g @normal reach**。
 OMX-L（leader）：J1–J5 皆 XL330-M288-T、J6 XL330-M077-T、reach 335 mm、360 g、5 VDC。
 
+> 🔴 **2026-10-14 更正**：上表的 follower 馬達欄和我們這台不符。2026-10-12 從匯流排讀到的型號是：J1–J3＝XL430-W250（型號 1060），J4、J5、夾爪＝XL330-M288（型號 1200）。正本已改在 `sim/omx_constants.py`，細節見 S4 §2-1 的更正。
+
 - 💡 **交叉驗證：原廠 full reach 400 mm vs S1 捲尺量到的 r_outer ≈ 410 mm（含 d_offset 5 cm）——兩者互相印證。**
 - 🔴 **payload 100 g @ full reach 要進 `experiment_spec.md` §2 物體清單**：空鋁罐（≈15 g）沒問題，
   **裝滿的鋁罐（≈330 g）超出規格**。這是硬體限制，不是操作技巧問題。
