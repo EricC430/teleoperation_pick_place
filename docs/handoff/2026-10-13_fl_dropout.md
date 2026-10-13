@@ -38,6 +38,9 @@
 - 窗口內 200 幀被遮 71 幀（p = 0.3 時期望 60，在抽樣誤差內）；窗口外 200 幀被遮 0 幀；手腕畫面從未被遮。
 - dataset pickle 之後 class 和參數都還在；用 spawn worker 的 DataLoader（lerobot 的預設）時，窗口內被遮 64/240 = 0.27。
 - **沒驗證**：完整的 `lerobot-train`。Windows 的 venv 沒有裝 `accelerate`，訓練本來就只在 4090 的 docker 裡跑。所以下面第 2 步要先跑 200 步。
+- 4090 補驗（2026-10-14）`[已查證]`：200 步冒煙測試 `exit=0`，`episodes` 129、`episodes_without_close` 空、`expected_masked_fraction` 0.0282，每步 0.31 s（與 aug 版相同）。
+  用 `make_train_eval_datasets` 建出的資料集抽樣（`data/logs/fldrop_check/check.py`）：front-left 的 `RandomAffine` 仍有作用（同一幀抽 6 次畫面都不同），
+  窗口外 0/6 被遮、窗口內 56/200 被遮、手腕 0/50 被遮。`__getitem__` 回傳的影像是 uint8（0–255），與腳本 docstring 一致。
 
 ## 步驟
 
@@ -87,7 +90,7 @@ H1_CKPT=<新模型的 snapshot 資料夾> uv run python scripts/input_reliance/h
 | uvc60 100k（10-07 的模型；與 10-07 紀錄完全相同） | +0.10（IQR −0.08～+0.31） | +0.15（+0.03～+0.44） | +0.48 | +0.67 |
 | **ntcfA1aug 100k（基底）** | **+0.05**（−0.18～+0.33） | **+0.21**（−0.14～+0.78） | +0.52 | +0.58 |
 
-- 通過標準 `[AI提議，待柏宇確認]`：兩個時間點的手腕修正比例中位數都 ≥ 0.3，而且同樣 15 幀逐幀比較時，至少 11 幀比 ntcfA1aug 高。
+- 通過標準 `[AI提議，柏宇 2026-10-14 確認]`：兩個時間點的手腕修正比例中位數都 ≥ 0.3，而且同樣 15 幀逐幀比較時，至少 11 幀比 ntcfA1aug 高。
   front-left 跟隨比例下降不算失敗，那正是想要的分工。
 - 沒通過時，**先把 p 調高（例如 0.5）再訓練一次**，不要直接下「dropout 沒用」的結論：實際被遮的樣本只有約 3%。
 
