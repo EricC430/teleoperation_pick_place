@@ -48,10 +48,10 @@
 | `0319057c1d65` | `cup_uvc60_normal_tightcut_far_A1` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far_100k` | 紙杯 | 同上 | — |
 | `63329a748421` | `cup_uvc60_normal_tight_far_A1_aug` / 20k | `act_omx_b1_paper-cup_60-13-10rcvry-46far-aug_20k` | 紙杯 | 同 `cup_uvc60_normal_tight_far_A1`，加隨機平移增強（`configs/train_omx_cup_uvc60_normal_tight_far_A1_aug.yaml`；理由見 `docs/handoff/2026-10-13_aug_retrain.md`） | — |
 | `f6dfcff27ca7` | `cup_uvc60_normal_tight_far_A1_aug` / 40k | `act_omx_b1_paper-cup_60-13-10rcvry-46far-aug_40k` | 紙杯 | 同上 | — |
-| `23c53e3026bb` | `cup_uvc60_normal_tight_far_A1_aug` / 100k | `act_omx_b1_paper-cup_60-13-10rcvry-46far-aug_100k` | 紙杯 | 同上 | — |
+| `23c53e3026bb` | `cup_uvc60_normal_tight_far_A1_aug` / 100k | `act_omx_b1_paper-cup_60-13-10rcvry-46far-aug_100k` | 紙杯 | 同上 | 10/13 `__67c20c30`（`2026-10-13_closed_loop.md`） |
 | `e0894f917c32` | `cup_uvc60_normal_tightcut_far_A1_aug` / 20k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug_20k` | 紙杯 | 同 `cup_uvc60_normal_tightcut_far_A1`，加隨機平移增強（`configs/train_omx_cup_uvc60_normal_tightcut_far_A1_aug.yaml`） | — |
 | `f877d679843f` | `cup_uvc60_normal_tightcut_far_A1_aug` / 40k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug_40k` | 紙杯 | 同上 | — |
-| `286a49c37d4e` | `cup_uvc60_normal_tightcut_far_A1_aug` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug_100k` | 紙杯 | 同上 | — |
+| `286a49c37d4e` | `cup_uvc60_normal_tightcut_far_A1_aug` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug_100k` | 紙杯 | 同上 | 10/13 `__98627c1e`（`2026-10-13_closed_loop.md`） |
 
 未列：60k／80k checkpoint（沒上 Hub、沒閉環過）、`my-002`／`smoke-001`／`perf-*`／`openloop-eval`（煙霧測試與效能測試）。
 

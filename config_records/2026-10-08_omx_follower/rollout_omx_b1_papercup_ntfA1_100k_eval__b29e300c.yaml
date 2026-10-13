@@ -1,0 +1,82 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/rollout_omx_b1_papercup_ntfA1_100k_eval.yaml
+# saved_at:      2026-10-13T00:03:49
+# entrypoint:    lerobot-rollout-labeled
+# cli overrides: --policy.path=ericc430/act_omx_b1_paper-cup_60-13-10rcvry-46far_100k --policy.n_action_steps=30
+# ids:           robot=2026-10-08_omx_follower
+# git:           ecf293a (config file committed)
+# digest:        b29e300c  (sha256[:8] of the YAML below + the CLI overrides)
+# RECORDED closed-loop evaluation of ericc430/act_omx_b1_paper-cup_60-13-10rcvry-46far_100k (paper cup, "ntfA1").
+# Model: ACT 100k steps on uvc_60 + normal_A1 + recovery_A1_tight + far_wrist_A1 (137 eps, 8 excluded -> 129),
+# chunk_size 100, sha256 e97526c13766 (docs/models.md). Only the 100k checkpoint is on the Hub.
+# Run it with scripts/rollout_labeled.py (verdict keys -> episode_meta CSV):
+#
+#   uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_b1_papercup_ntfA1_100k_eval.yaml --policy.path=ericc430/act_omx_b1_paper-cup_60-13-10rcvry-46far_100k --policy.n_action_steps=30 --meta-template paper_cup_A1
+#
+# KEEP THIS FILE ASCII-ONLY (lerobot opens it as cp950 when policy.path is set).
+# policy.n_action_steps must be given on the command line together with --policy.path (2026-10-05 note).
+# Copied from rollout_omx_b1_papercup_60_16_12rcvry_100k_eval.yaml; only policy.path and dataset.repo_id differ
+# (repo_id carries nas30 so runs with different n_action_steps are told apart by name, unlike the two 10-08 files).
+# Comparison target is the 10-08 evening ntA1 run C (record __2a7a2415): N=30, 30 s, c1..c36, started from HOME.
+# Before running, in this order: read_joint_pose.py --goto-home --home-episode 10, lerobot-find-cameras opencv (wrist index), align_camera.py.
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-10-08_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: opencv_uvc
+      index_or_path: 2
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 15
+      fourcc: YUY2
+      exposure: -5
+      gain: 0
+      white_balance: null
+    front-left:
+      type: intelrealsense_pinned
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+      exposure: 400
+      gain: 70
+      white_balance: null
+
+policy:
+  path: ericc430/act_omx_b1_paper-cup_60-13-10rcvry-46far_100k  # private; cached at D:\hf\hub (downloaded 2026-10-12)
+
+strategy:
+  type: episodic
+  reset_to_initial_position: true   # no teleop: arm goes back to its startup pose between trials
+
+inference:
+  type: sync
+
+dataset:
+  repo_id: ericc430/rollout_omx_b1_papercup_60_13_10rcvry_46far_100k_nas30_paper_cup   # must start with rollout_; timestamp appended; nas30 = n_action_steps (keep in sync with the CLI)
+  single_task: "Pick up the object and place it into the box"   # same string as training
+  fps: 15                  # must match camera fps
+  num_episodes: 36         # same as 10-06 / 10-08 (template paper_cup_A1 = c1..c36)
+  episode_time_s: 30
+  reset_time_s: 120        # time to re-place the cup; Right/Up ends it early
+  video: true
+  push_to_hub: false       # upload later by hand once the session looks right
+  private: true
+  streaming_encoding: false
+  encoder_threads: 2
+  rgb_encoder:
+    vcodec: h264
+    preset: veryfast
+    crf: 23
+    pix_fmt: yuv420p
+
+fps: 15
+task: "Pick up the object and place it into the box"
+display_data: true
+return_to_initial_position: true
