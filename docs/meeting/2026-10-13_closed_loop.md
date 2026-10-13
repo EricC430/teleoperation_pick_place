@@ -113,4 +113,4 @@ hash ↔ run／step 見 `docs/models.md`。
       交代、驗收標準與 ntcfA1aug 基準值見 `docs/handoff/2026-10-13_fl_dropout.md`。
 - [ ] 補記兩場閉環當下的 align 讀數，如果有截圖或記憶的話。
 - [ ] ntcfA1aug 那場的現場觀察（目前只有 CSV）。
-- [ ] 確認 FL dropout 的離線通過標準（handoff「驗收」：手腕修正比例中位數 ≥ 0.3，且 15 幀中至少 11 幀高於 ntcfA1aug）
+- [x] FL dropout 的離線通過標準：暫定為手腕修正比例中位數 ≥ 0.3，且 15 幀中至少 11 幀高於 ntcfA1aug `[柏宇同意暫定]`（handoff「驗收」）
