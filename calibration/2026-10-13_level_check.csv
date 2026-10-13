@@ -1,0 +1,7 @@
+surface,direction,reading_deg,reading_rev_deg,note
+riser_top,x_forward,-0.45,,"[柏宇說 2026-10-13] 檯面 x, RAW App 0.45, negated to arrow-end-higher-positive by the 2026-10-10 App sign test. Taken after the setup was accidentally disturbed, i.e. AFTER S7 (10-10/10-12) and S8 (10-12); before (10-10): +2.0/+2.4"
+riser_top,y_left,1.45,,"[柏宇說 2026-10-13] 檯面 y, RAW App value; SIGN UNVERIFIED (the App sign test covered x only)"
+base_plate_top,x_forward,-0.55,,"[柏宇說 2026-10-13] 手臂底座 x, RAW App 0.55, negated as above. Before (10-10): -0.8/-1.4. Base vs riser now -0.1 deg (was -3.3)"
+base_plate_top,y_left,0.0,,"[柏宇說 2026-10-13] 手臂底座 y, RAW App value; sign unverified"
+riser_top,heading_compass,271,,"[柏宇說 2026-10-13] phone compass, phone pointing to the arm's left: W 271 deg"
+base_plate_front_and_rear_edges,heading_compass,271,,"[柏宇說 2026-10-13] same reading on the base plate's front and rear edges -> no yaw of the base on the riser within compass precision"
