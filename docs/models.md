@@ -17,7 +17,7 @@
   Hub 上 10/6 之後沒有新的 rollout dataset、`docs/meeting/2026-10-10_open_loop.md` 的「閉環評估（ntfA1／ntcfA1）」待辦仍未勾。
   這是「沒有紀錄」，不等於確定沒跑過；之後如果跑了閉環，用 record digest 取代 —。
   10-13：ntfA1 100k（`e97526c13766`）試跑一場、作廢，見該列。
-  2026-10-13 加的 `cup_uvc60_normal_tight_far_A1_aug` 三列：hash 是直接 `sha256sum` 本機檔案算的，也和開環的 log 對過；同日上 Hub（private），Hub API 的 LFS oid 對過，一致。
+  2026-10-13 加的 `cup_uvc60_normal_tight_far_A1_aug`／`cup_uvc60_normal_tightcut_far_A1_aug` 六列：hash 是直接 `sha256sum` 本機檔案算的，也和開環的 log 對過；同日上 Hub（private），Hub API 的 LFS oid 對過，一致。
 
 ## ACT／Diffusion 模型
 
@@ -49,6 +49,9 @@
 | `63329a748421` | `cup_uvc60_normal_tight_far_A1_aug` / 20k | `act_omx_b1_paper-cup_60-13-10rcvry-46far-aug_20k` | 紙杯 | 同 `cup_uvc60_normal_tight_far_A1`，加隨機平移增強（`configs/train_omx_cup_uvc60_normal_tight_far_A1_aug.yaml`；理由見 `docs/handoff/2026-10-13_aug_retrain.md`） | — |
 | `f6dfcff27ca7` | `cup_uvc60_normal_tight_far_A1_aug` / 40k | `act_omx_b1_paper-cup_60-13-10rcvry-46far-aug_40k` | 紙杯 | 同上 | — |
 | `23c53e3026bb` | `cup_uvc60_normal_tight_far_A1_aug` / 100k | `act_omx_b1_paper-cup_60-13-10rcvry-46far-aug_100k` | 紙杯 | 同上 | — |
+| `e0894f917c32` | `cup_uvc60_normal_tightcut_far_A1_aug` / 20k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug_20k` | 紙杯 | 同 `cup_uvc60_normal_tightcut_far_A1`，加隨機平移增強（`configs/train_omx_cup_uvc60_normal_tightcut_far_A1_aug.yaml`） | — |
+| `f877d679843f` | `cup_uvc60_normal_tightcut_far_A1_aug` / 40k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug_40k` | 紙杯 | 同上 | — |
+| `286a49c37d4e` | `cup_uvc60_normal_tightcut_far_A1_aug` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug_100k` | 紙杯 | 同上 | — |
 
 未列：60k／80k checkpoint（沒上 Hub、沒閉環過）、`my-002`／`smoke-001`／`perf-*`／`openloop-eval`（煙霧測試與效能測試）。
 
