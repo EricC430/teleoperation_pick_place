@@ -18,6 +18,9 @@ Model (all in the mat frame: origin on the pan axis at the table, +x ahead, +y l
   lengths      optional (--free-lengths): a scale on the upper arm (joint2->3 vector, direction kept: its angle is the
                lift offset) and on the forearm (joint3->4). joint5's x is not identifiable (ID6's mount absorbs it).
                First free fit (10-14, every origin free) put both links ~4 mm (3.4 %) longer than the URDF.
+  marker size  optional (--free-marker-size): one scale on the 60 mm of the three ARM markers. 10-14: with free link
+               scales the fit said upper arm 124.4 / forearm 165.7 mm, but a ruler (axis to axis, [柏宇說]) reads
+               120.5 / 163 mm -- URDF 120.5 / 162. A marker smaller than assumed makes the whole arm look bigger.
   mat scale    optional (--free-mat-scale): true metres per mat metre. The paper centres are in mat units (a printed
                grid), the arm-marker corners in true metres (60 mm), so a printer-scaled mat shows up here.
 Residuals: the 4 corners of each arm marker (60 mm [柏宇說 2026-10-14: all markers are 6 cm]) and the centre of each
@@ -157,6 +160,7 @@ class Model:
         self.free_lengths = free_lengths
         self.inertials = inertials
         self.q_off_fixed = base_q_offset.copy()
+        self.base_chain = [tuple(c) for c in fk._CHAIN]
         names = ["cam_r0", "cam_r1", "cam_r2", "cam_x", "cam_y", "cam_z",
                  "base_r0", "base_r1", "base_r2", "base_x", "base_y", "base_z",
                  "off_lift", "off_elbow", "off_flex", "sag_lift", "sag_elbow", "sag_flex"]
@@ -166,7 +170,7 @@ class Model:
             names += [f"id{mid}_{a}" for a in ("r0", "r1", "r2", "x", "y", "z")]
         if free_lengths:
             names += ["scale_upper", "scale_fore"]
-        names += ["mat_scale"]
+        names += ["mat_scale", "marker_scale"]
         self.names = names
         self.idx = {n: i for i, n in enumerate(names)}
         self.n_id1 = n_id1
@@ -181,10 +185,10 @@ class Model:
         mounts = {("id1", k): T(x[self.idx[f"id1m{k}_r0"]:self.idx[f"id1m{k}_r0"] + 3], x[self.idx[f"id1m{k}_x"]:self.idx[f"id1m{k}_x"] + 3]) for k in range(self.n_id1)}
         for mid in (5, 6):
             mounts[(f"id{mid}", 0)] = T(x[self.idx[f"id{mid}_r0"]:self.idx[f"id{mid}_r0"] + 3], x[self.idx[f"id{mid}_x"]:self.idx[f"id{mid}_x"] + 3])
-        chain = [list(c) for c in fk._CHAIN]
+        chain = [list(c) for c in self.base_chain]
         if self.free_lengths:
-            chain[2][0] = tuple(g("scale_upper") * v for v in fk._CHAIN[2][0])
-            chain[3][0] = tuple(g("scale_fore") * v for v in fk._CHAIN[3][0])
+            chain[2][0] = tuple(g("scale_upper") * v for v in self.base_chain[2][0])
+            chain[3][0] = tuple(g("scale_fore") * v for v in self.base_chain[3][0])
         return cam, base, off, sag, mounts, chain
 
     def link_frames(self, x, state, cache=None):
@@ -226,7 +230,7 @@ def residuals(x, model, stills, Kmat, paper_w, seg, which=None):
                 continue
             key = ("id1", seg[s["pose_id"]]) if i == 1 else (f"id{i}", 0)
             mw = frames[ARM_LINK[i] - 1] @ mounts[key]
-            pw = (mw[:3, :3] @ CORNERS.T).T + mw[:3, 3]
+            pw = (mw[:3, :3] @ (x[model.idx["marker_scale"]] * CORNERS).T).T + mw[:3, 3]
             res.append((project(Kmat, cam, pw) - d[i]).ravel())
     return np.concatenate(res) if res else np.zeros(0)
 
@@ -281,6 +285,8 @@ def main() -> int:
                     help="initial joint offsets: S7 (calibration/2026-10-10_link_tilt_fit.json) or joint_mapping.py")
     ap.add_argument("--free-lengths", action="store_true")
     ap.add_argument("--free-mat-scale", action="store_true")
+    ap.add_argument("--free-marker-size", action="store_true")
+    ap.add_argument("--fore-mm", type=float, default=None, help="forearm joint3->4 length to use instead of the URDF's")
     ap.add_argument("--no-sag", action="store_true")
     ap.add_argument("--out", default="")
     args = ap.parse_args()
@@ -307,6 +313,8 @@ def main() -> int:
         off0 = np.array([jm.OFFSET_RAD[n] for n in jm.LEROBOT_NAMES[:5]])
     off0[0] = jm.OFFSET_RAD["shoulder_pan"]
     model = Model(3, args.free_lengths, urdf_inertials(), off0)
+    if args.fore_mm:
+        model.base_chain[3] = ((args.fore_mm / 1000.0, 0.0, 0.0), fk._CHAIN[3][1])
     x = np.zeros(len(model.names))
     wfc = init_camera(stills, Kmat, paper_w)
     x[0:3] = R.from_matrix(wfc[:3, :3]).as_rotvec(); x[3:6] = wfc[:3, 3]
@@ -314,7 +322,7 @@ def main() -> int:
     x[model.idx["off_lift"]:model.idx["off_flex"] + 1] = off0[1:4]
     if args.free_lengths:
         x[model.idx["scale_upper"]] = x[model.idx["scale_fore"]] = 1.0
-    x[model.idx["mat_scale"]] = 1.0
+    x[model.idx["mat_scale"]] = x[model.idx["marker_scale"]] = 1.0
     inits = init_mounts(train, model, x, Kmat, seg)
     for key in [("id1", 0), ("id1", 1), ("id1", 2), ("id5", 0), ("id6", 0)]:
         if key not in inits:
@@ -326,6 +334,8 @@ def main() -> int:
         x[model.idx[f"{pre}_x"]:model.idx[f"{pre}_x"] + 3] = t
 
     lo = np.full(len(x), -np.inf); hi = np.full(len(x), np.inf)
+    if not args.free_marker_size:
+        lo[model.idx["marker_scale"]], hi[model.idx["marker_scale"]] = 1.0 - 1e-12, 1.0 + 1e-12
     if not args.free_mat_scale:
         lo[model.idx["mat_scale"]], hi[model.idx["mat_scale"]] = 1.0 - 1e-12, 1.0 + 1e-12
     if args.no_sag:
@@ -364,6 +374,9 @@ def main() -> int:
         up, fo = np.linalg.norm(fk._CHAIN[2][0]), fk._CHAIN[3][0][0]
         for n, u in (("scale_upper", up), ("scale_fore", fo)):
             print(f"{n}: {x[model.idx[n]]:.4f} ± {sd[model.idx[n]]:.4f} -> {x[model.idx[n]]*u*1000:.1f} mm (URDF {u*1000:.1f})")
+    if args.free_marker_size:
+        ms_ = x[model.idx["marker_scale"]]
+        print(f"arm marker size: {ms_ * MARKER_M * 1000:.2f} ± {sd[model.idx['marker_scale']] * MARKER_M * 1000:.2f} mm (assumed 60)")
     if args.free_mat_scale:
         print(f"mat_scale (true m per mat m): {x[model.idx['mat_scale']]:.4f} ± {sd[model.idx['mat_scale']]:.4f}")
     i_lift, i_pitch = model.idx["off_lift"], model.idx["base_r1"]
@@ -386,9 +399,9 @@ def main() -> int:
             frames, _ = model.link_frames(x, s["state"])
             key = ("id1", seg[s["pose_id"]]) if i == 1 else (f"id{i}", 0)
             mw = frames[ARM_LINK[i] - 1] @ mounts_[key]
-            pw = (mw[:3, :3] @ CORNERS.T).T + mw[:3, 3]
+            pw = (mw[:3, :3] @ (x[model.idx["marker_scale"]] * CORNERS).T).T + mw[:3, 3]
             errs.append(np.linalg.norm(project(Kmat, cam_, pw) - s["det"][i], axis=1).mean())
-            ok, rv, tv = cv2.solvePnP(np.c_[CORNERS[:, :2], np.zeros(4)], s["det"][i], Kmat, None, flags=cv2.SOLVEPNP_IPPE_SQUARE)
+            ok, rv, tv = cv2.solvePnP(np.c_[x[model.idx["marker_scale"]] * CORNERS[:, :2], np.zeros(4)], s["det"][i], Kmat, None, flags=cv2.SOLVEPNP_IPPE_SQUARE)
             meas = cam_ @ T(rv.ravel(), tv.ravel())
             pos_err.append(np.linalg.norm(meas[:3, 3] - mw[:3, 3]) * 1000)
         return np.array(errs), np.array(pos_err)
