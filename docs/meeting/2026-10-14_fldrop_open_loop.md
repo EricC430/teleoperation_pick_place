@@ -1,14 +1,14 @@
-# 2026-10-14 工作紀錄：ntcfA1aug ＋接近段 front-left dropout（ntcfA1augfd）的訓練、h6 與開環
+# 2026-10-14 工作紀錄：ntcfA1aug ＋接近段 front-left dropout（fldrop30）的訓練、h6 與開環
 
 參與：柏宇、Claude（AI） ｜ 性質：分析工作紀錄，非會議
 
 為什麼做、參數、驗收標準：`docs/handoff/2026-10-13_fl_dropout.md`（本檔不重寫）。
-hash ↔ run／step／Hub 見 `docs/models.md`（本次新增 3 列）。簡稱沿用 `outputs/open_loop_paper_cup/` 的目錄前綴：
+hash ↔ run／step／Hub 見 `docs/models.md`（本次新增 3 列）。簡稱：基底沿用 `outputs/open_loop_paper_cup/` 的目錄前綴；dropout 版統一叫 **fldrop30**（柏宇 2026-10-14 定），但 4090 上已經產生的檔名、目錄名仍是 `ntcfA1augfd`（下面路徑照實寫，不改）：
 
 | 簡稱 | 本機 run | 20k / 40k / 100k |
 |---|---|---|
 | ntcfA1aug（基底） | `cup_uvc60_normal_tightcut_far_A1_aug` | `e0894f917c32` / `f877d679843f` / `286a49c37d4e` |
-| ntcfA1augfd | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30` | `74029f33e571` / `4d954bc6d1c7` / `7701bdd277ad` |
+| fldrop30 | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30` | `74029f33e571` / `4d954bc6d1c7` / `7701bdd277ad` |
 
 ## 1. 做了什麼 `[已查證]`
 
@@ -28,9 +28,9 @@ hash ↔ run／step／Hub 見 `docs/models.md`（本次新增 3 列）。簡稱�
 | 模型 | normal_A1 13 集：原始 → FL 平移 → 手腕灰 | far_wrist 12 集：原始 → FL 平移 → 手腕灰（中位數） |
 |---|---|---|
 | ntcfA1aug 100k | 0 → 0 → 0（+8.1 → +8.1 → +8.0） | 10 → 10 → 10（+41.7 → +41.3 → +41.3） |
-| ntcfA1augfd 100k | 0 → 0 → 0（+8.4 → +8.5 → +8.3） | 10 → 10 → 10（+42.7 → +42.5 → **+39.5**） |
-| ntcfA1augfd 40k | 0 → 0 → 0（+8.6 → +8.8 → +9.3） | 10 → **11** → 10（+44.3 → +43.1 → **+39.9**） |
-| ntcfA1augfd 20k | 0 → 0 → 0（+10.2 → +9.4 → +9.4） | 10 → 10 → 10（+44.1 → +43.4 → **+38.7**） |
+| fldrop30 100k | 0 → 0 → 0（+8.4 → +8.5 → +8.3） | 10 → 10 → 10（+42.7 → +42.5 → **+39.5**） |
+| fldrop30 40k | 0 → 0 → 0（+8.6 → +8.8 → +9.3） | 10 → **11** → 10（+44.3 → +43.1 → **+39.9**） |
+| fldrop30 20k | 0 → 0 → 0（+10.2 → +9.4 → +9.4） | 10 → 10 → 10（+44.1 → +43.4 → **+38.7**） |
 
 - 轉腕決定沒有被 dropout 破壞：近處平移後仍 0/13。遠處 40k 平移後 11/12（多 1 集），其他不變。
 - 手腕換灰時，遠處的 wrist_roll 中位數下降 3–5（基底只降 0.4）。dropout 後模型對手腕畫面稍微敏感一點的跡象，
@@ -41,13 +41,13 @@ hash ↔ run／step／Hub 見 `docs/models.md`（本次新增 3 列）。簡稱�
 | step | 模型 | N=100 | N=50 | N=20 |
 |---|---|---|---|---|
 | 20k | ntcfA1aug | 6.43 | 4.88 | 3.76 |
-| | ntcfA1augfd | 6.53 | 5.52 | 3.83 |
+| | fldrop30 | 6.53 | 5.52 | 3.83 |
 | 40k | ntcfA1aug | 6.29 | 4.58 | 3.67 |
-| | ntcfA1augfd | 6.17 | 4.79 | 3.83 |
+| | fldrop30 | 6.17 | 4.79 | 3.83 |
 | 100k | ntcfA1aug | 5.77 | 4.82 | 3.47 |
-| | ntcfA1augfd | 5.59 | 4.57 | 3.72 |
+| | fldrop30 | 5.59 | 4.57 | 3.72 |
 
-逐集配對 ntcfA1augfd − ntcfA1aug（95% bootstrap CI；sign-flip p；括號內是 ntcfA1augfd 贏的集數）。**粗體** = CI 不跨 0。
+逐集配對 fldrop30 − ntcfA1aug（95% bootstrap CI；sign-flip p；括號內是 fldrop30 贏的集數）。**粗體** = CI 不跨 0。
 
 | step | N=100 | N=50 | N=20 |
 |---|---|---|---|
@@ -66,7 +66,7 @@ hash ↔ run／step／Hub 見 `docs/models.md`（本次新增 3 列）。簡稱�
 
 - [x] 離線驗收（Windows，2026-10-14）：中位數兩個時間點都過，逐幀 10/15、6/15 沒過 → 依標準未通過。
       數字見 `docs/handoff/2026-10-13_fl_dropout.md`「離線結果」。
-- [x] 閉環（柏宇決定不等離線，直接看實機）：ntcfA1augfd 100k 30/36 vs ntcfA1aug 25/36，配對 p 0.18（record `__f92698e7`；
+- [x] 閉環（柏宇決定不等離線，直接看實機）：fldrop30 100k 30/36 vs ntcfA1aug 25/36，配對 p 0.18（record `__f92698e7`；
       handoff「閉環結果」）。
 - [ ] p 調高到 0.5 重訓：`docs/handoff/2026-10-14_fl_dropout_p50.md`。「p50 比 p30 好」的判準還沒定。
 - [ ] 遮第一／第三視角看軌跡變化（柏宇 10-14 提出）：還在設計，量什麼、用哪些幀、遮成什麼要先定 `[柏宇說]`
