@@ -1,0 +1,79 @@
+# RECORDED closed-loop evaluation of ericc430/act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_100k (paper cup, "ntcfA1aug-fldrop30").
+# Model: ACT 100k steps, sha256 7701bdd277ad. Same data/hyper-parameters/seed (1000) as ntcfA1aug (286a49c37d4e); only adds
+# front-left blacked out with p=0.3 in the 30 frames before the first gripper close (scripts/train_fl_dropout.py,
+# configs/train_omx_cup_uvc60_normal_tightcut_far_A1_aug_fldrop.yaml; why: docs/handoff/2026-10-13_fl_dropout.md).
+# fl_dropout.json on the Hub: 129 eps, episodes_without_close [], expected_masked_fraction 0.0282.
+# 20k (74029f33e571) and 40k (4d954bc6d1c7) are on the Hub as ..-fldrop30_20k / ..-fldrop30_40k.
+# Handoff: run closed loop only after the offline wrist-correction check (h1_rollout_normalized.py) passes.
+# Run it with scripts/rollout_labeled.py (verdict keys -> episode_meta CSV):
+#
+#   uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_b1_papercup_ntcfA1augfldrop30_100k_eval.yaml --policy.path=ericc430/act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_100k --policy.n_action_steps=30 --meta-template paper_cup_A1
+#
+# KEEP THIS FILE ASCII-ONLY (lerobot opens it as cp950 when policy.path is set).
+# policy.n_action_steps must be given on the command line together with --policy.path (2026-10-05 note).
+# Copied from rollout_omx_b1_papercup_ntcfA1aug_100k_eval.yaml; only policy.path and dataset.repo_id differ.
+# Comparison target: ntcfA1aug 100k N=30 run on 10-13 (__98627c1e: 25/36, bad_aim in 9/11 failures).
+# Before running, in this order: read_joint_pose.py --goto-home --home-episode 10, lerobot-find-cameras opencv (wrist index),
+# align_camera.py --dataset-root .cache/lerobot/omx_pick_place_pilot_paper_cup_far_wrist_A1 --episodes 1 4 8
+# (far_wrist view, recorded 10-08 night; frame 0 of ep 1/4/8 has the arm within 1.4 deg of the far_wrist start pose.)
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-10-08_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: opencv_uvc
+      index_or_path: 2
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 15
+      fourcc: YUY2
+      exposure: -5
+      gain: 0
+      white_balance: null
+    front-left:
+      type: intelrealsense_pinned
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+      exposure: 400
+      gain: 70
+      white_balance: null
+
+policy:
+  path: ericc430/act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_100k  # private; cached at D:\hf\hub (downloaded 2026-10-14)
+
+strategy:
+  type: episodic
+  reset_to_initial_position: true   # no teleop: arm goes back to its startup pose between trials
+
+inference:
+  type: sync
+
+dataset:
+  repo_id: ericc430/rollout_omx_b1_papercup_60_13_10rcvrycut_46far_aug_fldrop30_100k_nas30_paper_cup   # must start with rollout_; timestamp appended; nas30 = n_action_steps (keep in sync with the CLI)
+  single_task: "Pick up the object and place it into the box"   # same string as training
+  fps: 15                  # must match camera fps
+  num_episodes: 36         # same as 10-06 / 10-08 (template paper_cup_A1 = c1..c36)
+  episode_time_s: 30
+  reset_time_s: 120        # time to re-place the cup; Right/Up ends it early
+  video: true
+  push_to_hub: false       # upload later by hand once the session looks right
+  private: true
+  streaming_encoding: false
+  encoder_threads: 2
+  rgb_encoder:
+    vcodec: h264
+    preset: veryfast
+    crf: 23
+    pix_fmt: yuv420p
+
+fps: 15
+task: "Pick up the object and place it into the box"
+display_data: true
+return_to_initial_position: true
