@@ -279,16 +279,29 @@ def cmd_scan(args) -> int:
     for w in walks:
         ok = [n for n in w["stops"]
               if S7._fingertip_above_table_m(dict(zip(JOINTS, w["path"][n])), p) * 100 >= args.min_tip_cm]
-        if ok:
-            bases.append((w, ok[-1]))
+        if not ok:
+            continue
+        n = ok[-1]
+        path = [list(pt) for pt in w["path"][: n + 1]]
+        tag = ""
+        if args.pan_to is not None and path[-1][0] < args.min_pan:
+            # Same reach (lift/elbow/flex/roll), pan swung to the camera side: gravity sag and link play depend on
+            # the reach, not on pan about a level base (10-13 level check: base x -0.55 / y 0 deg, ~1% of the torque), and
+            # from the right the gripper marker is edge-on. The pan change is blended in along the path.
+            d = args.pan_to - path[-1][0]
+            for k, pt in enumerate(path):
+                pt[0] += d * k / max(1, len(path) - 1)
+            tag = f"_p{args.pan_to:+.0f}"
+        bases.append((w, n, path, tag))
     print("=" * 76)
     print(f"scan: {len(bases)} base poses x {len(grid)} (roll, flex) = {len(bases) * len(grid)} stills; "
           f"roll {args.rolls}, flex {args.flexes} (units)")
-    for w, n in bases:
-        st = w["path"][n]
+    for w, n, path, tag in bases:
+        st = path[-1]
         tip = S7._fingertip_above_table_m(dict(zip(JOINTS, st)), p) * 100
         print(f"  ep{w['episode']:02d} f{w['frames'][n]}: fingertip ~{tip:.0f} cm above the table (nominal), "
-              f"pan {st[0]:.1f} roll {st[4]:.1f} flex {st[3]:.1f}")
+              f"pan {st[0]:.1f}{' (moved from ' + format(w['path'][n][0], '.1f') + ')' if tag else ''} "
+              f"roll {st[4]:.1f} flex {st[3]:.1f}")
     print("夾爪會在每個基準姿勢上小幅轉手腕（roll）和彎手腕（flex），每個角度停下來拍一張。")
     print("第一個基準姿勢請盯著看：夾爪或紙板若會碰到桌面、紙或線材，立刻按 Ctrl+C。")
     print("=" * 76)
@@ -304,10 +317,10 @@ def cmd_scan(args) -> int:
             print(f"🔴 手臂不在 HOME（差 {far}）。先執行：")
             print("   uv run python scripts/read_joint_pose.py --goto-home --home-episode 10")
             return 1
-        for w, n in bases:
-            base = dict(zip(JOINTS, w["path"][n]))
+        for w, n, path, tag in bases:
+            base = dict(zip(JOINTS, path[-1]))
             base["gripper"] = max(base["gripper"], S7.GRIPPER_MIN_GOAL)
-            ids = [f"S{w['episode']:02d}_F{w['frames'][n]:04d}_r{dr:+.0f}_f{df:+.0f}" for dr, df in grid]
+            ids = [f"S{w['episode']:02d}_F{w['frames'][n]:04d}{tag}_r{dr:+.0f}_f{df:+.0f}" for dr, df in grid]
             if all(i in done for i in ids):
                 continue
             print(f"\n--- ep{w['episode']:02d} f{w['frames'][n]}: {len(ids)} stills")
@@ -316,8 +329,8 @@ def cmd_scan(args) -> int:
                 return 0
             if go == "s":
                 continue
-            arm.follow(w["path"][:1], args.ease)
-            arm.follow(w["path"][: n + 1], args.seconds_per_point)
+            arm.follow(path[:1], args.ease)
+            arm.follow(path, args.seconds_per_point)
             hits = 0
             for (dr, df), pid in zip(grid, ids):
                 if pid in done:
@@ -335,7 +348,7 @@ def cmd_scan(args) -> int:
                 print(f"      {pid}: 手臂標記 {[i for i in seen if i in ARM_IDS]}")
             print(f"    這個基準姿勢 ID6 偵測到 {hits}/{len(ids)} 張。回基準姿勢，沿原路徑退回 HOME……")
             arm.move_to(base, max(args.step_seconds, max(abs(base[j] - arm.goal[j]) for j in JOINTS) / 20.0))
-            arm.follow(list(reversed(w["path"][: n + 1])), args.seconds_per_point)
+            arm.follow(list(reversed(path)), args.seconds_per_point)
             arm.move_to(start, args.ease)
         print(f"\n完成。手臂停在 HOME、扭力開著。照片在 {shot_dir}/，索引 {log}")
     return 0
@@ -394,6 +407,10 @@ def main() -> int:
                          "seen at roll median 3.5 (p90 26.5), missed up to 43.5, and the bases sit at roll 15-48")
     sc.add_argument("--flexes", default="-8,0,8", help="wrist_flex offsets from the base pose (units)")
     sc.add_argument("--step-seconds", type=float, default=1.0, help="move time between grid points")
+    sc.add_argument("--pan-to", type=float, default=None,
+                    help="bases whose pan is below --min-pan are swung to this pan (the camera side), same reach. "
+                         "10-14: ID6 12/12 at pan +22.9, 0/12 at -10.5 (edge-on)")
+    sc.add_argument("--min-pan", type=float, default=10.0)
     sc.set_defaults(func=cmd_scan)
     args = ap.parse_args()
     return args.func(args)
