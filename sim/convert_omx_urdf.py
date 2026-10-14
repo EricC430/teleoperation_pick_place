@@ -38,6 +38,8 @@ parser.add_argument("--fix-base", action="store_true", default=True, help="weld 
 parser.add_argument("--free-base", dest="fix_base", action="store_false", help="leave the base free (for the mobile-base scene)")
 parser.add_argument("--self-collision", action="store_true", default=False, help="enable self-collision (costs perf)")
 parser.add_argument("--no-site-limits", action="store_true", help="use factory travel only, ignore the camera-rig sector")
+parser.add_argument("--limits", choices=("site", "factory", "urdf"), default=None,
+                    help="joint1-5 limits; default site (factory with --no-site-limits). urdf = +/-360, for replay")
 parser.add_argument("--dry-run", action="store_true", help="print the plan and exit without touching Isaac Sim")
 parser.add_argument(
     "--mimic-gearing",
@@ -107,7 +109,7 @@ app_launcher = AppLauncher(args)
 simulation_app = app_launcher.app
 
 from isaaclab.sim.converters import UrdfConverter, UrdfConverterCfg  # noqa: E402
-from pxr import PhysxSchema, Usd, UsdPhysics  # noqa: E402
+from pxr import Usd  # noqa: E402
 
 RAD2DEG = 180.0 / 3.141592653589793
 
@@ -155,100 +157,22 @@ usd_path = converter.usd_path
 print(f"converter wrote: {usd_path}")
 
 # ----------------------------------------------------------------------------------------
-# Patch the limits the URDF could not supply.
-# UsdPhysics angular limits and PhysX max joint velocity are in DEGREES; drive maxForce for an
-# angular drive is a torque in N*m and needs no conversion.
+# Patch what the URDF could not supply: limits, maxForce, max velocity, drive gains (per DEGREE in USD), the mimic
+# constraint the converter drops, and the zero-mass end_effector_link (1 kg in PhysX). One implementation shared with
+# sim/patch_omx_usd.py (plain Isaac Sim, on an existing asset): sim/omx_usd_patch.py.
 # ----------------------------------------------------------------------------------------
+import omx_usd_patch  # noqa: E402
+
 stage = Usd.Stage.Open(usd_path)
-by_name = {r["name"]: r for r in rows}
-patched, missing = [], set(by_name)
-
-for prim in stage.Traverse():
-    if not prim.IsA(UsdPhysics.RevoluteJoint):
-        continue
-    name = prim.GetName()
-    row = by_name.get(name)
-    if row is None:
-        continue
-    missing.discard(name)
-    joint = UsdPhysics.RevoluteJoint(prim)
-
-    old_lo = joint.GetLowerLimitAttr().Get()
-    old_hi = joint.GetUpperLimitAttr().Get()
-    joint.GetLowerLimitAttr().Set(float(row["lower_deg"]))
-    joint.GetUpperLimitAttr().Set(float(row["upper_deg"]))
-
-    drive = UsdPhysics.DriveAPI.Get(prim, "angular")
-    old_force = drive.GetMaxForceAttr().Get() if drive else None
-    if drive:
-        drive.GetMaxForceAttr().Set(float(row["max_force"]))
-
-    physx = PhysxSchema.PhysxJointAPI.Get(stage, prim.GetPath())
-    if not physx:
-        physx = PhysxSchema.PhysxJointAPI.Apply(prim)
-    old_vel = physx.GetMaxJointVelocityAttr().Get()
-    physx.CreateMaxJointVelocityAttr().Set(float(row["max_vel_deg_s"]))
-
-    patched.append((name, old_lo, old_hi, row["lower_deg"], row["upper_deg"], old_force, row["max_force"], old_vel, row["max_vel_deg_s"]))
-
-# ----------------------------------------------------------------------------------------
-# Re-create the mimic constraint.
-# The URDF declares <mimic joint="gripper_joint_1" multiplier="-1"/> on gripper_joint_2, but the
-# Isaac Lab 5.1 converter does NOT carry it into the USD even with
-# convert_mimic_joints_to_normal_joints=False — verified 2026-09-03 by auditing the output.
-# Without it the second finger is a FREE joint and the gripper cannot close.
-# ----------------------------------------------------------------------------------------
-follower_name, master_name, _urdf_multiplier = K.MIMIC_JOINT
-follower = master = None
-for prim in stage.Traverse():
-    if prim.GetName() == follower_name:
-        follower = prim
-    elif prim.GetName() == master_name:
-        master = prim
-
-mimic_note = ""
-if follower is None or master is None:
-    mimic_note = f"🔴 could not find {follower_name}/{master_name} — mimic NOT applied"
-elif any("Mimic" in sch for sch in follower.GetAppliedSchemas()):
-    mimic_note = f"{follower_name} already carries a mimic schema — left alone"
-else:
-    api = PhysxSchema.PhysxMimicJointAPI.Apply(follower, "rotZ")
-    api.CreateReferenceJointRel().SetTargets([master.GetPath()])
-    # 🔴 2026-09-18 fix: both gripper joints' UsdPhysics.RevoluteJoint.axis is Z (matches the
-    # URDF's <axis xyz="0 0 1"/> on both), confirmed with sim/inspect_mimic_axis.py. This was
-    # previously "rotX", which referenced an axis gripper_joint_1 does not rotate about, so the
-    # mimic constraint tracked a reference quantity that never changed -- gripper_joint_2 stayed
-    # within ~0.1deg of zero regardless of gearing sign (measured with verify_mimic_gearing.py on
-    # both +1.0 and -1.0). Not a sign bug; a reference-axis bug.
-    api.CreateReferenceJointAxisAttr().Set("rotZ")
-    api.CreateGearingAttr().Set(float(args.mimic_gearing))
-    api.CreateOffsetAttr().Set(0.0)
-    # naturalFrequency / dampingRatio are present on the GUI-imported asset but are not exposed
-    # by this schema version's python bindings — create them by name, with the same values.
-    from pxr import Sdf  # noqa: PLC0415
-
-    follower.CreateAttribute("physxMimicJoint:rotZ:naturalFrequency", Sdf.ValueTypeNames.Float).Set(25.0)
-    follower.CreateAttribute("physxMimicJoint:rotZ:dampingRatio", Sdf.ValueTypeNames.Float).Set(0.005)
-    mimic_note = (
-        f"applied PhysxMimicJointAPI:rotZ on {follower_name} -> {master_name}, "
-        f"gearing={args.mimic_gearing} (sign to be confirmed by the 5-pose test)"
-    )
-
+patch_lines = omx_usd_patch.patch(stage, limits=args.limits or ("site" if APPLY_SITE else "factory"),
+                                  mimic_gearing=args.mimic_gearing)
 stage.GetRootLayer().Save()
 
 print("\n" + "=" * 118)
 print("PATCHED  (original -> new).  Anything not listed was NOT changed.")
 print("=" * 118)
-print(f"{'joint':<18}{'limit lo':<20}{'limit hi':<20}{'maxForce Nm':<24}{'maxVel deg/s'}")
-for n, ol, oh, nl, nh, of_, nf, ov, nv in patched:
-    print(
-        f"{n:<18}{f'{ol} -> {nl:.1f}':<20}{f'{oh} -> {nh:.1f}':<20}"
-        f"{f'{of_} -> {nf:.3f}':<24}{f'{ov} -> {nv:.1f}'}"
-    )
-print(f"\nmimic: {mimic_note}")
-if missing:
-    print(f"\n🔴 NOT FOUND in the USD (expected joints that were never patched): {sorted(missing)}")
-    print("   Do not use this asset until that is explained.")
+for ln in patch_lines:
+    print("  " + ln)
 print("=" * 118)
 print(f"\ndone: {usd_path}")
 import os

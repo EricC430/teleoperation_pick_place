@@ -69,8 +69,8 @@ class Joint:
 #    IDs 11-13 (shoulder_pan, shoulder_lift, elbow_flex) report model 1060 = XL430-W250 at 11.6-11.7 V, and IDs 14-16
 #    (wrist_flex, wrist_roll, gripper) report model 1200 = XL330-M288 at 5.0 V. The spec page lists lift/elbow as
 #    XL330-M288 and the gripper as XL330-M077; that made the sim's lift/elbow ~1/3 and its gripper ~40% of the real
-#    torque. Changed 2026-10-14 [柏宇決定]. Assets built before this (assets/omx_f_generated/omx_f.usd) still carry
-#    the old maxForce/stiffness until convert_omx_urdf.py is rerun.
+#    torque. Changed 2026-10-14 [柏宇決定]. assets/omx_f_generated/omx_f.usd (2026-09-18) still carries the old
+#    maxForce/stiffness; omx_f_real.usda (sim/patch_omx_usd.py) layers the current values on top of it.
 JOINTS: tuple[Joint, ...] = (
     Joint("joint1", "shoulder_pan", XL430_W250, -270.0, 360.0),
     Joint("joint2", "shoulder_lift", XL430_W250, -120.0, 90.0),
@@ -84,6 +84,15 @@ JOINTS: tuple[Joint, ...] = (
 # Source: open_manipulator_description/ros2_control/omx_f.ros2_control.xacro (use_sim branch).
 # The URDF importer keeps mimic joints unless `convert_mimic_joints_to_normal_joints=True`.
 MIMIC_JOINT = ("gripper_joint_2", "gripper_joint_1", -1.0)
+# The mimic is a PhysX spring, not a rigid constraint. The GUI import's 25 Hz / damping ratio 0.005 let
+# gripper_joint_2 sit at -0.34..-0.53 rad while gripper_joint_1 was +0.59 [已查證 2026-10-14, physics replay log];
+# 300 / 1.0 keeps the second finger on the first through the far_wrist t61-t70 replays.
+MIMIC_NATURAL_FREQUENCY = 300.0
+MIMIC_DAMPING_RATIO = 1.0
+
+# end_effector_link is a marker frame (no mesh, no collider) with physics:mass 0 in the converted asset, which PhysX
+# turns into 1 kg on the fingertip [已查證 2026-10-14: elbow gravity torque at home 2.31 N.m vs a 1.5 N.m motor].
+MARKER_LINK_MASS_KG = 1e-4
 
 # --------------------------------------------------------------------------------------
 # Site limits — the arm cannot use its full factory travel in our cell
@@ -166,13 +175,16 @@ def effective_limits_rad(joint: Joint, apply_site_limits: bool = True) -> tuple[
 #
 # The rule used below is at least dimensionally honest and reproducible:
 #
-#     stiffness = stall_torque / TRACKING_ERROR      "full torque at 5 deg of lag"
+#     stiffness = stall_torque / TRACKING_ERROR      "full torque at TRACKING_ERROR of lag"
 #     damping   = DAMPING_FRACTION * stiffness
 #
 # ⚠️ This is a STARTING POINT, not a calibration. D029 records that closing this gap
 #    requires fitting against real recorded trajectories. Until that fit exists, do not
 #    claim the simulated arm's dynamics resemble the real one's.
-GAIN_TRACKING_ERROR_RAD = math.radians(5.0)
+# 2026-10-14: 1 deg, not 5. The far_wrist t61-t70 physics replay (real motor torques) needs the body joints ON the
+# recorded angles -- the images are paired with those readings -- and was run with full stall torque at 1 deg of
+# error. [推論] with 5 deg, gravity alone holds a joint off by (gravity torque / stall torque) x 5 deg -- not measured.
+GAIN_TRACKING_ERROR_RAD = math.radians(1.0)
 GAIN_DAMPING_FRACTION = 0.05
 
 
