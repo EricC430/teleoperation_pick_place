@@ -337,7 +337,7 @@ def main() -> int:
                     help="base level with the mat (yaw only): base pitch and the lift offset trade off (corr -0.5); "
                          "10-13 level check: base within ~0.5 deg of level [柏宇說]")
     ap.add_argument("--touch-tip", default="", help="touch_test.py CSV, fingertip read directly (10-15)")
-    ap.add_argument("--touch-plumb", default="", help="touch_test.py --plumb CSV")
+    ap.add_argument("--touch-plumb", default="", help="touch_test.py --plumb CSV(s), comma-separated")
     ap.add_argument("--touch-weight", type=float, default=0.0,
                     help="weight of each touch residual (mm / 2.5) against marker pixels; 0 = report only")
     ap.add_argument("--touch-holdout", choices=("none", "even", "odd"), default="none",
@@ -423,7 +423,8 @@ def main() -> int:
     if args.no_sag:
         for n in ("sag_lift", "sag_elbow", "sag_flex"):
             lo[model.idx[n]], hi[model.idx[n]] = -1e-12, 1e-12
-    touch = load_touch([(REPO / args.touch_tip, False)] * bool(args.touch_tip) + [(REPO / args.touch_plumb, True)] * bool(args.touch_plumb))
+    touch = load_touch([(REPO / args.touch_tip, False)] * bool(args.touch_tip)
+                       + [(REPO / f, True) for f in args.touch_plumb.split(",") if f])
     t_fit = [t for k, t in enumerate(touch) if args.touch_holdout == "none" or (k % 2 == 1) == (args.touch_holdout == "even")]
     t_out = [t for t in touch if not any(t is u for u in t_fit)]
     model.touch = t_fit if args.touch_weight > 0 else []

@@ -1,0 +1,7 @@
+target_x_cm,target_y_cm,measured_x_cm,measured_y_cm,model_tip_x_cm,model_tip_y_cm,model_tip_z_cm,fit,state_shoulder_pan,state_shoulder_lift,state_elbow_flex,state_wrist_flex,state_wrist_roll,state_gripper
+26.0,0.0,23.8,-0.4,23.76,-0.41,0.0,2026-10-14_link_marker_fit.json,0.039,27.228,-14.628,-18.681,-2.857,50.672
+29.0,5.0,26.4,4.3,26.72,4.39,0.0,2026-10-14_link_marker_fit.json,5.69,41.197,-38.852,-11.209,-2.857,50.647
+29.0,-5.0,26.5,-4.2,26.7,-4.2,0.0,2026-10-14_link_marker_fit.json,-4.322,41.197,-38.852,-11.209,-2.857,50.647
+31.0,0.0,27.8,-0.2,28.52,-0.41,0.0,2026-10-14_link_marker_fit.json,0.122,41.197,-38.852,-15.145,-2.857,50.647
+27.0,-10.0,24.8,-8.9,25.06,-9.0,0.0,2026-10-14_link_marker_fit.json,-10.232,41.201,-38.852,-10.183,-2.857,50.647
+27.0,10.0,24.8,9.1,25.15,8.9,0.0,2026-10-14_link_marker_fit.json,11.258,41.197,-38.852,-10.046,-2.857,50.647
