@@ -1,0 +1,423 @@
+#!/usr/bin/env python
+"""Solve the arm's kinematic constants from the 10-14 link-marker stills (scripts/capture_link_markers.py).
+
+What is measured: front-left stills of ArUco markers taped to the upper arm (ID1, link2), forearm (ID5, link3) and
+gripper servo body (ID6, link5), with the joint readings averaged at each still, plus the paper markers (0, 2, 3, 4, 7)
+whose centres are known on the placement mat.
+
+Model (all in the mat frame: origin on the pan axis at the table, +x ahead, +y left, +z up):
+  camera       6 dof, fitted from the paper-marker centres in EVERY still (the camera did not move: <= 1.3 px)
+  base         6 dof: link0 in the mat frame (pan-axis offset, riser height, tilt). Base yaw absorbs the pan offset,
+               so the pan offset stays at its joint_mapping value.
+  offsets      shoulder_lift, elbow_flex, wrist_flex (rad). wrist_roll's offset is absorbed by ID6's mount (ID6 is on
+               the link after roll) and stays fixed. Scale is the encoder's 1.7996 deg/unit, exact.
+  sag          link angle = encoder angle + c_i * gravity torque on joint i (lift, elbow, flex), URDF masses: play
+               between the encoder and the link that the readings cannot see (S7: 2-6 deg, gravity dependent).
+  mounts       each arm marker's pose in its link, 6 dof. ID1 gets one mount per taping (re-taped after S24 and
+               after S39 [柏宇說]); the spread between them is reported.
+  lengths      optional (--free-lengths): a scale on the upper arm (joint2->3 vector, direction kept: its angle is the
+               lift offset) and on the forearm (joint3->4). joint5's x is not identifiable (ID6's mount absorbs it).
+               First free fit (10-14, every origin free) put both links ~4 mm (3.4 %) longer than the URDF.
+  mat scale    optional (--free-mat-scale): true metres per mat metre. The paper centres are in mat units (a printed
+               grid), the arm-marker corners in true metres (60 mm), so a printer-scaled mat shows up here.
+Residuals: the 4 corners of each arm marker (60 mm [柏宇說 2026-10-14: all markers are 6 cm]) and the centre of each
+paper marker, in ideal-pinhole pixels (detections undistorted with the camera's own model), soft-L1 loss.
+
+    uv run python scripts/solve_link_markers.py --holdout 14,38
+    uv run python scripts/solve_link_markers.py --holdout 14,38 --free-lengths
+
+Held-out episodes are fitted with nothing of theirs and scored afterwards: that, not the training residual, is how far
+to trust the constants. Output: calibration/2026-10-14_link_marker_fit.json (--out).
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import fnmatch
+import json
+import re
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path, PureWindowsPath
+
+import cv2
+import numpy as np
+from scipy.optimize import least_squares
+from scipy.spatial.transform import Rotation as R
+
+REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "sim"))
+sys.path.insert(0, str(REPO))
+import camera_distortion as cd  # noqa: E402
+import joint_mapping as jm  # noqa: E402
+from reach_logger import fk  # noqa: E402
+
+MARKER_M = 0.060
+PAPER_IDS = (0, 2, 3, 4, 7)
+ARM_LINK = {1: 2, 5: 3, 6: 5}          # marker id -> link index (fk.link_transform)
+SAG_JOINTS = (1, 2, 3)                 # chain index of shoulder_lift, elbow_flex, wrist_flex
+G = 9.81
+
+
+# ------------------------------------------------------------------------------------------------ data
+def load_stills(captures: Path, excluded: Path, plan: Path):
+    rows = [r for r in csv.DictReader(captures.open(encoding="utf-8")) if r["camera"] == "front-left"]
+    last = {}
+    for r in rows:                     # last row per pose_id wins (retakes)
+        last[r["pose_id"]] = r
+    excl = list(csv.DictReader(excluded.open(encoding="utf-8"))) if excluded.exists() else []
+    src = {p["id"]: int(p["source"].split()[0][2:]) for p in json.loads(plan.read_text(encoding="utf-8"))["poses"]}
+    order = {r["pose_id"]: n for n, r in enumerate(rows)}
+    stills = []
+    for pid, r in last.items():
+        img = REPO / PureWindowsPath(r["image"]).as_posix()
+        drop = {e["marker"] for e in excl if fnmatch.fnmatch(img.stem, e["image_glob"])}
+        if "all" in drop:
+            continue
+        m = re.match(r"[ES](\d+)_", pid)
+        ep = int(m.group(1)) if m else src.get(pid)
+        stills.append({"pose_id": pid, "image": img, "ep": ep, "order": order[pid],
+                       "state": np.array([float(r["state_" + j]) for j in jm.LEROBOT_NAMES]),
+                       "drop_markers": {int(d) for d in drop}})
+    stills.sort(key=lambda s: s["order"])
+    return stills
+
+
+def detect(stills, model):
+    det = cv2.aruco.ArucoDetector(cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50), cv2.aruco.DetectorParameters())
+    for s in stills:
+        corners, ids, _ = det.detectMarkers(cv2.imread(str(s["image"]), cv2.IMREAD_GRAYSCALE))
+        s["det"] = {}
+        if ids is None:
+            continue
+        for c, i in zip(corners, ids.ravel()):
+            i = int(i)
+            if (i in PAPER_IDS or i in ARM_LINK) and i not in s["drop_markers"]:
+                s["det"][i] = cd.undistort_pixels(c.reshape(4, 2).astype(float), model)
+
+
+def id1_segments(stills):
+    """Mount index for ID1: re-taped after the S24 scan and after the S39 scan [柏宇說]."""
+    seg, cur = {}, 0
+    for s in stills:
+        if s["pose_id"].startswith("S30_") and cur == 0:
+            cur = 1
+        if s["pose_id"].startswith("S43_") and cur == 1:
+            cur = 2
+        seg[s["pose_id"]] = cur
+    return seg
+
+
+def urdf_inertials():
+    root = ET.parse(REPO / "assets/omx_f/omx_f.urdf").getroot()
+    inert = {}
+    for link in root.findall("link"):
+        m = link.find("inertial/mass")
+        if m is not None:
+            inert[link.get("name")] = (float(m.get("value")), np.array([float(v) for v in link.find("inertial/origin").get("xyz").split()]))
+    # fingers ride on link5 at their pivots (gripper rotation ignored: ~1% of the wrist torque)
+    m5, c5 = inert["link5"]
+    mf = inert["link6"][0] + inert["link7"][0]
+    c6 = np.array([0.0295, 0.0075, 0.0]) + inert["link6"][1]
+    c7 = np.array([0.0295, -0.0108, 0.0]) + inert["link7"][1]
+    inert["link5"] = (m5 + mf, (m5 * c5 + inert["link6"][0] * c6 + inert["link7"][0] * c7) / (m5 + mf))
+    return [inert[f"link{k}"] for k in range(1, 6)]  # links 1..5
+
+
+# ------------------------------------------------------------------------------------------------ model
+def T(rotvec, t):
+    out = np.eye(4)
+    out[:3, :3] = R.from_rotvec(rotvec).as_matrix()
+    out[:3, 3] = t
+    return out
+
+
+def chain_transforms(q, chain):
+    """Frames of link1..link5 in the base frame, like fk.link_transform, with an editable chain."""
+    out, t = [], np.eye(4)
+    for (origin, axis), a in zip(chain, q):
+        t = t @ fk._translation(origin) @ fk._rotation(axis, a)
+        out.append(t)
+    return out
+
+
+def gravity_torques(frames, inertials, g_base):
+    """Gravity torque on joints 2, 3, 4 (about their +Y), in the base frame."""
+    coms = [f[:3, :3] @ c + f[:3, 3] for f, (_, c) in zip(frames, inertials)]
+    taus = []
+    for j in SAG_JOINTS:                       # frames[j] is link j+1, whose origin sits on joint j+1
+        p, ax = frames[j][:3, 3], frames[j][:3, 1]
+        tau = sum(np.dot(np.cross(coms[k] - p, m * g_base), ax) for k, (m, _) in enumerate(inertials) if k >= j)
+        taus.append(tau)
+    return np.array(taus)
+
+
+class Model:
+    def __init__(self, n_id1, free_lengths, inertials, base_q_offset):
+        self.free_lengths = free_lengths
+        self.inertials = inertials
+        self.q_off_fixed = base_q_offset.copy()
+        names = ["cam_r0", "cam_r1", "cam_r2", "cam_x", "cam_y", "cam_z",
+                 "base_r0", "base_r1", "base_r2", "base_x", "base_y", "base_z",
+                 "off_lift", "off_elbow", "off_flex", "sag_lift", "sag_elbow", "sag_flex"]
+        for k in range(n_id1):
+            names += [f"id1m{k}_{a}" for a in ("r0", "r1", "r2", "x", "y", "z")]
+        for mid in (5, 6):
+            names += [f"id{mid}_{a}" for a in ("r0", "r1", "r2", "x", "y", "z")]
+        if free_lengths:
+            names += ["scale_upper", "scale_fore"]
+        names += ["mat_scale"]
+        self.names = names
+        self.idx = {n: i for i, n in enumerate(names)}
+        self.n_id1 = n_id1
+
+    def unpack(self, x):
+        g = lambda n: x[self.idx[n]]  # noqa: E731
+        cam = T(x[0:3], x[3:6])                         # world_from_camera
+        base = T(x[6:9], x[9:12])                       # world_from_link0
+        off = self.q_off_fixed.copy()
+        off[1:4] = [g("off_lift"), g("off_elbow"), g("off_flex")]
+        sag = np.array([g("sag_lift"), g("sag_elbow"), g("sag_flex")])
+        mounts = {("id1", k): T(x[self.idx[f"id1m{k}_r0"]:self.idx[f"id1m{k}_r0"] + 3], x[self.idx[f"id1m{k}_x"]:self.idx[f"id1m{k}_x"] + 3]) for k in range(self.n_id1)}
+        for mid in (5, 6):
+            mounts[(f"id{mid}", 0)] = T(x[self.idx[f"id{mid}_r0"]:self.idx[f"id{mid}_r0"] + 3], x[self.idx[f"id{mid}_x"]:self.idx[f"id{mid}_x"] + 3])
+        chain = [list(c) for c in fk._CHAIN]
+        if self.free_lengths:
+            chain[2][0] = tuple(g("scale_upper") * v for v in fk._CHAIN[2][0])
+            chain[3][0] = tuple(g("scale_fore") * v for v in fk._CHAIN[3][0])
+        return cam, base, off, sag, mounts, chain
+
+    def link_frames(self, x, state, cache=None):
+        cam, base, off, sag, mounts, chain = self.unpack(x)
+        q = jm.SCALE_RAD_PER_UNIT["shoulder_lift"] * state[:5] + off
+        frames0 = chain_transforms(q, chain)
+        g_base = base[:3, :3].T @ np.array([0.0, 0.0, -G])
+        tau = gravity_torques(frames0, self.inertials, g_base)
+        q2 = q.copy()
+        q2[1:4] += sag * tau
+        return [base @ f for f in chain_transforms(q2, chain)], q2
+
+
+CORNERS = np.array([[-1, 1, 0], [1, 1, 0], [1, -1, 0], [-1, -1, 0]], float) * MARKER_M / 2  # ArUco corner order
+
+
+def project(Kmat, world_from_cam, pts_w):
+    cam_from_world = np.linalg.inv(world_from_cam)
+    pc = (cam_from_world[:3, :3] @ pts_w.T).T + cam_from_world[:3, 3]
+    uv = (Kmat @ pc.T).T
+    return uv[:, :2] / uv[:, 2:3]
+
+
+def residuals(x, model, stills, Kmat, paper_w, seg, which=None):
+    cam, base, off, sag, mounts, chain = model.unpack(x)
+    res = []
+    for s in stills:
+        d = s["det"]
+        pp = [i for i in PAPER_IDS if i in d]
+        if pp:
+            ms = x[model.idx["mat_scale"]]
+            res.append((project(Kmat, cam, ms * np.array([paper_w[i] for i in pp])) - np.array([d[i].mean(0) for i in pp])).ravel())
+        arm = [i for i in ARM_LINK if i in d]
+        if not arm:
+            continue
+        frames, _ = model.link_frames(x, s["state"])
+        for i in arm:
+            if which is not None and i not in which:
+                continue
+            key = ("id1", seg[s["pose_id"]]) if i == 1 else (f"id{i}", 0)
+            mw = frames[ARM_LINK[i] - 1] @ mounts[key]
+            pw = (mw[:3, :3] @ CORNERS.T).T + mw[:3, 3]
+            res.append((project(Kmat, cam, pw) - d[i]).ravel())
+    return np.concatenate(res) if res else np.zeros(0)
+
+
+# ------------------------------------------------------------------------------------------------ init
+def init_camera(stills, Kmat, paper_w):
+    obj, img = [], []
+    s = max(stills, key=lambda s: sum(i in s["det"] for i in PAPER_IDS))
+    for i in PAPER_IDS:
+        if i in s["det"]:
+            obj.append(paper_w[i]); img.append(s["det"][i].mean(0))
+    ok, rv, tv = cv2.solvePnP(np.array(obj), np.array(img), Kmat, None, flags=cv2.SOLVEPNP_ITERATIVE)
+    Rc = cv2.Rodrigues(rv)[0]
+    wfc = np.eye(4); wfc[:3, :3] = Rc.T; wfc[:3, 3] = -Rc.T @ tv.ravel()
+    return wfc
+
+
+def init_mounts(stills, model, x, Kmat, seg):
+    cam = model.unpack(x)[0]
+    obj = CORNERS[:, :2].copy()
+    acc = {}
+    for s in stills:
+        frames, _ = model.link_frames(x, s["state"])
+        for i in ARM_LINK:
+            if i not in s["det"]:
+                continue
+            ok, rv, tv = cv2.solvePnP(np.c_[obj, np.zeros(4)], s["det"][i], Kmat, None, flags=cv2.SOLVEPNP_IPPE_SQUARE)
+            cfm = T(rv.ravel(), tv.ravel())
+            link_from_marker = np.linalg.inv(frames[ARM_LINK[i] - 1]) @ cam @ cfm
+            key = ("id1", seg[s["pose_id"]]) if i == 1 else (f"id{i}", 0)
+            acc.setdefault(key, []).append(link_from_marker)
+    out = {}
+    for key, ms in acc.items():
+        rot = R.from_matrix(np.array([m[:3, :3] for m in ms])).mean()
+        out[key] = (rot.as_rotvec(), np.median(np.array([m[:3, 3] for m in ms]), axis=0), len(ms))
+    return out
+
+
+# ------------------------------------------------------------------------------------------------ main
+def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--captures", default="calibration/2026-10-14_link_markers_captures.csv")
+    ap.add_argument("--excluded", default="calibration/2026-10-14_link_markers_excluded.csv")
+    ap.add_argument("--plan", default="configs/link_marker_plan_farwrist.json")
+    ap.add_argument("--points", default="calibration/2026-10-14_aruco_points.csv")
+    ap.add_argument("--intrinsics", default="calibration/2026-10-07_camera_intrinsics_front-left.json")
+    ap.add_argument("--holdout", default="14,38", help="episodes kept out of the fit and scored afterwards")
+    ap.add_argument("--start", choices=("s7", "current"), default="s7",
+                    help="initial joint offsets: S7 (calibration/2026-10-10_link_tilt_fit.json) or joint_mapping.py")
+    ap.add_argument("--free-lengths", action="store_true")
+    ap.add_argument("--free-mat-scale", action="store_true")
+    ap.add_argument("--no-sag", action="store_true")
+    ap.add_argument("--out", default="")
+    args = ap.parse_args()
+
+    model_cam = cd.load_model(REPO / args.intrinsics)
+    Kmat = np.asarray(model_cam.K, float)
+    paper_w = {int(r["marker_id"]): np.array([float(r["x_m"]), float(r["y_m"]), float(r["height_above_table_m"])])
+               for r in csv.DictReader((REPO / args.points).open(encoding="utf-8"))}
+    stills = load_stills(REPO / args.captures, REPO / args.excluded, REPO / args.plan)
+    detect(stills, model_cam)
+    seg = id1_segments(stills)
+    hold = {int(e) for e in args.holdout.split(",") if e}
+    train = [s for s in stills if s["ep"] not in hold]
+    test = [s for s in stills if s["ep"] in hold]
+    count = lambda ss, i: sum(i in s["det"] for s in ss)  # noqa: E731
+    print(f"stills: {len(stills)} usable ({len(train)} fit / {len(test)} held out: episodes {sorted(hold)})")
+    for i in (1, 5, 6):
+        print(f"  ID{i}: {count(train, i)} fit / {count(test, i)} held out")
+
+    if args.start == "s7":
+        s7 = json.loads((REPO / "calibration/2026-10-10_link_tilt_fit.json").read_text(encoding="utf-8"))["S7 offsets only"]["offset"]
+        off0 = np.array([s7[n] for n in jm.LEROBOT_NAMES[:5]])
+    else:
+        off0 = np.array([jm.OFFSET_RAD[n] for n in jm.LEROBOT_NAMES[:5]])
+    off0[0] = jm.OFFSET_RAD["shoulder_pan"]
+    model = Model(3, args.free_lengths, urdf_inertials(), off0)
+    x = np.zeros(len(model.names))
+    wfc = init_camera(stills, Kmat, paper_w)
+    x[0:3] = R.from_matrix(wfc[:3, :3]).as_rotvec(); x[3:6] = wfc[:3, 3]
+    x[9:12] = [-fk._PAN_AXIS_XY[0], 0.0, 0.146]        # pan axis on the mat origin, riser 14.6 cm
+    x[model.idx["off_lift"]:model.idx["off_flex"] + 1] = off0[1:4]
+    if args.free_lengths:
+        x[model.idx["scale_upper"]] = x[model.idx["scale_fore"]] = 1.0
+    x[model.idx["mat_scale"]] = 1.0
+    inits = init_mounts(train, model, x, Kmat, seg)
+    for key in [("id1", 0), ("id1", 1), ("id1", 2), ("id5", 0), ("id6", 0)]:
+        if key not in inits:
+            print(f"🔴 no fit-set detection for mount {key}: change --holdout"); return 1
+        print(f"  mount {key}: initialised from {inits[key][2]} detections")
+    for key, (rv, t, n) in inits.items():
+        pre = f"id1m{key[1]}" if key[0] == "id1" else key[0]
+        x[model.idx[f"{pre}_r0"]:model.idx[f"{pre}_r0"] + 3] = rv
+        x[model.idx[f"{pre}_x"]:model.idx[f"{pre}_x"] + 3] = t
+
+    lo = np.full(len(x), -np.inf); hi = np.full(len(x), np.inf)
+    if not args.free_mat_scale:
+        lo[model.idx["mat_scale"]], hi[model.idx["mat_scale"]] = 1.0 - 1e-12, 1.0 + 1e-12
+    if args.no_sag:
+        for n in ("sag_lift", "sag_elbow", "sag_flex"):
+            lo[model.idx[n]], hi[model.idx[n]] = -1e-12, 1e-12
+    r0 = residuals(x, model, train, Kmat, paper_w, seg)
+    print(f"initial: median |r| {np.median(np.abs(r0)):.2f} px over {r0.size} residuals")
+    sol = least_squares(residuals, x, args=(model, train, Kmat, paper_w, seg), loss="soft_l1", f_scale=1.5,
+                        bounds=(lo, hi), x_scale="jac", max_nfev=200, verbose=0)
+    x = sol.x
+    rt = residuals(x, model, train, Kmat, paper_w, seg)
+    print(f"fit:     median |r| {np.median(np.abs(rt)):.2f} px, p95 {np.percentile(np.abs(rt), 95):.2f} px  ({sol.message})")
+
+    # covariance from the Jacobian, scaled by the robust residual spread
+    J = sol.jac
+    s2 = (1.4826 * np.median(np.abs(rt))) ** 2
+    try:
+        cov = np.linalg.pinv(J.T @ J) * s2
+        sd = np.sqrt(np.clip(np.diag(cov), 0, None))
+    except np.linalg.LinAlgError:
+        sd = np.full(len(x), np.nan)
+
+    cam, base, off, sag, mounts, chain = model.unpack(x)
+    deg = np.degrees
+    print("\njoint offsets (deg)      fit ± sd        S7        joint_mapping")
+    s7o = json.loads((REPO / "calibration/2026-10-10_link_tilt_fit.json").read_text(encoding="utf-8"))["S7 offsets only"]["offset"]
+    for k, (n, pn) in enumerate((("shoulder_lift", "off_lift"), ("elbow_flex", "off_elbow"), ("wrist_flex", "off_flex"))):
+        print(f"  {n:<14} {deg(x[model.idx[pn]]):8.2f} ± {deg(sd[model.idx[pn]]):.2f}   {deg(s7o[n]):8.2f}   {deg(jm.OFFSET_RAD[n]):8.2f}")
+    print("sag (deg per N.m of gravity torque):", {n: f"{deg(x[model.idx[n]]):.2f} ± {deg(sd[model.idx[n]]):.2f}" for n in ("sag_lift", "sag_elbow", "sag_flex")})
+    bt = base[:3, 3]
+    tilt = R.from_matrix(base[:3, :3]).as_euler("xyz", degrees=True)
+    print(f"base: link0 at ({bt[0]*100:.2f}, {bt[1]*100:.2f}, {bt[2]*100:.2f}) cm -> pan axis at "
+          f"({(bt[0] + fk._PAN_AXIS_XY[0])*100:.2f}, {bt[1]*100:.2f}) cm; rot xyz {np.round(tilt, 2)} deg (z = yaw incl. pan offset)")
+    print(f"camera: at {np.round(cam[:3, 3]*100, 1)} cm")
+    if args.free_lengths:
+        up, fo = np.linalg.norm(fk._CHAIN[2][0]), fk._CHAIN[3][0][0]
+        for n, u in (("scale_upper", up), ("scale_fore", fo)):
+            print(f"{n}: {x[model.idx[n]]:.4f} ± {sd[model.idx[n]]:.4f} -> {x[model.idx[n]]*u*1000:.1f} mm (URDF {u*1000:.1f})")
+    if args.free_mat_scale:
+        print(f"mat_scale (true m per mat m): {x[model.idx['mat_scale']]:.4f} ± {sd[model.idx['mat_scale']]:.4f}")
+    i_lift, i_pitch = model.idx["off_lift"], model.idx["base_r1"]
+    if np.isfinite(sd[i_lift]) and sd[i_lift] > 0 and sd[i_pitch] > 0:
+        print(f"corr(lift offset, base pitch) = {cov[i_lift, i_pitch] / (sd[i_lift] * sd[i_pitch]):+.2f};"
+              f" lift offset + base pitch = {deg(x[i_lift] + x[i_pitch]):.2f} deg")
+    m1 = [mounts[("id1", k)] for k in range(3)]
+    for k in (1, 2):
+        dt = np.linalg.norm(m1[k][:3, 3] - m1[0][:3, 3]) * 1000
+        dr = deg(R.from_matrix(m1[0][:3, :3].T @ m1[k][:3, :3]).magnitude())
+        print(f"ID1 taping {k} vs 0: {dt:.1f} mm, {dr:.1f} deg")
+
+    def arm_only(ss, i):
+        cam_, *_ = model.unpack(x)
+        errs, pos_err = [], []
+        mounts_ = model.unpack(x)[4]
+        for s in ss:
+            if i not in s["det"]:
+                continue
+            frames, _ = model.link_frames(x, s["state"])
+            key = ("id1", seg[s["pose_id"]]) if i == 1 else (f"id{i}", 0)
+            mw = frames[ARM_LINK[i] - 1] @ mounts_[key]
+            pw = (mw[:3, :3] @ CORNERS.T).T + mw[:3, 3]
+            errs.append(np.linalg.norm(project(Kmat, cam_, pw) - s["det"][i], axis=1).mean())
+            ok, rv, tv = cv2.solvePnP(np.c_[CORNERS[:, :2], np.zeros(4)], s["det"][i], Kmat, None, flags=cv2.SOLVEPNP_IPPE_SQUARE)
+            meas = cam_ @ T(rv.ravel(), tv.ravel())
+            pos_err.append(np.linalg.norm(meas[:3, 3] - mw[:3, 3]) * 1000)
+        return np.array(errs), np.array(pos_err)
+
+    print("\nper-marker error           fit set: px (median / p90)  mm*      held out: px (median / p90)  mm*")
+    report = {}
+    for i in (1, 5, 6):
+        a, am = arm_only(train, i)
+        b, bm = arm_only(test, i)
+        f = lambda v: f"{np.median(v):5.2f} / {np.percentile(v, 90):5.2f}" if v.size else "  -  "  # noqa: E731
+        g = lambda v: f"{np.median(v):5.1f}" if v.size else "  - "  # noqa: E731
+        print(f"  ID{i}   n={a.size:3d}/{b.size:3d}        {f(a)}       {g(am)}           {f(b)}       {g(bm)}")
+        report[f"ID{i}"] = {"fit_px_median": float(np.median(a)) if a.size else None, "held_px_median": float(np.median(b)) if b.size else None,
+                            "fit_mm_median": float(np.median(am)) if am.size else None, "held_mm_median": float(np.median(bm)) if bm.size else None}
+    print("  * marker-centre distance between the model and a single-marker PnP of the same still (depth-noisy)")
+
+    out = Path(args.out) if args.out else None
+    if out:
+        res = {"what": "scripts/solve_link_markers.py", "args": vars(args),
+               "offset_rad": {n: float(off[k]) for k, n in enumerate(jm.LEROBOT_NAMES[:5])},
+               "offset_sd_rad": {"shoulder_lift": float(sd[model.idx["off_lift"]]), "elbow_flex": float(sd[model.idx["off_elbow"]]),
+                                 "wrist_flex": float(sd[model.idx["off_flex"]])},
+               "sag_rad_per_nm": {n: float(x[model.idx[n]]) for n in ("sag_lift", "sag_elbow", "sag_flex")},
+               "world_from_link0": base.tolist(), "world_from_camera": cam.tolist(),
+               "chain": [[list(o), a] for o, a in chain], "report": report, "x": x.tolist(), "names": model.names}
+        (REPO / out).write_text(json.dumps(res, indent=1, ensure_ascii=False), encoding="utf-8")
+        print(f"\nwrote {out}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
