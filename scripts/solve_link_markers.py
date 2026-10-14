@@ -306,6 +306,10 @@ def main() -> int:
     ap.add_argument("--fix-base-tilt", action="store_true",
                     help="base level with the mat (yaw only): base pitch and the lift offset trade off (corr -0.5); "
                          "10-13 level check: base within ~0.5 deg of level [柏宇說]")
+    ap.add_argument("--max-elbow-reading", type=float, default=None,
+                    help="drop stills with the elbow reading above this. [柏宇說 10-15] at HOME the forearm rests on the "
+                         "shoulder-lift servo: past ~52.8 the link stops while the reading goes on (photos: -2..-5 deg at "
+                         "54-55; sim with self-collision stops 2.6 deg short at B0)")
     ap.add_argument("--free-joint-scales", action="store_true",
                     help="effective deg/unit for lift, elbow, flex (the encoder's is exact; play can make it look otherwise, S7)")
     ap.add_argument("--fore-mm", type=float, default=None, help="forearm joint3->4 length to use instead of the URDF's")
@@ -320,6 +324,10 @@ def main() -> int:
     stills = load_stills(REPO / args.captures, REPO / args.excluded, REPO / args.plan)
     detect(stills, model_cam, args.refine)
     seg = id1_segments(stills)
+    if args.max_elbow_reading is not None:
+        n0 = len(stills)
+        stills = [s for s in stills if s["state"][2] <= args.max_elbow_reading]
+        print(f"elbow reading <= {args.max_elbow_reading}: {n0 - len(stills)} stills dropped (forearm on the shoulder servo)")
     hold = {int(e) for e in args.holdout.split(",") if e}
     train = [s for s in stills if s["ep"] not in hold]
     test = [s for s in stills if s["ep"] in hold]
