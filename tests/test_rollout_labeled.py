@@ -101,12 +101,13 @@ def _press_later(s, key, delay):
     threading.Timer(delay, rl.apply_key, args=(key, s._events)).start()
 
 
-def test_wait_ends_on_timeout_only_with_verdict():
-    s, ctx = _strategy()
-    s._events.update(verdict="success", exit_early=True)  # pressed during the policy phase
-    t0 = time.perf_counter()
-    s._wait_for_verdict(ctx, reset_time_s=0.3, is_last=False)
-    assert time.perf_counter() - t0 >= 0.3  # that press did not also skip the reset
+def test_verdict_in_policy_phase_saves_without_reset_wait():
+    e = rl.new_events()
+    assert not rl.saves_without_reset_wait(e)  # ran out its time: wait for a verdict
+    rl.apply_key("right", e)
+    assert rl.saves_without_reset_wait(e)  # one press is enough
+    rl.apply_key("left", e)
+    assert not rl.saves_without_reset_wait(e)  # Left (even after Right) = redo, never saved
 
 
 def test_wait_without_verdict_outlasts_timeout_until_a_key():
@@ -143,3 +144,86 @@ def test_wait_redo_and_stop():
     _press_later(s, "esc", 0.1)
     s._wait_for_verdict(ctx, reset_time_s=30, is_last=False)
     assert s._events["stop_recording"]
+
+
+# ---- run(): one Right/Up per episode, whether it ended early or ran out its time ----
+
+class _FakeDataset:
+    repo_id = "x/rollout_test"
+
+    def __init__(self, save_s=0.0):
+        self.num_episodes = 0
+        self.save_s = save_s
+        self.cleared = 0
+
+    def save_episode(self):
+        time.sleep(self.save_s)
+        self.num_episodes += 1
+
+    def clear_episode_buffer(self):
+        self.cleared += 1
+
+
+def _run(tmp_path, monkeypatch, policy_keys, n=2, save_s=0.0, wait_keys=()):
+    """policy_keys[i]: keys pressed during episode attempt i's policy phase ([] = it ran out its time);
+    wait_keys: (delay_s, key) pressed from a timer, for the reset phase."""
+    import contextlib as _cl
+
+    import lerobot.datasets
+
+    monkeypatch.setattr(lerobot.datasets, "VideoEncodingManager", lambda ds: _cl.nullcontext())
+    s = rl.make_strategy_class()(SimpleNamespace(reset_to_initial_position=True))
+    said = []
+    s._speaker = SimpleNamespace(say=lambda text, wait=False: said.append(text))
+    ds = _FakeDataset(save_s)
+    s._sheet = rl.MetaSheet(tmp_path / "m.csv", 0, n, {}, "c")
+    s._engine = SimpleNamespace(reset=lambda: None, resume=lambda: None)
+    s._interpolator = SimpleNamespace(reset=lambda: None)
+    s._return_to_initial_position = lambda hw, duration_s=3.0: None
+    s._go_home = lambda ctx: None
+    attempts = iter(policy_keys)
+
+    def policy_loop(**kw):
+        for k in next(attempts):
+            s._on_key(k)
+
+    s._policy_loop = policy_loop
+    cfg = SimpleNamespace(
+        fps=15, task="t", play_sounds=False,
+        dataset=SimpleNamespace(num_episodes=n, reset_time_s=30, episode_time_s=1, single_task="t"),
+    )
+    ctx = SimpleNamespace(
+        runtime=SimpleNamespace(cfg=cfg, shutdown_event=threading.Event()),
+        hardware=SimpleNamespace(robot_wrapper=None),
+        data=SimpleNamespace(dataset=ds, dataset_features={}),
+    )
+    for delay, key in wait_keys:
+        threading.Timer(delay, s._on_key, args=(key,)).start()
+    t0 = time.perf_counter()
+    s.run(ctx)
+    return time.perf_counter() - t0, ds, said, [r["outcome"] for r in _rows(tmp_path / "m.csv")]
+
+
+def test_run_early_verdict_saves_without_second_key(tmp_path, monkeypatch):
+    dt, ds, said, outcomes = _run(tmp_path, monkeypatch, [["right"], ["up"]])
+    assert dt < 5  # reset_time_s=30 never waited
+    assert ds.num_episodes == 2 and outcomes == ["success", ""]
+    assert said[:2] == ["Recording episode 0", "success"]  # verdict spoken at the press
+
+
+def test_run_timed_out_episode_waits_for_one_key(tmp_path, monkeypatch):
+    dt, ds, said, outcomes = _run(tmp_path, monkeypatch, [[]], n=1, wait_keys=[(0.3, "right")])
+    assert 0.3 <= dt < 5 and ds.num_episodes == 1 and outcomes == ["success"]
+
+
+def test_run_left_redoes_and_keys_during_save_are_ignored(tmp_path, monkeypatch, capsys):
+    # attempt 0: Left in the policy phase -> discarded, reset phase ends on the next key
+    # attempt 1: Right, then Left and Up while it is saving -> still saved as success
+    dt, ds, said, outcomes = _run(
+        tmp_path, monkeypatch, [["left"], ["right"]], n=1, save_s=0.8,
+        wait_keys=[(0.2, "left"), (0.5, "left"), (0.6, "up")],
+    )
+    assert ds.cleared >= 1 and ds.num_episodes == 1 and outcomes == ["success"]
+    out = capsys.readouterr().out
+    assert "left ignored" in out and "up ignored" in out
+    assert "fail" not in said

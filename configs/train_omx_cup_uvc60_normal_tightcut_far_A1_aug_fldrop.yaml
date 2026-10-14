@@ -4,6 +4,8 @@
 # That is done by scripts/train_fl_dropout.py (lerobot has no per-camera / per-phase dropout); the flags are NOT
 # in this YAML (lerobot's parser would reject them) -- they are in job_name and in <output_dir>/fl_dropout.json.
 # Why, numbers and acceptance test: docs/handoff/2026-10-13_fl_dropout.md.
+# Also used (same file, flags on the command line) for p = 0.5 (docs/handoff/2026-10-14_fl_dropout_p50.md) and for
+# --transforms-fl-only, which keeps image_transforms below off the wrist camera (docs/handoff/2026-10-14_fl_augfl.md).
 #
 #   ./scripts/run_container.sh python scripts/train_fl_dropout.py --fl-p 0.3 --fl-window 30 \
 #       --config_path configs/train_omx_cup_uvc60_normal_tightcut_far_A1_aug_fldrop.yaml
