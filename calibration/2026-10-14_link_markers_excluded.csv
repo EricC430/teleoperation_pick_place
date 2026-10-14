@@ -1,2 +1,6 @@
 pose_id,reason
 P14,"10-14 on site: the arm hit an obstacle on the way to ep17 f237 (link play / contact force, not a free pose)"
+B0,"before the camera was moved (20:01; new camera from 20:16) - retake B0 at the new position"
+P00,"before the camera was moved; also a bin-transport pose (gripper closed, markers turned away)"
+P01,"before the camera was moved; also a bin-transport pose"
+P09,"a hand was on the arm in the still"
