@@ -200,7 +200,7 @@ class Model:
         js[1:4] = x[self.idx["jscale_lift"]:self.idx["jscale_flex"] + 1]
         q = jm.SCALE_RAD_PER_UNIT["shoulder_lift"] * js * state[:5] + off
         frames0 = chain_transforms(q, chain)
-        g_base = base[:3, :3].T @ np.array([0.0, 0.0, -G])
+        g_base = np.array([0.0, 0.0, -G]) if getattr(self, "gravity_in_base", False) else base[:3, :3].T @ np.array([0.0, 0.0, -G])
         tau = gravity_torques(frames0, self.inertials, g_base)
         q2 = q.copy()
         q2[1:4] += sag * tau
@@ -297,6 +297,15 @@ def main() -> int:
     ap.add_argument("--free-focal", action="store_true", help="one scale on fx, fy (device-read intrinsics)")
     ap.add_argument("--refine", choices=("none", "subpix", "contour", "apriltag"), default="none",
                     help="ArUco corner refinement; without it the corners of a ~50 px marker can sit a fraction of a pixel inside")
+    ap.add_argument("--base-tilt-deg", default=None,
+                    help="roll,pitch of the base relative to the mat, MEASURED (phone level) and held fixed. [柏宇說 10-15] "
+                         "base y -0.45, desk -2.85 (near) / -2.65 (far): base is ~2.3 deg off the mat plane")
+    ap.add_argument("--gravity-in-base", action="store_true",
+                    help="gravity straight down in the base frame (base level within 0.45 deg [柏宇說]); the mat itself is "
+                         "tilted ~2.75 deg, so 'down' in the mat frame is not gravity")
+    ap.add_argument("--fix-base-tilt", action="store_true",
+                    help="base level with the mat (yaw only): base pitch and the lift offset trade off (corr -0.5); "
+                         "10-13 level check: base within ~0.5 deg of level [柏宇說]")
     ap.add_argument("--free-joint-scales", action="store_true",
                     help="effective deg/unit for lift, elbow, flex (the encoder's is exact; play can make it look otherwise, S7)")
     ap.add_argument("--fore-mm", type=float, default=None, help="forearm joint3->4 length to use instead of the URDF's")
@@ -348,6 +357,16 @@ def main() -> int:
         x[model.idx[f"{pre}_x"]:model.idx[f"{pre}_x"] + 3] = t
 
     lo = np.full(len(x), -np.inf); hi = np.full(len(x), np.inf)
+    if args.base_tilt_deg:
+        r_, p_ = (np.radians(float(v)) for v in args.base_tilt_deg.split(","))
+        for n, v in (("base_r0", r_), ("base_r1", p_)):
+            lo[model.idx[n]], hi[model.idx[n]] = v - 1e-12, v + 1e-12
+            x[model.idx[n]] = v
+    model.gravity_in_base = args.gravity_in_base
+    if args.fix_base_tilt:
+        for n in ("base_r0", "base_r1"):
+            lo[model.idx[n]], hi[model.idx[n]] = -1e-12, 1e-12
+            x[model.idx[n]] = 0.0
     if not args.free_joint_scales:
         for n in ("jscale_lift", "jscale_elbow", "jscale_flex"):
             lo[model.idx[n]], hi[model.idx[n]] = 1.0 - 1e-12, 1.0 + 1e-12
