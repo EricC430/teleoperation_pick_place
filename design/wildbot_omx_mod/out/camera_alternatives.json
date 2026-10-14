@@ -1,0 +1,38 @@
+{
+ "右前 70 cm（本案）": {
+  "reach_cm2": 1476,
+  "in_fov": 1.0,
+  "visible_stow": 0.921,
+  "visible_no_arm": 0.921,
+  "far_px_per_cm": 3.85,
+  "mast_free_len_m": 0.31,
+  "pose_clash": []
+ },
+ "中右 65 cm": {
+  "reach_cm2": 1548,
+  "in_fov": 0.994,
+  "visible_stow": 0.75,
+  "visible_no_arm": 0.837,
+  "far_px_per_cm": 3.8,
+  "mast_free_len_m": 0.26,
+  "pose_clash": []
+ },
+ "中右 85 cm": {
+  "reach_cm2": 1548,
+  "in_fov": 1.0,
+  "visible_stow": 0.878,
+  "visible_no_arm": 0.878,
+  "far_px_per_cm": 3.19,
+  "mast_free_len_m": 0.46,
+  "pose_clash": []
+ },
+ "後右 75 cm": {
+  "reach_cm2": 1548,
+  "in_fov": 1.0,
+  "visible_stow": 0.762,
+  "visible_no_arm": 0.82,
+  "far_px_per_cm": 3.27,
+  "mast_free_len_m": 0.36,
+  "pose_clash": []
+ }
+}
