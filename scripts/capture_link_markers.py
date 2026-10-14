@@ -20,7 +20,9 @@ Setup (once):
 Each pose: Enter -> the arm eases from HOME onto the start of the RECORDED path (each episode began a few units away
 from HOME), follows it there (slowed down), settles, joint states are averaged, one front-left still (and a wrist
 still) is taken, then the arm retraces the path and eases back to HOME. s = skip, q = quit;
-rerunning with the same CSV skips poses already captured. Stills go to calibration/shots/<csv stem>/ and the index to
+rerunning with the same CSV skips poses already captured. --retake P09,B0 captures those again: the new
+stills get a '_retake' suffix (nothing is overwritten) and their rows are appended, so a pose_id can appear more than
+once in the index -- the LAST row per (pose_id, camera) is the one to use. Stills go to calibration/shots/<csv stem>/ and the index to
 <csv stem>_captures.csv (same format as S7's, so scripts/click_fingertips.py and the overlay tools read it).
 """
 from __future__ import annotations
@@ -44,6 +46,8 @@ def cmd_session(args) -> int:
     done = set()
     if log.exists():
         done = {r["pose_id"] for r in csv.DictReader(log.open(encoding="utf-8"))}
+    retake = {r for r in (args.retake or "").split(",") if r}
+    done -= retake
     cams = [c for c in args.cameras.split(",") if c]
     start = dict(zip(JOINTS, plan["start"]))
     print("=" * 76)
@@ -60,7 +64,7 @@ def cmd_session(args) -> int:
             return 1
         if "B0" not in done:
             st = arm.read_avg(10)
-            S7.capture_stills(csv_path, "B0", "", st, cams)
+            S7.capture_stills(csv_path, "B0", "start_retake" if "B0" in retake else "", st, cams)
         for ps in plan["poses"]:
             if ps["id"] in done:
                 continue
@@ -74,7 +78,7 @@ def cmd_session(args) -> int:
             arm.follow(ps["path"], args.seconds_per_point)
             time.sleep(args.settle)
             st = arm.read_avg(10)
-            S7.capture_stills(csv_path, ps["id"], "traj", st, cams)
+            S7.capture_stills(csv_path, ps["id"], "traj_retake" if ps["id"] in retake else "traj", st, cams)
             print("    沿原路徑退回起始姿勢……")
             arm.follow(list(reversed(ps["path"])), args.seconds_per_point)
             arm.move_to(start, args.ease)
@@ -94,10 +98,12 @@ def main() -> int:
     se.add_argument("--cameras", default="front-left,wrist")
     se.add_argument("--port", default="COM8")
     se.add_argument("--id", default="2026-09-18_omx_follower")
-    se.add_argument("--seconds-per-point", type=float, default=0.3,
-                    help="per kept path point (every 3rd recorded frame = 0.2 s), so 0.3 is 1.5x slower than recorded")
+    se.add_argument("--seconds-per-point", type=float, default=0.2,
+                    help="per kept path point (every 3rd recorded frame = 0.2 s), so 0.2 is the recorded speed "
+                         "(10-14: 0.3 was too slow on site)")
     se.add_argument("--settle", type=float, default=2.0)
-    se.add_argument("--ease", type=float, default=2.0, help="seconds for HOME <-> the recorded path's first point")
+    se.add_argument("--retake", default="", help="comma-separated pose ids (B0, P09, ...) to capture again")
+    se.add_argument("--ease", type=float, default=1.5, help="seconds for HOME <-> the recorded path's first point")
     se.add_argument("--max-start-jump", type=float, default=8.0)
     se.set_defaults(func=cmd_session)
     args = ap.parse_args()
