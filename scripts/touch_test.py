@@ -51,6 +51,9 @@ GRIP_CLOSED = 50.5           # fingers touching at 50.21 [已查證 2026-09-21]
 # at (32,20) (38,0) (24,-10) (45,12) (35,-15).
 # Reach 18-36 cm; the 10-14 closed-loop grasps sit at 32-37 cm.
 TARGETS = [(18.0, 0.0), (25.0, 0.0), (30.0, 8.0), (22.0, 14.0), (26.0, -18.0), (33.0, -6.0)]   # (35,-8): out of reach at 1 cm
+# --plumb: near points spread in azimuth. 10-15: shoulder_lift tripped Overload holding (25,0) (gravity torque 0.46 N.m by
+# the URDF masses; the real arm carries the wrist camera too) and could not lift off the paper at (30,8).
+PLUMB_TARGETS = [(14.0, 0.0), (18.0, -8.0), (18.0, 8.0), (13.0, 13.0), (13.0, -13.0), (21.0, -4.0), (21.0, 4.0), (10.0, 0.0)]
 
 
 class FitModel:
@@ -75,6 +78,17 @@ class FitModel:
     def tip(self, readings) -> np.ndarray:
         return (self.link5(readings) @ TIP)[:3]
 
+    def lift_torque(self, readings) -> float:
+        q = jm.SCALE_RAD_PER_UNIT["shoulder_lift"] * np.asarray(readings[:5], float) + self.off
+        return float(SL.gravity_torques(SL.chain_transforms(q, self.chain), self.inert, np.array([0, 0, -SL.G]))[0])
+
+    def plumb(self, readings) -> np.ndarray:
+        """Where a weight hung from the tip lands on the mat: gravity is straight down in the BASE frame (base level
+        within 0.45 deg), and the mat is tilted ~2.75 deg, so the line does not hit the mat right below the tip."""
+        t = self.tip(readings)
+        g = self.base[:3, :3] @ np.array([0.0, 0.0, -1.0])
+        return t + (t[2] / -g[2]) * g
+
     def solve(self, target_m: np.ndarray, roll: float, seed: np.ndarray) -> tuple[np.ndarray, float]:
         """Readings (pan, lift, elbow, flex) putting the tip on target_m, pitch as close to straight down as reachable."""
         def res(r):
@@ -92,14 +106,18 @@ class FitModel:
         return sol.x, float(np.degrees(np.arccos(np.clip(-T5[2, 0], -1, 1))))
 
 
-def plan(model: FitModel, roll: float, hover_mm: float):
+def plan(model: FitModel, roll: float, hover_mm: float, targets=None, max_tau: float = 9.9):
     out = []
-    for x, y in TARGETS:
+    for x, y in (targets or TARGETS):
         seed = np.array([np.degrees(np.arctan2(y, x)) / 1.7996, 40.0, -40.0, -30.0])
         hov, tilt = model.solve(np.array([x / 100, y / 100, hover_mm / 1000]), roll, seed)
         abv, _ = model.solve(np.array([x / 100, y / 100, 0.06]), roll, hov)
         err = np.linalg.norm(model.tip(np.r_[hov, roll, GRIP_CLOSED]) - [x / 100, y / 100, hover_mm / 1000]) * 1000
-        out.append({"target_cm": (x, y), "hover": hov, "above": abv, "tilt_deg": tilt, "solve_err_mm": err})
+        tau = model.lift_torque(np.r_[hov, roll, GRIP_CLOSED])
+        if tau > max_tau:
+            print(f"  skip {(x, y)}: shoulder_lift gravity torque {tau:.2f} N.m > {max_tau}")
+            continue
+        out.append({"target_cm": (x, y), "hover": hov, "above": abv, "tilt_deg": tilt, "solve_err_mm": err, "tau": tau})
     return out
 
 
@@ -107,9 +125,9 @@ def cmd_plan(args) -> int:
     model = FitModel(REPO / args.fit)
     home = json.loads((REPO / args.plan).read_text(encoding="utf-8"))["start"]
     print(f"model: {model.name}; roll fixed at HOME's {home[4]:.2f}; hover {args.hover_mm} mm")
-    for p in plan(model, home[4], args.hover_mm):
+    for p in plan(model, home[4], args.hover_mm, PLUMB_TARGETS if args.plumb else None, args.max_lift_torque):
         print(f"  target {p['target_cm']}: hover readings {np.round(p['hover'], 1)}  finger axis {p['tilt_deg']:.0f} deg off vertical,"
-              f" solve error {p['solve_err_mm']:.1f} mm")
+              f" solve error {p['solve_err_mm']:.1f} mm, lift gravity torque {p['tau']:.2f} N.m")
     return 0
 
 
@@ -130,7 +148,10 @@ def cmd_session(args) -> int:
     done = set()
     if csv_path.exists():
         done = {(float(r["target_x_cm"]), float(r["target_y_cm"])) for r in csv.DictReader(csv_path.open(encoding="utf-8"))}
-    plans = [p for p in plan(model, roll, args.hover_mm) if tuple(p["target_cm"]) not in done]
+    plans = [p for p in plan(model, roll, args.hover_mm, PLUMB_TARGETS if args.plumb else None, args.max_lift_torque)
+             if tuple(p["target_cm"]) not in done]
+    if args.plumb:
+        print("鉛垂線模式：在閉合的指尖綁細線、吊小重物（線長到離紙 2-3 mm）；每點等重物停止擺動，讀重物正下方的格子。")
     print("=" * 76)
     print(f"touch test: {len(plans)} targets left, model {model.name}. 桌上只留座標紙；夾爪會閉合。")
     print("每個點：手臂先到目標上方 6 cm，再降到紙面上方約 2 cm（依模型）。看著實際指尖用 d / u 降 / 升 3 mm，到離紙約 3-5 mm 讀數。")
@@ -160,9 +181,15 @@ def cmd_session(args) -> int:
             # (S8 10-12 too). The sag is fine -- the analysis uses the readings actually present.
             while True:
                 time.sleep(0.5)
-                z_now = model.tip(np.array([v for v in arm.read_avg(5).values()]))[2] * 1000
-                k = S7._ask(f"    指令高度 {z_mm:.0f} mm；依目前讀數模型算的指尖高度 {z_now:.0f} mm。"
-                            f"看實際指尖：d 降 3 mm / u 升 3 mm / Enter 讀數 / s 跳過: ").lower()
+                now_rd = arm.read_avg(5)
+                z_now = model.tip(np.array([now_rd[j] for j in JOINTS]))[2] * 1000
+                try:
+                    ld = arm.bus.sync_read("Present_Load", ["shoulder_lift"], normalize=False)["shoulder_lift"]
+                    ld = (ld - 65536 if ld >= 32768 else ld) / 10
+                except Exception:  # noqa: BLE001 -- the load is only shown
+                    ld = float("nan")
+                k = S7._ask(f"    指令高度 {z_mm:.0f} mm；模型算的指尖高度 {z_now:.0f} mm；肩膀負載 {ld:.0f}%"
+                            f"{'（偏高，盡快讀完）' if abs(ld) > 60 else ''}。d 降 3 mm / u 升 3 mm / Enter 讀數 / s 跳過: ").lower()
                 if k in ("d", "u"):
                     z_mm += -3 if k == "d" else 3
                     sol, _ = model.solve(np.array([x / 100, y / 100, z_mm / 1000]), roll, np.array(p["hover"]))
@@ -174,7 +201,7 @@ def cmd_session(args) -> int:
                 _go(arm, above, 1.5)
                 continue
             st = arm.read_avg(10)
-            raw = S7._ask("    指尖正下方的格子座標 x y（cm）: ")
+            raw = S7._ask("    重物正下方的格子座標 x y（cm）: " if args.plumb else "    指尖正下方的格子座標 x y（cm）: ")
             try:
                 mx, my = (float(v) for v in raw.replace(",", " ").split()[:2])
             except ValueError:
@@ -182,7 +209,7 @@ def cmd_session(args) -> int:
                 _go(arm, above, 1.5)
                 continue
             rd = np.array([st[j] for j in JOINTS])
-            tip = model.tip(rd) * 100
+            tip = (model.plumb(rd) if args.plumb else model.tip(rd)) * 100
             new = not csv_path.exists()
             with csv_path.open("a", newline="", encoding="utf-8") as fh:
                 w = csv.writer(fh)
@@ -207,7 +234,7 @@ def cmd_analyse(args) -> int:
     errs = []
     for r in rows:
         rd = np.array([float(r[f"state_{j}"]) for j in JOINTS])
-        tip = model.tip(rd) * 100
+        tip = (model.plumb(rd) if args.plumb else model.tip(rd)) * 100
         m = np.array([float(r["measured_x_cm"]), float(r["measured_y_cm"])])
         e = m - tip[:2]
         reach = np.hypot(*m)
@@ -235,12 +262,17 @@ def main() -> int:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--fit", default="calibration/2026-10-14_link_marker_fit.json")
     common.add_argument("--plan", default="configs/link_marker_plan_farwrist.json", help="only its HOME ('start') is used")
-    common.add_argument("--hover-mm", type=float, default=20.0)
+    common.add_argument("--hover-mm", type=float, default=None, help="default 20 mm, 60 mm with --plumb")
+    common.add_argument("--plumb", action="store_true", help="read a plumb weight hung from the tip, from higher up")
+    common.add_argument("--max-lift-torque", type=float, default=0.40,
+                        help="skip targets whose shoulder_lift gravity torque (URDF masses) is above this; 10-15 tripped at 0.46")
     p = sub.add_parser("plan", parents=[common]); p.set_defaults(func=cmd_plan)
     s = sub.add_parser("session", parents=[common]); s.add_argument("--csv", required=True)
     s.add_argument("--port", default="COM8"); s.add_argument("--id", default="2026-09-18_omx_follower"); s.set_defaults(func=cmd_session)
     a = sub.add_parser("analyse", parents=[common]); a.add_argument("--csv", required=True); a.set_defaults(func=cmd_analyse)
     args = ap.parse_args()
+    if args.hover_mm is None:
+        args.hover_mm = 60.0 if args.plumb else 20.0
     return args.func(args)
 
 
