@@ -5,7 +5,7 @@
 3,paper_cup,stand,c4,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,,,,,
 4,paper_cup,stand,c5,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,,,,,
 5,paper_cup,stand,c6,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,,,,,
-6,paper_cup,stand,c7,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,,,,,第三視角 frame0：杯子部分被 C 型夾／底座遮住，看不到
+6,paper_cup,stand,c7,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,,,,,第三視角 frame0：杯子部分被 C 型夾／底座遮住，中間部分被擋住
 7,paper_cup,stand,c8,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,,,,,
 8,paper_cup,stand,c9,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,chunk_gap_rush,,,,,,
 9,paper_cup,stand,c10,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim,,,,,,
@@ -14,7 +14,7 @@
 12,paper_cup,stand,c13,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;chunk_gap_rush;pushed_away,,,,,,
 13,paper_cup,stand,c14,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,,,,,
 14,paper_cup,stand,c15,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,,,,,
-15,paper_cup,stand,c16,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,,,,,第三視角 frame0：杯子在鏡頭外完全看不到
+15,paper_cup,stand,c16,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,,,,,第三視角 frame0：杯子在鏡頭外完全看不到(死背的軌跡)
 16,paper_cup,stand,c17,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim,,,,,,第三視角 frame0：杯子部分被 C 型夾／底座遮住，看不到
 17,paper_cup,stand,c18,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,bad_aim;self_recovered,,,,,,
 18,paper_cup,stand,c19,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,,,,,
