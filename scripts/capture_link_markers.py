@@ -38,6 +38,16 @@ HOME. Episodes are picked to spread the grasp poses (farthest-point in pan/lift/
 
 Stop ids are E<ep>_F<frame>; rerunning resumes, --retake works the same way. Same CSV as `session`, so the stills
 already taken stay in one index.
+
+scan (2026-10-14): the walk saw the gripper marker (ID6) in only 24 of 101 stills -- the gripper face is turned away
+from the camera most of the approach, and ID6 is what carries the chain out to the fingertip. scan walks each episode
+to its LAST stop whose fingertip is still --min-tip-cm above the table (nominal model; margin for the sweep and for a
+model that is 1-2 cm off), then sweeps wrist_roll x wrist_flex around that pose (serpentine), photographing each,
+and retraces. Grasp-region poses, not "in front of the camera": that is where the accuracy matters (link play and sag
+depend on the pose), and it stays inside the recorded pan range (the camera now sits left-REAR of the pan axis).
+Ids S<ep>_F<frame>_r<droll>_f<dflex>.
+
+    uv run python scripts/capture_link_markers.py scan --csv calibration/2026-10-14_link_markers.csv --dry-run
 """
 from __future__ import annotations
 
@@ -246,6 +256,91 @@ def cmd_walk(args) -> int:
     return 0
 
 
+def _serpentine(rolls: list[float], flexes: list[float]) -> list[tuple[float, float]]:
+    out = []
+    for n, f in enumerate(flexes):
+        out += [(r, f) for r in (rolls if n % 2 == 0 else list(reversed(rolls)))]
+    return out
+
+
+def cmd_scan(args) -> int:
+    csv_path = Path(args.csv)
+    log = csv_path.with_name(csv_path.stem + "_captures.csv")
+    done = {r["pose_id"] for r in csv.DictReader(log.open(encoding="utf-8"))} if log.exists() else set()
+    plan = json.loads(Path(args.plan).read_text(encoding="utf-8"))
+    home = plan["start"]
+    walks = plan_walk(_load_episodes(args.dataset_root), home, args.n_episodes, args.stop_every, args.path_every,
+                      args.min_from_home, args.min_spacing,
+                      [int(e) for e in args.episodes.split(",")] if args.episodes else None,
+                      {int(e) for e in args.exclude_episodes.split(",") if e})
+    p = S7.nominal_params()
+    grid = _serpentine([float(v) for v in args.rolls.split(",")], [float(v) for v in args.flexes.split(",")])
+    bases = []
+    for w in walks:
+        ok = [n for n in w["stops"]
+              if S7._fingertip_above_table_m(dict(zip(JOINTS, w["path"][n])), p) * 100 >= args.min_tip_cm]
+        if ok:
+            bases.append((w, ok[-1]))
+    print("=" * 76)
+    print(f"scan: {len(bases)} base poses x {len(grid)} (roll, flex) = {len(bases) * len(grid)} stills; "
+          f"roll {args.rolls}, flex {args.flexes} (units)")
+    for w, n in bases:
+        st = w["path"][n]
+        tip = S7._fingertip_above_table_m(dict(zip(JOINTS, st)), p) * 100
+        print(f"  ep{w['episode']:02d} f{w['frames'][n]}: fingertip ~{tip:.0f} cm above the table (nominal), "
+              f"pan {st[0]:.1f} roll {st[4]:.1f} flex {st[3]:.1f}")
+    print("夾爪會在每個基準姿勢上小幅轉手腕（roll）和彎手腕（flex），每個角度停下來拍一張。")
+    print("第一個基準姿勢請盯著看：夾爪或紙板若會碰到桌面、紙或線材，立刻按 Ctrl+C。")
+    print("=" * 76)
+    if args.dry_run:
+        return 0
+    cams = [c for c in args.cameras.split(",") if c]
+    shot_dir = csv_path.parent / "shots" / csv_path.stem
+    with S7.Arm(args.port, args.id) as arm:
+        start = dict(zip(JOINTS, home))
+        now = arm.read()
+        far = {j: round(now[j] - start[j], 1) for j in JOINTS if j != "gripper" and abs(now[j] - start[j]) > args.max_start_jump}
+        if far:
+            print(f"🔴 手臂不在 HOME（差 {far}）。先執行：")
+            print("   uv run python scripts/read_joint_pose.py --goto-home --home-episode 10")
+            return 1
+        for w, n in bases:
+            base = dict(zip(JOINTS, w["path"][n]))
+            base["gripper"] = max(base["gripper"], S7.GRIPPER_MIN_GOAL)
+            ids = [f"S{w['episode']:02d}_F{w['frames'][n]:04d}_r{dr:+.0f}_f{df:+.0f}" for dr, df in grid]
+            if all(i in done for i in ids):
+                continue
+            print(f"\n--- ep{w['episode']:02d} f{w['frames'][n]}: {len(ids)} stills")
+            go = S7._ask("    Enter = 走到基準姿勢並轉動拍照，s = 跳過，q = 結束: ").lower()
+            if go == "q":
+                return 0
+            if go == "s":
+                continue
+            arm.follow(w["path"][:1], args.ease)
+            arm.follow(w["path"][: n + 1], args.seconds_per_point)
+            hits = 0
+            for (dr, df), pid in zip(grid, ids):
+                if pid in done:
+                    continue
+                tgt = dict(base)
+                tgt["wrist_roll"] += dr
+                tgt["wrist_flex"] += df
+                jump = max(abs(tgt[j] - arm.goal[j]) for j in ("wrist_roll", "wrist_flex"))
+                arm.move_to(tgt, max(args.step_seconds, jump / 20.0))  # <= 20 units/s
+                time.sleep(args.settle)
+                st = arm.read_avg(10)
+                S7.capture_stills(csv_path, pid, "scan", st, cams)
+                seen = _detect(shot_dir / f"{pid}_scan_front-left.png") if "front-left" in cams else []
+                hits += 6 in seen
+                print(f"      {pid}: 手臂標記 {[i for i in seen if i in ARM_IDS]}")
+            print(f"    這個基準姿勢 ID6 偵測到 {hits}/{len(ids)} 張。回基準姿勢，沿原路徑退回 HOME……")
+            arm.move_to(base, max(args.step_seconds, max(abs(base[j] - arm.goal[j]) for j in JOINTS) / 20.0))
+            arm.follow(list(reversed(w["path"][: n + 1])), args.seconds_per_point)
+            arm.move_to(start, args.ease)
+        print(f"\n完成。手臂停在 HOME、扭力開著。照片在 {shot_dir}/，索引 {log}")
+    return 0
+
+
 def main() -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
@@ -266,28 +361,40 @@ def main() -> int:
     se.add_argument("--ease", type=float, default=1.5, help="seconds for HOME <-> the recorded path's first point")
     se.add_argument("--max-start-jump", type=float, default=8.0)
     se.set_defaults(func=cmd_session)
-    wk = sub.add_parser("walk", help="walk recorded approaches, stop and photograph along the way (needs the arm)")
-    wk.add_argument("--csv", required=True, help="calibration/<date>_link_markers.csv (only its name is used)")
-    wk.add_argument("--plan", default="configs/link_marker_plan_farwrist.json", help="only its HOME ('start') is used")
-    wk.add_argument("--dataset-root", default=".cache/lerobot/omx_pick_place_pilot_paper_cup_far_wrist_A1")
-    wk.add_argument("--episodes", default="", help="comma-separated episode indices; default = --n-episodes spread ones")
-    wk.add_argument("--n-episodes", type=int, default=10)
-    wk.add_argument("--exclude-episodes", default="17",
-                    help="never walk these (17: the 10-14 session's P14 = ep17 f237 hit an obstacle)")
-    wk.add_argument("--path-every", type=int, default=3, help="keep every Nth recorded frame as a path point")
-    wk.add_argument("--stop-every", type=int, default=5, help="stop every N path points (5 x 3 frames = 1 s recorded)")
-    wk.add_argument("--min-from-home", type=float, default=10.0, help="no stops until some joint is this far from HOME")
-    wk.add_argument("--min-spacing", type=float, default=6.0, help="units in some joint between consecutive stops")
-    wk.add_argument("--cameras", default="front-left")
+    walks = argparse.ArgumentParser(add_help=False)  # what walk and scan share: which walks, how to move
+    walks.add_argument("--csv", required=True, help="calibration/<date>_link_markers.csv (only its name is used)")
+    walks.add_argument("--plan", default="configs/link_marker_plan_farwrist.json", help="only its HOME ('start') is used")
+    walks.add_argument("--dataset-root", default=".cache/lerobot/omx_pick_place_pilot_paper_cup_far_wrist_A1")
+    walks.add_argument("--episodes", default="", help="comma-separated episode indices; default = --n-episodes spread ones")
+    walks.add_argument("--n-episodes", type=int, default=10)
+    walks.add_argument("--exclude-episodes", default="17",
+                       help="never walk these (17: the 10-14 session's P14 = ep17 f237 hit an obstacle)")
+    walks.add_argument("--path-every", type=int, default=3, help="keep every Nth recorded frame as a path point")
+    walks.add_argument("--stop-every", type=int, default=5, help="stop every N path points (5 x 3 frames = 1 s recorded)")
+    walks.add_argument("--min-from-home", type=float, default=10.0, help="no stops until some joint is this far from HOME")
+    walks.add_argument("--min-spacing", type=float, default=6.0, help="units in some joint between consecutive stops")
+    walks.add_argument("--cameras", default="front-left")
+    walks.add_argument("--port", default="COM8")
+    walks.add_argument("--id", default="2026-09-18_omx_follower")
+    walks.add_argument("--seconds-per-point", type=float, default=0.2)
+    walks.add_argument("--settle", type=float, default=1.5)
+    walks.add_argument("--ease", type=float, default=1.5)
+    walks.add_argument("--max-start-jump", type=float, default=8.0)
+    walks.add_argument("--dry-run", action="store_true", help="print what would be walked; no arm")
+    wk = sub.add_parser("walk", parents=[walks],
+                        help="walk recorded approaches, stop and photograph along the way (needs the arm)")
     wk.add_argument("--retake", default="")
-    wk.add_argument("--port", default="COM8")
-    wk.add_argument("--id", default="2026-09-18_omx_follower")
-    wk.add_argument("--seconds-per-point", type=float, default=0.2)
-    wk.add_argument("--settle", type=float, default=1.5)
-    wk.add_argument("--ease", type=float, default=1.5)
-    wk.add_argument("--max-start-jump", type=float, default=8.0)
-    wk.add_argument("--dry-run", action="store_true", help="print the walks and stop counts; no arm")
     wk.set_defaults(func=cmd_walk)
+    sc = sub.add_parser("scan", parents=[walks],
+                        help="at a pre-grasp pose per episode, sweep wrist roll x flex and photograph (needs the arm)")
+    sc.add_argument("--min-tip-cm", type=float, default=11.0,
+                    help="base pose = the episode's last walk stop with the fingertip at least this high (nominal)")
+    sc.add_argument("--rolls", default="-30,-20,-10,0",
+                    help="wrist_roll offsets from the base pose (units). Toward lower roll: in the 10-14 walk ID6 was "
+                         "seen at roll median 3.5 (p90 26.5), missed up to 43.5, and the bases sit at roll 15-48")
+    sc.add_argument("--flexes", default="-8,0,8", help="wrist_flex offsets from the base pose (units)")
+    sc.add_argument("--step-seconds", type=float, default=1.0, help="move time between grid points")
+    sc.set_defaults(func=cmd_scan)
     args = ap.parse_args()
     return args.func(args)
 
