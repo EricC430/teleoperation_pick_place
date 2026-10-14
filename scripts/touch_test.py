@@ -101,7 +101,7 @@ class FitModel:
             return np.r_[((T5 @ TIP)[:3] - target_m) * 1000.0, 0.05 * down]
         best = None
         for s_ in [seed] + [np.array([seed[0], l_, e_, f_]) for l_ in (30.0, 45.0, 55.0) for e_ in (-20.0, -40.0, -55.0) for f_ in (-20.0, -45.0)]:
-            sol = least_squares(res, s_, bounds=([-90, -80, -80, -90], [90, 80, 80, 90]))
+            sol = least_squares(res, s_, bounds=([-90, -80, -60, -90], [90, 80, 80, 90]))  # elbow >= -60: the recorded range
             if best is None or sol.cost < best.cost:
                 best = sol
         sol = best
