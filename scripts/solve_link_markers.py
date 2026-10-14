@@ -240,7 +240,37 @@ def residuals(x, model, stills, Kmat, paper_w, seg, which=None):
             mw = frames[ARM_LINK[i] - 1] @ mounts[key]
             pw = (mw[:3, :3] @ (x[model.idx["marker_scale"]] * CORNERS).T).T + mw[:3, 3]
             res.append((project(Kmat, cam, pw) - d[i]).ravel())
+    if which is None and getattr(model, "touch", None):
+        res.append(touch_residuals(x, model, model.touch) * model.touch_weight / TOUCH_SIGMA_MM)
     return np.concatenate(res) if res else np.zeros(0)
+
+
+TOUCH_SIGMA_MM = 2.5     # reading a 1 mm grid by eye from above, plumb settled
+TIP_H = np.array([0.0945, -0.00165, 0.0, 1.0])   # omx_constants GRIPPER_TIP_X_M / MIDLINE_Y_M (closed)
+
+
+def touch_point(x, model, readings, plumb):
+    frames, _ = model.link_frames(x, readings)
+    t = (frames[-1] @ TIP_H)[:3]
+    if plumb:
+        base = model.unpack(x)[1]
+        g = base[:3, :3] @ np.array([0.0, 0.0, -1.0]) if getattr(model, "gravity_in_base", False) else np.array([0.0, 0.0, -1.0])
+        t = t + (t[2] / -g[2]) * g
+    return t[:2]
+
+
+def touch_residuals(x, model, rows):
+    """mm, mat frame: where the model puts the closed fingertip (or the plumb weight) minus where it was read."""
+    return np.concatenate([(touch_point(x, model, rd, pl) - xy) * 1000 for rd, xy, pl in rows])
+
+
+def load_touch(paths_plumb):
+    rows = []
+    for path, plumb in paths_plumb:
+        for r in csv.DictReader(open(path, encoding="utf-8")):
+            rows.append((np.array([float(r["state_" + j]) for j in jm.LEROBOT_NAMES]),
+                         np.array([float(r["measured_x_cm"]), float(r["measured_y_cm"])]) / 100, plumb))
+    return rows
 
 
 # ------------------------------------------------------------------------------------------------ init
@@ -306,6 +336,12 @@ def main() -> int:
     ap.add_argument("--fix-base-tilt", action="store_true",
                     help="base level with the mat (yaw only): base pitch and the lift offset trade off (corr -0.5); "
                          "10-13 level check: base within ~0.5 deg of level [柏宇說]")
+    ap.add_argument("--touch-tip", default="", help="touch_test.py CSV, fingertip read directly (10-15)")
+    ap.add_argument("--touch-plumb", default="", help="touch_test.py --plumb CSV")
+    ap.add_argument("--touch-weight", type=float, default=0.0,
+                    help="weight of each touch residual (mm / 2.5) against marker pixels; 0 = report only")
+    ap.add_argument("--touch-holdout", choices=("none", "even", "odd"), default="none",
+                    help="keep every other touch point out of the fit and score it afterwards")
     ap.add_argument("--max-elbow-reading", type=float, default=None,
                     help="drop stills with the elbow reading above this. [柏宇說 10-15] at HOME the forearm rests on the "
                          "shoulder-lift servo: past ~52.8 the link stops while the reading goes on (photos: -2..-5 deg at "
@@ -387,11 +423,25 @@ def main() -> int:
     if args.no_sag:
         for n in ("sag_lift", "sag_elbow", "sag_flex"):
             lo[model.idx[n]], hi[model.idx[n]] = -1e-12, 1e-12
+    touch = load_touch([(REPO / args.touch_tip, False)] * bool(args.touch_tip) + [(REPO / args.touch_plumb, True)] * bool(args.touch_plumb))
+    t_fit = [t for k, t in enumerate(touch) if args.touch_holdout == "none" or (k % 2 == 1) == (args.touch_holdout == "even")]
+    t_out = [t for t in touch if not any(t is u for u in t_fit)]
+    model.touch = t_fit if args.touch_weight > 0 else []
+    model.touch_weight = args.touch_weight
+    def touch_report(tag):
+        for name, rows in (("fit", t_fit if model.touch else []), ("held out" if model.touch else "all (not fitted)", t_out if model.touch else touch)):
+            if rows:
+                e = touch_residuals(x, model, rows).reshape(-1, 2) / 10
+                print(f"  touch {tag} {name:16s}: n={len(rows)}  rms {np.sqrt((e ** 2).sum(1).mean()):.2f} cm  mean (model-read) {np.round(e.mean(0), 2)} cm")
+    if touch:
+        touch_report("before")
     r0 = residuals(x, model, train, Kmat, paper_w, seg)
     print(f"initial: median |r| {np.median(np.abs(r0)):.2f} px over {r0.size} residuals")
     sol = least_squares(residuals, x, args=(model, train, Kmat, paper_w, seg), loss="soft_l1", f_scale=1.5,
                         bounds=(lo, hi), x_scale="jac", max_nfev=200, verbose=0)
     x = sol.x
+    if touch:
+        touch_report("after ")
     rt = residuals(x, model, train, Kmat, paper_w, seg)
     print(f"fit:     median |r| {np.median(np.abs(rt)):.2f} px, p95 {np.percentile(np.abs(rt), 95):.2f} px  ({sol.message})")
 
