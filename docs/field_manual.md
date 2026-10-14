@@ -749,17 +749,21 @@ uv run lerobot-rollout --config_path configs/rollout_omx_pilot.yaml
 10-05 曾因此從訓練範圍外起步（wrist_flex +1.5、gripper 50.6），第一步 0.13 s 內轉約 38°。照順序做：
 
 ```powershell
-uv run python scripts/align_camera.py                                   # 1. D455 是否仍在 A1（疊訓練參考畫面，看偏差數字；2026-10-08 起預設參考 = 10-07 normal_A1 + recovery_A1_tight，舊 uvc_60 視角見腳本 docstring）
-uv run lerobot-find-cameras opencv                                      # 2. wrist index 是否仍是 config 裡的值
-uv run python scripts/read_joint_pose.py --goto-home --home-episode 10  # 3. 手臂移到 HOME、不關扭力（紙杯：uvc_60 ep 10 第 0 幀）
+uv run python scripts/read_joint_pose.py --goto-home --home-episode 10  # 1. 手臂移到 HOME、不關扭力（紙杯：uvc_60 ep 10 第 0 幀）。先做：align 的參考畫面是第 0 幀（手臂在 HOME）
+uv run lerobot-find-cameras opencv                                      # 2. wrist index 是否仍是 config 裡的值（幾秒就跑完，先做；跟 D455 無關）
+uv run python scripts/align_camera.py                                   # 3. D455 是否仍在 A1（疊訓練參考畫面，看偏差數字；2026-10-08 起預設參考 = 10-07 normal_A1 + recovery_A1_tight，舊 uvc_60 視角見腳本 docstring）
 uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_b1_uvc60_eval.yaml --policy.path=<repo> --policy.n_action_steps=30 --dataset.repo_id=<rollout_...> --meta-template paper_cup_A1
 ```
 
 - **4. 用 `scripts/rollout_labeled.py`（2026-10-08 起）取代 `lerobot-rollout`**：參數相同，另外開場就把範本 `episode_meta/templates/<名稱>.csv` 複製成 `episode_meta/<rollout_…時戳>.csv`（同 episode_index 的那列）。
   範本一集一列，用 Excel 改；列數比集數多沒關係，少了會在第一集開始前報錯。燈光/背景今天不一樣就加 `--env-light` / `--env-bg` 蓋過範本（另有 `--object-name`、`--object-orientation`、`--placement-prefix`）。
   按鍵：**→ 成功**（outcome=success）、**↑ 失敗**（outcome 留空 = 失敗，之後再補 no_grasp 等）、**← 重錄**、**Esc 結束（當集丟掉）**。
-  策略執行或重置階段都可以按，存檔前最後按的那一個算數；沒按成功/失敗就不會存，重置時間到了會一直等。沒錄到的集數，結束時會從 CSV 刪掉。結束前手臂會先回起始姿勢，然後才寫 dataset。
+  **每集只按一次 →/↑**（2026-10-14 起）：按下就念 success/fail → 手臂回起始姿勢 → 立刻存檔（**擺杯子就趁存檔這段**）→ 存完自動開始下一集。策略執行中按 = 提早結束；時間到才按也一樣。
+  **要重錄就按 ← 取代 →/↑**。**存檔一開始，這集和它的判定就定了**：存檔中按 ←/→/↑ 都無效（終端機印 `… ignored`），只有 Esc 有效（存完後結束）。按 ← 後沒有存檔時間，擺好後要再按一下（或等 `reset_time_s`）。
+  沒按成功/失敗就不會存，時間到了會一直等。沒錄到的集數，結束時會從 CSV 刪掉。結束前手臂會先回起始姿勢，然後才寫 dataset。
   細節見腳本開頭的 docstring。
+- **順序：HOME → find-cameras → align**（2026-10-12 改）。find-cameras 只查 wrist index、跟 D455 無關，放前面是因為它快，出錯可以早點發現。align 只用畫面左半（x < 500）的桌面，手臂在 HOME 時位於畫面右側、不進這個範圍；
+  手臂停在別的姿勢時可能伸進來 `[推論]`。調相機支架時若碰到手臂，重跑第 1 步——rollout 的起始姿勢是連線那一刻的姿勢。
 - 鋁罐模型用 `--home alcan`（預設）；`--home-episode N` 以 `--dataset-root`（預設 uvc_60）第 N 集第 0 幀為 HOME。
 - `--policy.n_action_steps` 必須和 `--policy.path` 一起寫在指令列（只寫在 YAML 會報錯，10-05 §1）。
 - 跑完檢查：ep 0 第 0 幀 6 個關節是否都在訓練範圍內（10-05 §2 的驗證方式）。

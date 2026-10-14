@@ -31,7 +31,7 @@ Five subcommands. Only `session` needs the arm.
 
     # 2. anywhere: fit, diagnose, print the block to paste into sim/joint_mapping.py
     python scripts/measure_link_tilt.py solve --csv calibration/<date>_link_tilt.csv \\
-        --touch-csv calibration/2026-09-22_touch_calibration.csv
+        --touch-csv calibration/2026-09-22_touch_calibration.csv --tilt-from-b0
 
     # 3. anywhere: the faces this script knows, and the arithmetic against a synthetic arm
     python scripts/measure_link_tilt.py faces
@@ -419,14 +419,43 @@ class Arm:
         pos = self.read()
         self.bus.sync_write("Goal_Position", pos)
         self.bus.enable_torque(num_retry=2)
+        self.goal = dict(pos)   # last COMMANDED goal; see move_to
         return self
 
     def __exit__(self, *exc):
         self.bus.disconnect(False)   # torque stays ON: the arm keeps holding wherever it is
         return False
 
+    def _reconnect(self, err: Exception) -> None:
+        """Reopen the port after the USB link dropped. [已查證 2026-10-12] it dropped 3 times in a day (ClearCommError,
+        'device does not recognise the command') and came back as the same COM port; the servos kept torque and goal
+        throughout, so nothing is re-sent -- only the port is reopened."""
+        print(f"\n    ⚠️  USB 連線斷了（{err.__class__.__name__}），重新連線中；手臂的扭力和目標不受影響……")
+        last = err
+        for _ in range(20):
+            try:
+                self.bus.port_handler.closePort()
+            except Exception:  # noqa: BLE001 -- the dead handle may refuse to close
+                pass
+            self.bus.port_handler.is_open = False
+            time.sleep(0.5)
+            try:
+                self.bus.connect(handshake=True)
+                print("    已重新連上，繼續。")
+                return
+            except Exception as e:  # noqa: BLE001
+                last = e
+        raise ConnectionError("USB 10 秒內沒有重新連上：檢查線材，重插後用同一個 CSV 重跑（會從中斷處繼續）") from last
+
+    def _io(self, fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except OSError as e:   # serial.SerialException and lerobot's ConnectionError are both OSError
+            self._reconnect(e)
+            return fn(*a, **k)
+
     def read(self) -> dict[str, float]:
-        return self.bus.sync_read("Present_Position", num_retry=2)
+        return self._io(self.bus.sync_read, "Present_Position", num_retry=2)
 
     def read_avg(self, n: int = 5) -> dict[str, float]:
         acc = {j: 0.0 for j in JOINTS}
@@ -437,12 +466,37 @@ class Arm:
         return acc
 
     def move_to(self, target: dict[str, float], seconds: float) -> None:
-        start = self.read()
+        # Interpolate from the last commanded goal, NOT from Present: under gravity Present sags below the goal, so
+        # starting from it (or passing dict(arm.read(), ...) as the target) re-commands the sag on every call and a
+        # pitch joint ratchets down. [已查證 2026-10-12] S7's roll sweep crept wrist_flex -36.2 -> -34.0 over 5 calls;
+        # S8's first circle lowered the fingertip onto the paper. Callers build targets from `arm.goal`.
+        start = dict(self.goal)
         steps = max(int(seconds * 50), 1)
         for i in range(1, steps + 1):
             t = i / steps
-            self.bus.sync_write("Goal_Position", {k: start[k] * (1 - t) + target[k] * t for k in target})
+            self._io(self.bus.sync_write, "Goal_Position", {k: start[k] * (1 - t) + target[k] * t for k in target})
             time.sleep(1 / 50)
+        self.goal.update(target)
+
+    def set_goal(self, pos: dict[str, float]) -> None:
+        self._io(self.bus.sync_write, "Goal_Position", pos)
+        self.goal.update(pos)
+
+    def hold(self, target: dict[str, float], joints: list[str], tol: float = 0.3, max_correction: float = 10.0,
+             iters: int = 12) -> dict[str, float]:
+        """Bring the PRESENT position of `joints` onto `target` by offsetting their goals (position control leaves a
+        gravity sag of a few units on an extended arm). Returns the remaining error (units)."""
+        g = {j: self.goal[j] for j in joints}
+        err = {}
+        for _ in range(iters):
+            time.sleep(0.3)
+            p = self.read_avg(3)
+            err = {j: target[j] - p[j] for j in joints}
+            if max(abs(e) for e in err.values()) < tol:
+                break
+            g = {j: min(max(g[j] + err[j], target[j] - max_correction), target[j] + max_correction) for j in joints}
+            self.set_goal(g)
+        return {j: round(e, 2) for j, e in err.items()}
 
     def follow(self, path: list[list[float]], seconds_per_point: float) -> None:
         for pt in path:
@@ -635,21 +689,20 @@ def cmd_session(args) -> int:
         roll = plan["roll"]
         print(f"\n--- R 腕部自轉（wrist_roll）：先把 wrist_flex 轉到 {roll['wrist_flex']}，讓夾爪接近水平朝前")
         if _ask("    Enter = 移動，s = 跳過，q = 結束: ").lower() not in ("s", "q"):
-            st0 = arm.read()
-            arm.move_to(dict(st0, wrist_flex=roll["wrist_flex"]), 3.0)
+            arm.move_to(dict(arm.goal, wrist_flex=roll["wrist_flex"]), 3.0)
             for k, rt in enumerate(roll["targets"]):
                 pid = f"R{k:02d}"
                 if (pid, "gripper_across", "traj", "held") in done:
                     continue
-                arm.move_to(dict(arm.read(), wrist_roll=rt), 2.0)
+                arm.move_to(dict(arm.goal, wrist_roll=rt), 2.0)
                 time.sleep(args.settle)
                 st = arm.read_avg()
                 print(f"    {pid}: wrist_roll = {st['wrist_roll']:.1f}")
                 shot(pid, "traj", st)
                 if faces_at(pid, "roll sweep", ["gripper_across", "gripper"], st, "traj", "held", None) == "q":
                     return 0
-            arm.move_to(dict(arm.read(), wrist_roll=start["wrist_roll"]), 2.0)
-            arm.move_to(dict(arm.read(), wrist_flex=start["wrist_flex"]), 3.0)
+            arm.move_to(dict(arm.goal, wrist_roll=start["wrist_roll"]), 2.0)
+            arm.move_to(dict(arm.goal, wrist_flex=start["wrist_flex"]), 3.0)
         print(f"\n完成。手臂停在起始姿勢、扭力開著。下一步：\n  python scripts/measure_link_tilt.py solve --csv {csv_path}")
     return 0
 
@@ -678,6 +731,20 @@ def cmd_solve(args) -> int:
     p0 = nominal_params()
     main = [r for r in rows_all if r["support"] in ("held", "") and r["approach"] in ("traj", "")]
     print(f"{len(rows_all)} rows; {len(main)} used for the fit (held phone, approached along the recorded path)")
+    p_init, fixed = dict(p0), ()
+    if args.tilt_from_b0:
+        # the base tilt is measured directly at B0; left free it trades against o_wrist_roll (tilt_x) and
+        # o_shoulder_lift (tilt_y) -- correlations -0.75 / -0.91 on the 10-10 data (S7 §7)
+        b0 = [r for r in main if r["pose_id"] == "B0"]
+        if {r["face"] for r in b0} != {"base_x", "base_y"}:
+            raise SystemExit("--tilt-from-b0 needs both B0 rows (base_x, base_y)")
+        p_init, _, _ = fit(b0, ["tilt_x", "tilt_y"], p0)
+        fixed = ("tilt_x", "tilt_y")
+        print(f"base tilt fixed from B0: tilt_x {p_init['tilt_x']:+.2f}, tilt_y {p_init['tilt_y']:+.2f} deg "
+              "(not fitted below; the joint constants exclude it)")
+
+    def free_for(rows, with_scale):
+        return [f for f in free_params(rows, with_scale) if f not in fixed]
 
     rev = [abs(r["reading"] - r["reading_rev"]) for r in rows_all if not math.isnan(r["reading_rev"])]
     if rev:
@@ -692,16 +759,16 @@ def cmd_solve(args) -> int:
 
     results = {}
     for label, with_scale in (("offsets only (scales = nominal 1.80 deg/unit)", False), ("offsets + scales", True)):
-        free = free_params(main, with_scale)
-        p, res, se = fit(main, free, p0)
+        free = free_for(main, with_scale)
+        p, res, se = fit(main, free, p_init)
         # leave-one-pose-out: does the model predict a pose it has not seen?
         loo = []
         for pid in sorted({r["pose_id"] for r in main}):
             train = [r for r in main if r["pose_id"] != pid]
             test = [r for r in main if r["pose_id"] == pid]
-            if not test or len(train) <= len(free_params(train, with_scale)):
+            if not test or len(train) <= len(free_for(train, with_scale)):
                 continue
-            pp, _, _ = fit(train, free_params(train, with_scale), p0, iters=30)
+            pp, _, _ = fit(train, free_for(train, with_scale), p_init, iters=30)
             loo += [wrap(r["value"] - predict_deg(FACES[r["face"]], r["state"], pp)) for r in test]
         results[label] = (p, res, se, free, loo)
         print(f"\n=== fit: {label}")
@@ -764,7 +831,10 @@ def cmd_solve(args) -> int:
                   f"3D RMS {math.sqrt(np.mean(eh ** 2 + ev ** 2)):5.2f} cm")
 
     tilt = (p_sc.get("tilt_x", 0.0), p_sc.get("tilt_y", 0.0))
-    if max(abs(tilt[0]), abs(tilt[1])) > 0.5:
+    if fixed:
+        print(f"\nbase tilt ({tilt[0]:+.2f}, {tilt[1]:+.2f}) deg is the B0 measurement, kept OUT of the joint constants: "
+              "the sim's base pose carries the base tilt relative to the paper (level check), not these numbers.")
+    elif max(abs(tilt[0]), abs(tilt[1])) > 0.5:
         print(f"\n⚠️  base plate tilt ({tilt[0]:+.2f}, {tilt[1]:+.2f}) deg > 0.5: the sim assumes a level base. Shim "
               "the riser level and re-measure B0 rather than carry a tilt into the constants.")
 
@@ -776,7 +846,7 @@ def cmd_solve(args) -> int:
                 scale[j] = math.radians(pp[f"s_{j}"]) / JM.SIGN[j]
                 offset[j] = math.radians(pp[f"o_{j}"])
             sets[label] = {"scale": scale, "offset": offset, "tilt_deg": [pp.get("tilt_x", 0.0), pp.get("tilt_y", 0.0)],
-                           "source": Path(args.csv).name}
+                           "tilt_from_b0": bool(fixed), "source": Path(args.csv).name}
         Path(args.out).write_text(json.dumps(sets, indent=1), encoding="utf-8")
         print(f"\nwrote {args.out} (both fits; shoulder_pan left as now -- S8)")
 
@@ -933,6 +1003,8 @@ def main() -> int:
     so.add_argument("--riser-m", type=float, default=ARM_RISER_HEIGHT_M)
     so.add_argument("--date", default="YYYY-MM-DD")
     so.add_argument("--out", default=None, help="JSON of both fits, for eval_joint_calibration.py --candidate-json")
+    so.add_argument("--tilt-from-b0", action="store_true",
+                    help="fix the base tilt to the B0 readings instead of fitting it (S7 §7: recommended)")
     so.set_defaults(func=cmd_solve)
 
     fa = sub.add_parser("faces", help="list the measurement faces")

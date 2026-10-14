@@ -122,6 +122,24 @@
   .filter-row label { display: flex; align-items: center; gap: 4px; color: var(--text); font-size: 13px; cursor: pointer; }
   .filter-row input[type=checkbox] { cursor: pointer; }
 
+  .result-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 6px;
+    background: var(--bg);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .result-list label { display: flex; gap: 6px; align-items: center; color: var(--text); font-size: 12px; margin: 0; padding: 2px 0; cursor: pointer; }
+  .result-list .rnum { color: var(--muted); min-width: 22px; font-variant-numeric: tabular-nums; }
+  .result-list .rname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .result-actions { display: flex; gap: 6px; margin-top: 4px; }
+  .result-actions button { padding: 3px 10px; font-size: 12px; }
+  #statsFiles { font-size: 11.5px; color: var(--muted); margin-top: 6px; text-align: left; line-height: 1.5; }
+  #statsFiles div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
   .tooltip-box {
     position: fixed;
     pointer-events: none;
@@ -145,7 +163,7 @@
 <div class="layout">
   <div class="panel controls">
     <div>
-      <label>① 載入 configs/placements/ 裡的 CSV (座標)</label>
+      <label>① 載入 configs/placements/ 裡的 CSV (座標；已內建閉環 campA_136sym eval-close，不載也行)</label>
       <input type="file" id="placementInput" multiple accept=".csv,.json">
     </div>
     <div>
@@ -166,10 +184,12 @@
     </div>
 
     <div class="field">
-      <label for="resultSelect">episode_meta (結果)</label>
-      <select id="resultSelect">
-        <option value="">(尚未載入)</option>
-      </select>
+      <label>episode_meta (結果，可多選；同一點多筆時畫成圓餅，依 # 順時針)</label>
+      <div id="resultList" class="result-list">(尚未載入)</div>
+      <div class="result-actions">
+        <button id="selAllBtn">全選</button>
+        <button id="selNoneBtn">全不選</button>
+      </div>
     </div>
 
     <div class="field">
@@ -187,6 +207,7 @@
       <div class="stats-title">成功率</div>
       <div class="stats-big" id="statsBig">— / —</div>
       <div class="stats-detail" id="statsDetail"></div>
+      <div id="statsFiles"></div>
     </div>
 
     <div class="nav">
@@ -214,7 +235,8 @@
       <span><span class="swatch" style="background:var(--fail)"></span>failed / no_grasp</span>
       <span><span class="swatch" style="background:var(--dropped)"></span>dropped</span>
       <span><span class="swatch" style="background:var(--misplaced)"></span>misplaced</span>
-      <span><span class="swatch" style="background:var(--unmatched)"></span>無結果</span>
+      <span><span class="swatch" style="background:var(--unmatched)"></span>outcome 空白</span>
+      <span><span class="swatch" style="background:var(--unmatched);opacity:0.35"></span>不在結果檔</span>
       <span><span class="swatch" style="background:var(--accent)"></span>目前點</span>
     </div>
   </div>
@@ -259,10 +281,12 @@
   // resultSets[name] = [{episode_index, placement_id, outcome, mechanism, notes, ...}]
   const resultSets = {};
   let currentMat = null;
-  let currentResult = null;
-  let lastLoadedResult = null;  // track the most recently loaded result file
+  let selectedResults = new Set();  // names of the checked result files
+  let lastLoadedResults = [];   // result files loaded in the current batch
   let lastLoadedMat = null;     // track the most recently loaded placement mat
-  let mergedPoints = [];   // [{id, shortId, x, y, r, theta, outcome, mechanism, notes}]
+  // [{id, shortId, x, y, r, theta, split, trials: [{num, file, outcome, mechanism, notes, episode_index}]}]
+  // trial.outcome is "" when the row is in the file but outcome is blank
+  let mergedPoints = [];
   let filteredPoints = [];
   let currentIndex = -1;  // -1 = no selection
 
@@ -272,7 +296,7 @@
   const dropzone = $("dropzone");
   const logEl = $("log");
   const placementSelect = $("placementSelect");
-  const resultSelect = $("resultSelect");
+  const resultList = $("resultList");
   const prevBtn = $("prevBtn"), nextBtn = $("nextBtn");
   const idxLabel = $("idxLabel");
   const svg = $("plot");
@@ -333,6 +357,54 @@
     if (!placementMats[name]) placementMats[name] = { points: [], meta: null };
     return placementMats[name];
   }
+
+  // ---------- built-in default mat: the closed-loop eval-close set ----------
+  // Copied from configs/placements/campA_136sym_20260908_20260908_eval-close.csv
+  // and sector_used of ..._meta.json (frozen, D030). If those files change, update here.
+  const DEFAULT_MAT = "campA_136sym eval-close (閉環，內建)";
+  const DEFAULT_MAT_CSV = `placement_id,r_cm,theta_deg,x_cm,y_cm
+eval-close_001,24.27,-5.64,24.15,-2.38
+eval-close_002,36.39,-40.49,27.67,-23.63
+eval-close_003,31.54,48.24,21.00,23.53
+eval-close_004,30.38,-10.79,29.84,-5.69
+eval-close_005,36.53,45.76,25.48,26.17
+eval-close_006,38.82,-24.07,35.45,-15.83
+eval-close_007,32.27,-59.13,16.56,-27.70
+eval-close_008,34.86,-11.28,34.19,-6.82
+eval-close_009,25.58,57.06,13.91,21.47
+eval-close_010,34.24,-24.82,31.08,-14.37
+eval-close_011,31.00,31.84,26.33,16.35
+eval-close_012,38.39,-35.18,31.38,-22.12
+eval-close_013,34.19,23.24,31.41,13.49
+eval-close_014,22.80,35.03,18.67,13.09
+eval-close_015,31.88,11.52,31.24,6.37
+eval-close_016,35.07,65.00,14.82,31.78
+eval-close_017,25.42,-63.94,11.17,-22.84
+eval-close_018,26.20,8.40,25.92,3.83
+eval-close_019,37.38,20.52,35.01,13.10
+eval-close_020,29.39,-33.50,24.51,-16.22
+eval-close_021,27.24,23.75,24.94,10.97
+eval-close_022,38.29,1.95,38.27,1.30
+eval-close_023,29.97,-42.18,22.21,-20.12
+eval-close_024,26.48,-48.03,17.71,-19.69
+eval-close_025,26.46,-17.75,25.20,-8.06
+eval-close_026,38.98,-56.94,21.26,-32.67
+eval-close_027,28.45,51.39,17.76,22.23
+eval-close_028,37.15,35.55,30.22,21.60
+eval-close_029,29.89,54.27,17.46,24.27
+eval-close_030,23.10,-29.55,20.10,-11.40
+eval-close_031,16.76,-17.35,16.00,-5.00
+eval-close_032,21.21,8.13,21.00,3.00
+eval-close_033,13.00,0.00,13.00,0.00
+eval-close_034,18.03,19.44,17.00,6.00
+eval-close_035,16.64,32.74,14.00,9.00
+eval-close_036,17.69,-47.29,12.00,-13.00`;
+  (function loadDefaultMat() {
+    const m = ensureMat(DEFAULT_MAT);
+    parsePlacementCsv(DEFAULT_MAT_CSV).forEach((r) => m.points.push({ ...r, split: "eval-close" }));
+    m.meta = { sector_used: { r_inner: 22.0, r_outer: 39.0, theta_min: -65.06175489676501, theta_max: 65.06175489676501 } };
+    currentMat = DEFAULT_MAT;
+  })();
 
   // ---------- episode_meta CSV parsing ----------
   function parseResultCsv(text) {
@@ -424,7 +496,7 @@
       const stem = filename.replace(/\.csv$/i, "");
       const rows = parseResultCsv(text);
       resultSets[stem] = rows;
-      lastLoadedResult = stem;
+      lastLoadedResults.push(stem);
       log(`載入結果: ${filename} (${rows.length} 筆)`);
     } else {
       log("略過: " + filename);
@@ -441,16 +513,13 @@
       currentMat = Object.keys(placementMats).sort()[0];
       placementSelect.value = currentMat;
     }
-    // Auto-select the most recently loaded result (always switch to the new one)
-    if (lastLoadedResult && resultSets[lastLoadedResult]) {
-      currentResult = lastLoadedResult;
-      resultSelect.value = currentResult;
-    } else if (!currentResult && Object.keys(resultSets).length) {
-      currentResult = Object.keys(resultSets).sort()[0];
-      resultSelect.value = currentResult;
+    // Switch the selection to the result files of this batch (all of them)
+    if (lastLoadedResults.length) {
+      selectedResults = new Set(lastLoadedResults);
     }
+    refreshResultList();
     // Reset tracking
-    lastLoadedResult = null;
+    lastLoadedResults = [];
     lastLoadedMat = null;
     currentIndex = 0;
     rebuildMerge();
@@ -466,38 +535,83 @@
     if (!Object.keys(placementMats).length) {
       placementSelect.innerHTML = '<option value="">(尚未載入)</option>';
     }
+    if (currentMat) placementSelect.value = currentMat;
+  }
 
-    resultSelect.innerHTML = "";
-    Object.keys(resultSets).sort().forEach((name) => {
-      const opt = document.createElement("option");
-      opt.value = name; opt.textContent = name;
-      resultSelect.appendChild(opt);
+  // selected files in display order; trial.num = position + 1
+  function selectedResultNames() {
+    return Object.keys(resultSets).sort().filter((n) => selectedResults.has(n));
+  }
+
+  function refreshResultList() {
+    const names = Object.keys(resultSets).sort();
+    resultList.innerHTML = "";
+    if (!names.length) { resultList.textContent = "(尚未載入)"; return; }
+    const order = selectedResultNames();
+    names.forEach((name) => {
+      const lab = document.createElement("label");
+      lab.title = name;
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = selectedResults.has(name);
+      cb.addEventListener("change", () => {
+        if (cb.checked) selectedResults.add(name); else selectedResults.delete(name);
+        refreshResultList();
+        currentIndex = 0;
+        rebuildMerge();
+      });
+      const num = document.createElement("span");
+      num.className = "rnum";
+      const k = order.indexOf(name);
+      num.textContent = k >= 0 ? "#" + (k + 1) : "";
+      const nm = document.createElement("span");
+      nm.className = "rname";
+      nm.textContent = name;
+      lab.append(cb, num, nm);
+      resultList.appendChild(lab);
     });
-    if (!Object.keys(resultSets).length) {
-      resultSelect.innerHTML = '<option value="">(尚未載入)</option>';
-    }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
   // ---------- merge placement coords with episode results ----------
+  function shortOf(pid) {
+    // Support both short (c1) and long (eval-close_001) format
+    return (pid.includes("_") ? shortLabel(pid) : pid).toLowerCase();
+  }
+
   function rebuildMerge() {
     mergedPoints = [];
     if (!currentMat || !placementMats[currentMat]) { applyFilter(); return; }
     const mat = placementMats[currentMat];
-    const results = currentResult && resultSets[currentResult] ? resultSets[currentResult] : [];
+    const placedShorts = new Set(mat.points.map((p) => shortLabel(p.id).toLowerCase()));
 
-    // Build lookup: shortLabel -> result row
-    const resultMap = {};
-    results.forEach((r) => {
-      const pid = (r.placement_id || "").trim();
-      if (!pid) return;
-      // Support both short (c1) and long (eval-close_001) format
-      const short = pid.includes("_") ? shortLabel(pid) : pid;
-      resultMap[short.toLowerCase()] = r;
+    // Build lookup: shortLabel -> [trial], every row of every selected file
+    // (a placement repeated within one file gives several trials too)
+    const trialMap = {};
+    selectedResultNames().forEach((file, k) => {
+      let missing = 0;
+      resultSets[file].forEach((r) => {
+        const pid = (r.placement_id || "").trim();
+        if (!pid) return;
+        const short = shortOf(pid);
+        if (!placedShorts.has(short)) { missing++; return; }
+        (trialMap[short] = trialMap[short] || []).push({
+          num: k + 1,
+          file,
+          outcome: (r.outcome || "").trim().toLowerCase(),
+          mechanism: r.mechanism || "",
+          notes: r.notes || "",
+          episode_index: r.episode_index || "",
+        });
+      });
+      if (missing) log(`⚠ #${k + 1} ${file}: ${missing} 筆的 placement_id 在座標檔中找不到對應點`);
     });
 
     mat.points.forEach((p) => {
       const sl = shortLabel(p.id);
-      const rr = resultMap[sl.toLowerCase()];
       mergedPoints.push({
         id: p.id,
         shortId: sl,
@@ -506,22 +620,8 @@
         r: p.r,
         theta: p.theta,
         split: p.split,
-        outcome: rr ? (rr.outcome || "").toLowerCase() : null,
-        mechanism: rr ? (rr.mechanism || "") : "",
-        notes: rr ? (rr.notes || "") : "",
-        object_name: rr ? (rr.object_name || "") : "",
+        trials: trialMap[sl.toLowerCase()] || [],
       });
-    });
-
-    // Also add result rows that have no matching placement (show in log)
-    const placedShorts = new Set(mat.points.map((p) => shortLabel(p.id).toLowerCase()));
-    results.forEach((r) => {
-      const pid = (r.placement_id || "").trim();
-      if (!pid) return;
-      const short = pid.includes("_") ? shortLabel(pid) : pid;
-      if (!placedShorts.has(short.toLowerCase())) {
-        log(`⚠ 結果 ${pid} 在座標檔中找不到對應點`);
-      }
     });
 
     // Sort: by split order (c, o, t) then number
@@ -561,26 +661,44 @@
   function applyFilter() {
     const outcomes = activeOutcomes();
     filteredPoints = mergedPoints.filter((p) => {
-      if (p.outcome === null) return true; // unmatched always shown
-      return outcomes.includes(p.outcome);
+      if (!p.trials.length) return true; // not in any selected file: always shown
+      // blank outcome is always shown (gray ?)
+      return p.trials.some((t) => t.outcome === "" || outcomes.includes(t.outcome));
     });
     if (currentIndex >= filteredPoints.length) currentIndex = -1;
     updateStats();
     render();
   }
 
+  // blank outcomes count as failures (in the denominator, never a success)
+  function tally(trials) {
+    return {
+      total: trials.length,
+      successes: trials.filter((t) => t.outcome === "success").length,
+      blank: trials.filter((t) => t.outcome === "").length,
+    };
+  }
+
   function updateStats() {
-    const total = mergedPoints.filter((p) => p.outcome !== null).length;
-    const successes = mergedPoints.filter((p) => p.outcome === "success").length;
+    const all = mergedPoints.flatMap((p) => p.trials);
+    const { total, successes, blank } = tally(all);
     const fails = total - successes;
     if (total > 0) {
       const pct = ((successes / total) * 100).toFixed(1);
       $("statsBig").innerHTML = `<span class="stats-success">${successes}</span> / <span>${total}</span>`;
-      $("statsDetail").textContent = `成功率 ${pct}%　(失敗 ${fails})`;
+      $("statsDetail").textContent = `成功率 ${pct}%　(失敗 ${fails})` + (blank ? `　含 outcome 空白 ${blank} 筆` : "");
     } else {
       $("statsBig").textContent = "— / —";
       $("statsDetail").textContent = "";
     }
+    const names = selectedResultNames();
+    $("statsFiles").innerHTML = names.length > 1
+      ? names.map((file, k) => {
+          const t = tally(all.filter((x) => x.num === k + 1));
+          return `<div title="${escapeHtml(file)}">#${k + 1} ${t.successes}/${t.total}` +
+            (t.blank ? ` (含空白 ${t.blank})` : "") + `　${escapeHtml(file)}</div>`;
+        }).join("")
+      : "";
   }
 
   // ---------- outcome -> color ----------
@@ -736,11 +854,12 @@
 
     // ---------- points ----------
     const current = currentIndex >= 0 ? filteredPoints[currentIndex] : null;
+    const anySelected = selectedResultNames().length > 0;
     filteredPoints.forEach((p, i) => {
       const isCurrent = currentIndex >= 0 && i === currentIndex;
       const [cx, cy] = proj(p.x, p.y);
-      const color = outcomeColor(p.outcome);
-      const radius = 7;
+      const n = p.trials.length;
+      const radius = n > 1 ? 8 : 7;
 
       if (isCurrent) {
         gridLine([p.x, g.yMin], [p.x, p.y], "var(--accent)", 0.7, "3,2");
@@ -754,64 +873,86 @@
         opacity: 0.85,
       }));
 
-      const c = el("circle", {
+      // points not in any selected result file are faded
+      const grp = el("g", { style: "cursor:pointer", opacity: (n === 0 && anySelected) ? 0.35 : 1 });
+      if (n <= 1) {
+        grp.appendChild(el("circle", { cx, cy, r: radius, fill: outcomeColor(n ? p.trials[0].outcome : null) }));
+      } else {
+        // one pie slice per trial, clockwise from 12 o'clock in #/episode order
+        p.trials.forEach((t, k) => {
+          const a0 = (-90 + (360 * k) / n) * Math.PI / 180;
+          const a1 = (-90 + (360 * (k + 1)) / n) * Math.PI / 180;
+          const x0 = cx + radius * Math.cos(a0), y0 = cy + radius * Math.sin(a0);
+          const x1 = cx + radius * Math.cos(a1), y1 = cy + radius * Math.sin(a1);
+          grp.appendChild(el("path", {
+            d: `M ${cx} ${cy} L ${x0} ${y0} A ${radius} ${radius} 0 0 1 ${x1} ${y1} Z`,
+            fill: outcomeColor(t.outcome),
+            stroke: "var(--panel)",
+            "stroke-width": 0.6,
+          }));
+        });
+      }
+      grp.appendChild(el("circle", {
         cx, cy, r: radius,
-        fill: color,
-        opacity: 1,
+        fill: "none",
         stroke: isCurrent ? "var(--text)" : "var(--panel)",
         "stroke-width": isCurrent ? 2.5 : 1,
-        style: "cursor:pointer",
-      });
+      }));
 
       // Click to toggle select
-      c.addEventListener("click", (e) => {
+      grp.addEventListener("click", (e) => {
         e.stopPropagation();
         currentIndex = (currentIndex === i) ? -1 : i;
         render();
       });
 
       // Hover tooltip
-      c.addEventListener("mouseenter", (e) => {
-        const outcomeText = p.outcome || "無結果";
+      grp.addEventListener("mouseenter", () => {
         let html = `<b>${p.shortId}</b> (${p.id})<br>`;
-        html += `outcome: <b style="color:${outcomeColor(p.outcome)}">${outcomeText}</b>`;
-        if (p.mechanism) html += `<br>mechanism: ${p.mechanism}`;
-        if (p.notes) html += `<br>notes: ${p.notes}`;
+        html += trialsHtml(p);
         html += `<br>r=${p.r.toFixed(1)} cm, θ=${p.theta.toFixed(1)}°`;
         tooltip.innerHTML = html;
         tooltip.style.display = "block";
       });
-      c.addEventListener("mousemove", (e) => {
+      grp.addEventListener("mousemove", (e) => {
         tooltip.style.left = (e.clientX + 12) + "px";
         tooltip.style.top = (e.clientY + 12) + "px";
       });
-      c.addEventListener("mouseleave", () => {
+      grp.addEventListener("mouseleave", () => {
         tooltip.style.display = "none";
       });
-      svg.appendChild(c);
+      svg.appendChild(grp);
 
-      // Symbol inside (✓ or ✗)
-      const sym = el("text", {
-        x: cx, y: cy + 2.8,
-        fill: "white",
-        "font-size": 8,
-        "font-weight": "bold",
-        "text-anchor": "middle",
-        "pointer-events": "none",
-      });
-      sym.textContent = outcomeSymbol(p.outcome);
-      svg.appendChild(sym);
+      // Symbol inside (✓ / ✗ / ?), single trial only
+      if (n <= 1) {
+        const sym = el("text", {
+          x: cx, y: cy + 2.8,
+          fill: "white",
+          "font-size": 8,
+          "font-weight": "bold",
+          "text-anchor": "middle",
+          "pointer-events": "none",
+          opacity: (n === 0 && anySelected) ? 0.6 : 1,
+        });
+        sym.textContent = outcomeSymbol(n ? p.trials[0].outcome : null);
+        svg.appendChild(sym);
+      }
 
-      // Label (short id, e.g. c1, c2...)
+      // Label (short id, e.g. c1, c2...; "c1 2/3" when several trials)
       const t = el("text", {
-        x: cx + 9, y: cy - 3,
+        x: cx + radius + 2, y: cy - 3,
         fill: "var(--text)",
         "font-size": 7,
         "font-weight": "bold",
         opacity: 0.9,
         "pointer-events": "none",
       });
-      t.textContent = p.shortId;
+      if (n > 1) {
+        const c = tally(p.trials);
+        t.textContent = `${p.shortId} ${c.successes}/${c.total}`;
+      } else {
+        t.textContent = p.shortId;
+      }
       svg.appendChild(t);
     });
 
@@ -819,16 +960,61 @@
     idxLabel.textContent = current ? `${currentIndex + 1} / ${filteredPoints.length}` : `${filteredPoints.length} 點`;
     $("infoId").textContent = current ? current.id : "—";
     $("infoShort").textContent = current ? current.shortId : "—";
-    $("infoOutcome").textContent = current ? (current.outcome || "—") : "—";
-    $("infoOutcome").style.color = current ? outcomeColor(current.outcome) : "";
-    $("infoOutcome").style.fontWeight = current ? "bold" : "normal";
-    $("infoMech").textContent = current ? (current.mechanism || "—") : "—";
-    $("infoNotes").textContent = current ? (current.notes || "—") : "—";
+    const info = current ? trialInfo(current) : { outcome: "—", mechanism: "—", notes: "—" };
+    $("infoOutcome").innerHTML = info.outcome;
+    $("infoMech").innerHTML = info.mechanism;
+    $("infoNotes").innerHTML = info.notes;
     $("infoR").textContent = current ? current.r.toFixed(2) : "—";
     $("infoTheta").textContent = current ? current.theta.toFixed(2) : "—";
     $("infoX").textContent = current ? current.x.toFixed(2) : "—";
     $("infoY").textContent = current ? current.y.toFixed(2) : "—";
     prevBtn.disabled = nextBtn.disabled = filteredPoints.length === 0;
+  }
+
+  function outcomeHtml(outcome) {
+    return `<b style="color:${outcomeColor(outcome)}">${escapeHtml(outcome || "(空白)")}</b>`;
+  }
+
+  // "#2 ep5 " when several files / trials, "" for a single trial
+  function trialPrefix(p, t) {
+    let s = "";
+    if (selectedResultNames().length > 1) s += `#${t.num} `;
+    if (p.trials.length > 1 && t.episode_index !== "") s += `ep${t.episode_index} `;
+    return s;
+  }
+
+  function trialsHtml(p) {
+    if (!p.trials.length) {
+      const txt = selectedResultNames().length ? "不在結果檔" : "無結果";
+      return `outcome: <b style="color:var(--unmatched)">${txt}</b>`;
+    }
+    if (p.trials.length === 1 && !trialPrefix(p, p.trials[0])) {
+      const t = p.trials[0];
+      let html = `outcome: ${outcomeHtml(t.outcome)}`;
+      if (t.mechanism) html += `<br>mechanism: ${escapeHtml(t.mechanism)}`;
+      if (t.notes) html += `<br>notes: ${escapeHtml(t.notes)}`;
+      return html;
+    }
+    return p.trials.map((t) => {
+      let line = escapeHtml(trialPrefix(p, t)) + outcomeHtml(t.outcome);
+      if (t.mechanism) line += ` · ${escapeHtml(t.mechanism)}`;
+      if (t.notes) line += `<br><span style="color:var(--muted)">${escapeHtml(t.notes)}</span>`;
+      return line;
+    }).join("<br>");
+  }
+
+  // info-table cells; one line per trial when there are several
+  function trialInfo(p) {
+    if (!p.trials.length) {
+      return { outcome: selectedResultNames().length ? "不在結果檔" : "—", mechanism: "—", notes: "—" };
+    }
+    const lines = (field) => {
+      const out = p.trials
+        .filter((t) => field === "outcome" || t[field])
+        .map((t) => escapeHtml(trialPrefix(p, t)) + (field === "outcome" ? outcomeHtml(t.outcome) : escapeHtml(t[field])));
+      return out.length ? out.join("<br>") : "—";
+    };
+    return { outcome: lines("outcome"), mechanism: lines("mechanism"), notes: lines("notes") };
   }
 
   function step(delta) {
@@ -893,8 +1079,15 @@
     currentIndex = 0;
     rebuildMerge();
   });
-  resultSelect.addEventListener("change", () => {
-    currentResult = resultSelect.value;
+  $("selAllBtn").addEventListener("click", () => {
+    selectedResults = new Set(Object.keys(resultSets));
+    refreshResultList();
+    currentIndex = 0;
+    rebuildMerge();
+  });
+  $("selNoneBtn").addEventListener("click", () => {
+    selectedResults = new Set();
+    refreshResultList();
     currentIndex = 0;
     rebuildMerge();
   });
@@ -912,7 +1105,8 @@
     if (e.key === "ArrowLeft") step(-1);
   });
 
-  render();
+  refreshSelects();
+  rebuildMerge();
 })();
 </script>
 </body>

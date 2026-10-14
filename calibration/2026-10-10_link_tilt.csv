@@ -20,3 +20,38 @@ P02,ep5 f159,gripper,pitch,-87.1,-87.5,b,-92.7,traj,held,,4.625,9.695,26.447,-42
 P03,ep6 f147,upper,pitch,52.9,52.8,f,52.85,traj,held,,13.553,16.484,16.239,-51.306,1.685,50.623
 P03,ep6 f147,forearm,pitch,-69.0,-69.5,f,-69.25,traj,held,,13.553,16.484,16.239,-51.306,1.685,50.623
 P03,ep6 f147,gripper,pitch,-72.8,-71.5,f,-72.15,traj,held,,13.553,16.484,16.239,-51.306,1.685,50.623
+P04,ep6 f156,upper,pitch,77.1,76.7,f,76.9,traj,held,,10.584,3.346,16.093,-50.623,1.685,50.647
+P04,ep6 f156,forearm,pitch,-45.5,-45.9,f,-45.7,traj,held,second reading first entered as 45.9; minus sign left out [柏宇說 2026-10-12],10.584,3.346,16.093,-50.623,1.685,50.647
+P04,ep6 f156,gripper,pitch,-47.4,-47.7,f,-47.55,traj,held,,10.584,3.346,16.093,-50.623,1.685,50.647
+P05,ep13 f222,upper,pitch,85.7,85.8,b,94.25,traj,held,,-36.703,-6.227,-27.961,-1.587,-4.987,58.877
+P05,ep13 f222,forearm,pitch,50.9,50.8,f,50.85,traj,held,,-36.703,-6.227,-27.961,-1.587,-4.987,58.877
+P05,ep13 f222,gripper,pitch,-41.3,-38.4,f,-39.85,traj,held,,-36.703,-6.227,-27.961,-1.587,-4.987,58.877
+P05,ep13 f222,forearm,pitch,47.7,46.1,f,46.9,traj,resting,,-36.703,-6.198,-27.961,-1.587,-4.86,58.901
+P05,ep13 f222,upper,pitch,86.7,87.5,b,92.9,from_plus,held,,-36.703,-5.934,-27.775,-1.441,-4.86,58.901
+P05,ep13 f222,forearm,pitch,49.2,49.7,f,49.45,from_plus,held,,-36.703,-5.934,-27.775,-1.441,-4.86,58.901
+P05,ep13 f222,gripper,pitch,-43.2,-41.3,f,-42.25,from_plus,held,,-36.703,-5.934,-27.775,-1.441,-4.86,58.901
+P05,ep13 f222,upper,pitch,84.4,84.4,b,95.6,from_minus,held,,-36.703,-7.35,-29.133,-1.245,-4.86,58.901
+P05,ep13 f222,forearm,pitch,54.8,54.2,f,54.5,from_minus,held,,-36.703,-7.35,-29.133,-1.245,-4.86,58.901
+P05,ep13 f222,gripper,pitch,-35.2,-37.5,f,-36.35,from_minus,held,,-36.703,-7.35,-29.133,-1.245,-4.86,58.901
+P06,ep13 f228,upper,pitch,74.6,76.1,b,104.65,traj,held,,-13.748,-12.186,-18.281,-1.734,-2.466,58.877
+P06,ep13 f228,forearm,pitch,43.2,43.4,f,43.3,traj,held,,-13.748,-12.186,-18.281,-1.734,-2.466,58.877
+P06,ep13 f228,gripper,pitch,-44.9,-46.5,f,-45.7,traj,held,,-13.748,-12.186,-18.281,-1.734,-2.466,58.877
+P07,ep14 f225,upper,pitch,-23.0,-22.9,b,-157.05,traj,held,the arm knocked the ArUco markers on the way to P07; re-laid from aruco_points.csv [柏宇說 2026-10-12]. P07 stills: marker 3 still 8 px off the 10-10 world photo (exclude it); from P08 on all markers within 4 px,-1.343,-64.786,54.335,-17.519,-5.348,59.267
+P07,ep14 f225,forearm,pitch,15.6,14.8,f,15.2,traj,held,the arm knocked the ArUco markers on the way to P07; re-laid from aruco_points.csv [柏宇說 2026-10-12]. P07 stills: marker 3 still 8 px off the 10-10 world photo (exclude it); from P08 on all markers within 4 px,-1.343,-64.786,54.335,-17.519,-5.348,59.267
+P07,ep14 f225,gripper,pitch,-49.0,-48.2,f,-48.6,traj,held,the arm knocked the ArUco markers on the way to P07; re-laid from aruco_points.csv [柏宇說 2026-10-12]. P07 stills: marker 3 still 8 px off the 10-10 world photo (exclude it); from P08 on all markers within 4 px,-1.343,-64.786,54.335,-17.519,-5.348,59.267
+P08,ep15 f162,upper,pitch,8.8,8.4,f,8.6,traj,held,,19.56,41.099,-30.784,-38.12,-3.013,50.647
+P08,ep15 f162,forearm,pitch,-30.1,-29.8,f,-29.95,traj,held,,19.56,41.099,-30.784,-38.12,-3.013,50.647
+P08,ep15 f162,gripper,pitch,-54.6,-54.4,f,-54.5,traj,held,,19.56,41.099,-30.784,-38.12,-3.013,50.647
+P09,ep15 f177,upper,pitch,27.0,27.1,f,27.05,traj,held,,16.679,30.256,-30.061,-38.217,-3.004,50.647
+P09,ep15 f177,forearm,pitch,-13.0,-12.3,f,-12.65,traj,held,,16.679,30.256,-30.061,-38.217,-3.004,50.647
+P09,ep15 f177,gripper,pitch,-39.8,-40.0,f,-39.9,traj,held,,16.679,30.256,-30.061,-38.217,-3.004,50.647
+R00,roll sweep,gripper_across,elev,-53.5,-52.1,,-52.8,traj,held,,1.245,-64.835,55.018,-36.215,-30.354,58.852
+R00,roll sweep,gripper,pitch,-14.6,-19.5,f,-17.05,traj,held,,1.245,-64.835,55.018,-36.215,-30.354,58.852
+R01,roll sweep,gripper_across,elev,-26.2,-25.7,,-25.95,traj,held,,1.245,-64.835,55.018,-35.902,-16.093,58.877
+R01,roll sweep,gripper,pitch,-12.5,-18.0,f,-15.25,traj,held,,1.245,-64.835,55.018,-35.902,-16.093,58.877
+R02,roll sweep,gripper_across,elev,-1.9,-1.7,,-1.8,traj,held,,1.245,-64.874,55.018,-35.111,-1.001,58.877
+R02,roll sweep,gripper,pitch,-15.7,-17.8,f,-16.75,traj,held,first reading first entered as 15.7; minus sign left out [柏宇說 2026-10-12],1.245,-64.874,55.018,-35.111,-1.001,58.877
+R03,roll sweep,gripper_across,elev,26.9,27.5,,27.2,traj,held,,1.245,-64.884,55.018,-34.505,14.042,58.877
+R03,roll sweep,gripper,pitch,-16.0,-16.6,f,-16.3,traj,held,,1.245,-64.884,55.018,-34.505,14.042,58.877
+R04,roll sweep,gripper_across,elev,49.5,51.0,,50.25,traj,held,,1.245,-64.884,55.018,-33.968,29.084,58.926
+R04,roll sweep,gripper,pitch,-20.0,-17.3,f,-18.65,traj,held,,1.245,-64.884,55.018,-33.968,29.084,58.926

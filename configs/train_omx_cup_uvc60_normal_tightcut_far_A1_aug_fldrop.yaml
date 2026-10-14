@@ -1,0 +1,78 @@
+# 2026-10-13 FRONT-LEFT APPROACH DROPOUT on top of train_omx_cup_uvc60_normal_tightcut_far_A1_aug.yaml (ntcfA1aug):
+# identical data, exclude_episodes, image_transforms, hyper-parameters and seed; the ONLY change is that, in the
+# 30 frames before each episode's first gripper close, the front-left image is replaced by black with p = 0.3.
+# That is done by scripts/train_fl_dropout.py (lerobot has no per-camera / per-phase dropout); the flags are NOT
+# in this YAML (lerobot's parser would reject them) -- they are in job_name and in <output_dir>/fl_dropout.json.
+# Why, numbers and acceptance test: docs/handoff/2026-10-13_fl_dropout.md.
+# Also used (same file, flags on the command line) for p = 0.5 (docs/handoff/2026-10-14_fl_dropout_p50.md) and for
+# --transforms-fl-only, which keeps image_transforms below off the wrist camera (docs/handoff/2026-10-14_fl_augfl.md).
+#
+#   ./scripts/run_container.sh python scripts/train_fl_dropout.py --fl-p 0.3 --fl-window 30 \
+#       --config_path configs/train_omx_cup_uvc60_normal_tightcut_far_A1_aug_fldrop.yaml
+#
+# ---- header of the aug config, unchanged below ----
+# 2026-10-13 AUGMENTED version of train_omx_cup_uvc60_normal_tightcut_far_A1.yaml: identical data, exclude_episodes, hyper-parameters and seed;
+# the ONLY change is dataset.image_transforms (the original trained with image_transforms.enable = false,
+# checked in the Hub train_config.json of act_omx_b1_paper-cup_60-13-10rcvrycut-46far_100k).
+# Why (docs/handoff/2026-10-13_aug_retrain.md): in the far_wrist A1 camera position all 46 demos turn the wrist and
+# none is near/mid, so the model also uses "where the camera sits" to decide the wrist turn. Shifting front-left
+# by the 20 px that separates the 10-07 and far_wrist views flips the decision for near cups. Random shifts make the
+# absolute camera position useless while keeping the cup-to-arm relation (cup and arm move together).
+# translate 0.05 = +-42 px x / +-24 px y on the 848x480 front-left (2x the 20 px seen); degrees +-2 covers the
+# ~1.2 deg roll seen between sessions (scripts/align_camera.py docstring). lerobot applies it to EVERY camera with
+# independent draws (datasets/dataset_reader.py), so the wrist image is shifted too.
+#
+#   (aug run) ./scripts/run_container.sh lerobot-train --config_path configs/train_omx_cup_uvc60_normal_tightcut_far_A1_aug.yaml
+#
+# ---- header of the base config, unchanged below ----
+# ACT on paper cup: same as configs/train_omx_cup_uvc60_normal_tight_far_A1.yaml, except the recovery_A1_tight
+# episodes start at the onset of their first (empty) gripper close -- the deliberate-miss approach is cut off.
+#
+# Only the data changes; hyper-parameters, merge order, episode numbering and exclude_episodes are identical.
+#
+# recovery_A1_tight_cut = scripts/trim_recovery_prefix.py on recovery_A1_tight (2026-10-09; source left untouched):
+#   cut table in <dataset>/meta/trim_recovery_prefix.json; videos are byte-identical copies, only from_timestamp moves.
+#   Rows kept per tight episode: 288 228 274 268 242 246 245 242 266 260 215 900(ep 11, void, uncut) 406  (5712 -> 4080 frames)
+#
+# Merged locally 2026-10-09 with `lerobot-edit-dataset --operation.type merge`, same order as the main version
+# (log: data/merge_cup_uvc60_normal_tightcut_far_A1.log; 137 eps / 41574 frames = 43206 - 1632 trimmed):
+#   merged ep   0-59  <- ericc430/omx_pick_place_pilot_uvc_60                         ep 0-59
+#   merged ep  60-75  <- ericc430/omx_pick_place_pilot_paper_cup_normal_A1            ep 0-15
+#   merged ep  76-88  <- ericc430/omx_pick_place_pilot_paper_cup_recovery_A1_tight_cut ep 0-12
+#   merged ep  89-136 <- ericc430/omx_pick_place_pilot_paper_cup_far_wrist_A1         ep 0-47
+# Checked: 3 frames per episode (images, action, state) identical to the old merged dataset (other sources)
+# or to the trimmed copy (76-88).
+#
+dataset:
+  repo_id: ericc430/omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1cut_farwristA1   # local only
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1cut_farwristA1
+  exclude_episodes: [73, 74, 75, 85, 86, 87, 98, 135]   # -> 129 of 137 remain (see the main version for why)
+  eval_split: 0.0
+  image_transforms:          # 2026-10-13: random shift/rotate only (see the header); every other transform weight 0
+    enable: true
+    max_num_transforms: 1
+    random_order: false
+    tfs:
+      brightness: {weight: 0.0, type: ColorJitter, kwargs: {brightness: [0.8, 1.2]}}
+      contrast: {weight: 0.0, type: ColorJitter, kwargs: {contrast: [0.8, 1.2]}}
+      saturation: {weight: 0.0, type: ColorJitter, kwargs: {saturation: [0.5, 1.5]}}
+      hue: {weight: 0.0, type: ColorJitter, kwargs: {hue: [-0.05, 0.05]}}
+      sharpness: {weight: 0.0, type: SharpnessJitter, kwargs: {sharpness: [0.5, 1.5]}}
+      affine: {weight: 1.0, type: RandomAffine, kwargs: {degrees: [-2.0, 2.0], translate: [0.05, 0.05]}}
+policy:
+  type: act
+  chunk_size: 100
+  n_action_steps: 100
+  push_to_hub: false
+output_dir: /workspace/data/train/cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30
+job_name: act_omx_cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30
+steps: 100000
+batch_size: 32
+save_freq: 20000
+eval_steps: 0
+log_freq: 50
+seed: 1000
+num_workers: 12   # 2026-10-13: was 4; with the CPU-side RandomAffine, 4 workers left the GPU waiting (data_s 0.25 of step_s 0.55)
+wandb:
+  enable: true
+  project: teleoperation_pick_place

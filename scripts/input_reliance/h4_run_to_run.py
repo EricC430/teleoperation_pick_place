@@ -65,8 +65,8 @@ def frame0(root, ep):
     return ds[0], acts
 
 
-meta = pd.read_csv("episode_meta/rollout_omx_b1_papercup_60_16_12rcvry_100k_paper_cup_20261008_171620.csv", encoding="utf-8-sig")
-metc = pd.read_csv("episode_meta/rollout_omx_b1_papercup_60_16_12rcvry_100k_paper_cup_20261008_192921.csv", encoding="utf-8-sig")
+meta = pd.read_csv("episode_meta/rollout_omx_b1_papercup_60_16_12rcvry_100k_nas100_paper_cup_20261008_171620.csv", encoding="utf-8-sig")
+metc = pd.read_csv("episode_meta/rollout_omx_b1_papercup_60_16_12rcvry_100k_nas30_paper_cup_20261008_192921.csv", encoding="utf-8-sig")
 rows, sanity = [], []
 for ep in range(36):
     pid = meta.placement_id[ep]

@@ -6,7 +6,7 @@ follow = projection of (plan_swapped - plan_orig) onto (target_other - target_or
   0 = ignores this input, 1 = plan moves all the way to the other episode's target.
 Positions via the human joint -> (theta, r) map, converted to x, y cm.
 """
-import sys
+import os, sys
 from pathlib import Path
 import numpy as np, torch
 sys.path.insert(0, "scripts")
@@ -15,7 +15,8 @@ from lerobot.configs.policies import PreTrainedConfig
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 from lerobot.policies.factory import get_policy_class, make_pre_post_processors
 
-CK = Path("D:/hf/hub/models--ericc430--act_omx_b1_uvc60_100k/snapshots/0b3c41f9a3b01466eee35249a9ee700766be74a0")
+# H1_CKPT (env, 2026-10-13): another checkpoint dir, e.g. the FL-dropout acceptance test (docs/handoff/2026-10-13_fl_dropout.md)
+CK = Path(os.environ.get("H1_CKPT", "D:/hf/hub/models--ericc430--act_omx_b1_uvc60_100k/snapshots/0b3c41f9a3b01466eee35249a9ee700766be74a0"))
 dev = "cuda"
 pol = get_policy_class("act").from_pretrained(str(CK), config=PreTrainedConfig.from_pretrained(str(CK))).eval().to(dev)
 pre, post = make_pre_post_processors(pol.config, pretrained_path=str(CK))

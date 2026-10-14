@@ -41,7 +41,7 @@ PERTURB = {
     "front JPEG q90": (FL, jpeg), "front noise 2/255": (FL, noise), "front shift 1px": (FL, shift1),
     "wrist JPEG q90": (W, jpeg), "wrist noise 2/255": (W, noise),
 }
-meta = pd.read_csv("episode_meta/rollout_omx_b1_papercup_60_16_12rcvry_100k_paper_cup_20261008_171620.csv", encoding="utf-8-sig")
+meta = pd.read_csv("episode_meta/rollout_omx_b1_papercup_60_16_12rcvry_100k_nas100_paper_cup_20261008_171620.csv", encoding="utf-8-sig")
 rows = []
 for ep in range(36):
     pid = meta.placement_id[ep]
