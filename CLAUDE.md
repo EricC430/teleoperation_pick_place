@@ -33,6 +33,7 @@
 | `docs/pipeline_validation.md` | 管線驗證資料的處理原則 |
 | `docs/exp_a3_recovery_ablation.md` | A3 recovery 消融實驗設計 |
 | `docs/meeting/` | 會議與現場工作紀錄（最新：`2026-10-14_fldrop_open_loop.md` ntcfA1aug＋接近段 front-left dropout（p 0.3、30 幀）：開環與基底大致分不出、h6 轉腕不變；h1 中位數過、逐幀沒過；閉環 30/36 vs 基底 25/36（配對 p 0.18），下一步 p 0.5（`docs/handoff/2026-10-14_fl_dropout_p50.md`）；`2026-10-13_closed_loop.md` ntfA1aug／ntcfA1aug 100k 閉環都是 25/36（C 場 ntA1 19/36，配對 p 0.18–0.24），遠區 8/8 轉腕，失敗多為 bad_aim；ntcfA1aug＋temporal ensemble −0.01 c1–c13 11/13（N=30 9/13），結論先做手腕定位精度；開環評估集上轉腕沒被觸發；`2026-10-13_open_loop.md` ntfA1／ntcfA1 加隨機平移增強（ntfA1aug／ntcfA1aug）：h6 平移後近處 3/13 → 0/13 轉腕；開環 ntfA1aug 只在 N=20 較低、ntcfA1aug 九格都較低；`2026-10-10_open_loop.md` ＋far-wrist（ntfA1）與 tight 剪前段（ntcfA1）開環，100k 兩者分不出、20k 剪前段明顯較差；`2026-10-08_open_loop.md` 紙杯＋normal/tight A1 開環，100k 只在 N=20 顯著變差、人類下限依定義而變；`2026-10-07.md` ACT 夾哪裡由 front-left 決定、抓取前不用手腕修正，但遮手腕後搬運 0 成功；`2026-10-06.md` 紙杯 100k 閉環 N=30 17/32 與依位置分組的開環 MAE；`2026-10-05.md` 閉環 N=30 起始姿勢偏移與 `--goto-home`；`2026-10-04.md` 寶特瓶 100k 開環 N=30；`2026-09-29.md` open-loop × 推論間隔；最近一次老師會議 `2026-09-18.md`） |
+| `docs/weekly/` | 階段進度整理（只整理、不當正本，數字以 `docs/meeting/` 為準）。最新：`2026-10-14.md`（9/18–10/14：紙杯閉環 17/32 → 30/36、問題→做法→結果、進行中與未解） |
 | `eval/README.md` | 評估記錄規格（outcome/mechanism 兩軸） |
 | `docs/models.md` | 模型對照表：權重 hash ↔ 本機 run/step ↔ Hub repo ↔ 物品 ↔ 閉環用過哪次 |
 
