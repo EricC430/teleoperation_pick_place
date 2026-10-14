@@ -18,8 +18,8 @@
   這是「沒有紀錄」，不等於確定沒跑過；之後如果跑了閉環，用 record digest 取代 —。
   10-13：ntfA1 100k（`e97526c13766`）試跑一場、作廢，見該列。
   2026-10-13 加的 `cup_uvc60_normal_tight_far_A1_aug`／`cup_uvc60_normal_tightcut_far_A1_aug` 六列：hash 是直接 `sha256sum` 本機檔案算的，也和開環的 log 對過；同日上 Hub（private），Hub API 的 LFS oid 對過，一致。
-  2026-10-14 加的 `…_aug_fldrop_p30_w30` 三列：在 4090 訓練、Windows 本機沒有訓練目錄；hash 是從 Hub 下載到 `D:\hf\hub` 後 `sha256sum` 算的，也和 Hub API 的 LFS oid 對過，一致。
-  三個 repo 都附 `fl_dropout.json`（129 集，`episodes_without_close` 為空，`expected_masked_fraction` 0.0282）。
+  2026-10-14 加的 `…_aug_fldrop_p30_w30` 三列：同樣 `sha256sum` 本機檔案，上 Hub（private）後以 LFS oid 對過，一致；Hub 的 `train_config.json` 看不出 dropout，看同 repo 的 `fl_dropout.json`。
+  Windows 另外從 Hub 下載到 `D:\hf\hub` 後 `sha256sum`，三個也都一致（2026-10-14）。
 
 ## ACT／Diffusion 模型
 
@@ -54,9 +54,9 @@
 | `e0894f917c32` | `cup_uvc60_normal_tightcut_far_A1_aug` / 20k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug_20k` | 紙杯 | 同 `cup_uvc60_normal_tightcut_far_A1`，加隨機平移增強（`configs/train_omx_cup_uvc60_normal_tightcut_far_A1_aug.yaml`） | — |
 | `f877d679843f` | `cup_uvc60_normal_tightcut_far_A1_aug` / 40k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug_40k` | 紙杯 | 同上 | — |
 | `286a49c37d4e` | `cup_uvc60_normal_tightcut_far_A1_aug` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug_100k` | 紙杯 | 同上 | 10/13 `__98627c1e`（`2026-10-13_closed_loop.md`） |
-| `74029f33e571` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30` / 20k（4090） | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_20k` | 紙杯 | 同 `cup_uvc60_normal_tightcut_far_A1_aug`，加接近段 front-left dropout（p 0.3、閉合前 30 幀；`configs/train_omx_cup_uvc60_normal_tightcut_far_A1_aug_fldrop.yaml`；理由見 `docs/handoff/2026-10-13_fl_dropout.md`） | — |
-| `4d954bc6d1c7` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30` / 40k（4090） | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_40k` | 紙杯 | 同上 | — |
-| `7701bdd277ad` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30` / 100k（4090） | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_100k` | 紙杯 | 同上 | 10/14 `__f92698e7`（`docs/handoff/2026-10-13_fl_dropout.md`「閉環結果」） |
+| `74029f33e571` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30` / 20k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_20k` | 紙杯 | 同 `cup_uvc60_normal_tightcut_far_A1_aug`，加接近段 front-left dropout（p 0.3、第一次閉合前 30 幀；`scripts/train_fl_dropout.py`，設定在 repo 的 `fl_dropout.json`；理由見 `docs/handoff/2026-10-13_fl_dropout.md`） | — |
+| `4d954bc6d1c7` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30` / 40k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_40k` | 紙杯 | 同上 | — |
+| `7701bdd277ad` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_100k` | 紙杯 | 同上 | 10/14 `__f92698e7`（`docs/handoff/2026-10-13_fl_dropout.md`「閉環結果」） |
 
 未列：60k／80k checkpoint（沒上 Hub、沒閉環過）、`my-002`／`smoke-001`／`perf-*`／`openloop-eval`（煙霧測試與效能測試）。
 
