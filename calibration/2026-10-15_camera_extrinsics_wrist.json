@@ -1,0 +1,45 @@
+{
+ "camera": "wrist",
+ "frame": "link5",
+ "pos_m": [
+  0.051398974532082385,
+  -0.006360861947472585,
+  0.04836258356068879
+ ],
+ "quat_wxyz": [
+  -0.3009438277917078,
+  0.651954256922942,
+  -0.6172213814489489,
+  0.3215994802178332
+ ],
+ "convention": "OpenCV camera axes (x right, y down, z forward), like the 10-07 file",
+ "fit": "calibration/2026-10-14_link_marker_fit.json",
+ "observations": [
+  [
+   "P04",
+   3
+  ],
+  [
+   "P11",
+   3
+  ],
+  [
+   "P11",
+   7
+  ],
+  [
+   "P11",
+   2
+  ],
+  [
+   "P12",
+   3
+  ],
+  [
+   "P13",
+   7
+  ]
+ ],
+ "reprojection_median_px": 2.934500819073793,
+ "measured_at": "2026-10-14 stills, solved 2026-10-15"
+}
