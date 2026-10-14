@@ -17,6 +17,11 @@ docs/handoff/2026-10-13_fl_dropout.md.
 - train_config.json does not know these flags: they are written to <output_dir>/fl_dropout.json and put in job_name.
   A --resume run must be given the same flags again.
 - Episodes with no gripper close get no dropout.
+- --transforms-fl-only (2026-10-14): lerobot applies image_transforms to EVERY camera (datasets/dataset_reader.py) and
+  has no per-camera option. With this flag the config's image_transforms are taken off the reader and applied to
+  front-left only, before the mask; the wrist image is left as recorded. train_config.json still shows them enabled
+  -- fl_dropout.json's image_transforms_cameras says where they ran. Why: the 2026-10-14 to-do in
+  docs/meeting/2026-10-14_fldrop_open_loop.md §4.
 """
 
 from __future__ import annotations
@@ -38,10 +43,14 @@ GRIPPER = 5  # action index (omx_follower: shoulder_pan .. wrist_roll, gripper)
 class FLDropDataset(LeRobotDataset):
     """LeRobotDataset whose front-left frame is blacked out at random in the approach window."""
 
+    _fl_tf = None  # image_transforms moved here from the reader by --transforms-fl-only
+
     def __getitem__(self, idx):
         item = super().__getitem__(idx)
         if isinstance(idx, slice):
             return item
+        if self._fl_tf is not None:
+            item[self._fl_key] = self._fl_tf(item[self._fl_key])
         close = self._fl_close.get(int(item["episode_index"]), -1)
         f = int(item["frame_index"])
         if close >= 0 and close - self._fl_window <= f < close and torch.rand(()) < self._fl_p:
@@ -62,16 +71,25 @@ def first_close(ds: LeRobotDataset, close_below: float) -> dict[int, int]:
     return out
 
 
-def enable(ds: LeRobotDataset, p: float, window: int, close_below: float, key: str = FL) -> dict:
+def enable(ds: LeRobotDataset, p: float, window: int, close_below: float, key: str = FL,
+           transforms_fl_only: bool = False) -> dict:
     if key not in ds.meta.camera_keys:
         raise SystemExit(f"{key} is not a camera of {ds.repo_id}: {ds.meta.camera_keys}")
+    tf = ds.image_transforms
+    if transforms_fl_only and tf is None:
+        raise SystemExit("--transforms-fl-only needs image_transforms.enable: true in the config")
+    tf_cams = [key] if transforms_fl_only else (list(ds.meta.camera_keys) if tf is not None else [])
     close = first_close(ds, close_below)
     ds.__class__ = FLDropDataset
     ds._fl_close, ds._fl_window, ds._fl_p, ds._fl_key = close, window, p, key
+    if transforms_fl_only:
+        ds.clear_image_transforms()
+        ds._fl_tf = tf
     valid = [c for c in close.values() if c >= 0]
     in_window = sum(min(window, c) for c in valid)
     return {
         "camera": key, "p": p, "window_frames": window, "close_below": close_below,
+        "image_transforms_cameras": tf_cams,
         "episodes": len(close), "episodes_without_close": [e for e, c in close.items() if c < 0],
         "frames": ds.num_frames, "frames_in_window": in_window,
         "expected_masked_fraction": round(p * in_window / ds.num_frames, 4),
@@ -85,6 +103,8 @@ def parse_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
     p.add_argument("--fl-window", type=int, required=True, help="frames before the first gripper close")
     p.add_argument("--close-below", type=float, default=54.0,
                    help="action gripper below this = closed (open ~59-60, closed ~48 in the paper-cup data)")
+    p.add_argument("--transforms-fl-only", action="store_true",
+                   help="apply the config's image_transforms to front-left only; the wrist image is not transformed")
     return p.parse_known_args(argv)
 
 
@@ -100,7 +120,8 @@ def main() -> None:
 
     def make_train_eval_datasets(cfg):
         train_ds, eval_ds = orig(cfg)
-        info = enable(train_ds, args.fl_p, args.fl_window, args.close_below)
+        info = enable(train_ds, args.fl_p, args.fl_window, args.close_below,
+                      transforms_fl_only=args.transforms_fl_only)
         logging.info("front-left approach dropout: %s", {k: v for k, v in info.items() if k != "first_close_frame"})
         out = Path(cfg.output_dir)
         out.mkdir(parents=True, exist_ok=True)
