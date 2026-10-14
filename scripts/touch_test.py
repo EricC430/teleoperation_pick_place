@@ -54,6 +54,9 @@ TARGETS = [(18.0, 0.0), (25.0, 0.0), (30.0, 8.0), (22.0, 14.0), (26.0, -18.0), (
 # --plumb: near points spread in azimuth. 10-15: shoulder_lift tripped Overload holding (25,0) (gravity torque 0.46 N.m by
 # the URDF masses; the real arm carries the wrist camera too) and could not lift off the paper at (30,8).
 PLUMB_TARGETS = [(14.0, 0.0), (18.0, -8.0), (18.0, 8.0), (13.0, 13.0), (13.0, -13.0), (21.0, -4.0), (21.0, 4.0), (10.0, 0.0)]
+# --far: the grasp region. The near touch points pinned the fit to 0.45 cm rms, but the 10-14 closed-loop holding frames
+# (30-37 cm) still want the arm 1.25 cm further out. Higher lift torque: be quick, watch the load.
+FAR_TARGETS = [(26.0, 0.0), (29.0, 5.0), (29.0, -5.0), (31.0, 0.0), (27.0, -10.0), (27.0, 10.0)]
 
 
 class FitModel:
@@ -125,7 +128,7 @@ def cmd_plan(args) -> int:
     model = FitModel(REPO / args.fit)
     home = json.loads((REPO / args.plan).read_text(encoding="utf-8"))["start"]
     print(f"model: {model.name}; roll fixed at HOME's {home[4]:.2f}; hover {args.hover_mm} mm")
-    for p in plan(model, home[4], args.hover_mm, PLUMB_TARGETS if args.plumb else None, args.max_lift_torque):
+    for p in plan(model, home[4], args.hover_mm, FAR_TARGETS if args.far else PLUMB_TARGETS if args.plumb else None, args.max_lift_torque):
         print(f"  target {p['target_cm']}: hover readings {np.round(p['hover'], 1)}  finger axis {p['tilt_deg']:.0f} deg off vertical,"
               f" solve error {p['solve_err_mm']:.1f} mm, lift gravity torque {p['tau']:.2f} N.m")
     return 0
@@ -148,7 +151,7 @@ def cmd_session(args) -> int:
     done = set()
     if csv_path.exists():
         done = {(float(r["target_x_cm"]), float(r["target_y_cm"])) for r in csv.DictReader(csv_path.open(encoding="utf-8"))}
-    plans = [p for p in plan(model, roll, args.hover_mm, PLUMB_TARGETS if args.plumb else None, args.max_lift_torque)
+    plans = [p for p in plan(model, roll, args.hover_mm, FAR_TARGETS if args.far else PLUMB_TARGETS if args.plumb else None, args.max_lift_torque)
              if tuple(p["target_cm"]) not in done]
     if args.plumb:
         print("鉛垂線模式：在閉合的指尖綁細線、吊小重物（線長到離紙 2-3 mm）；每點等重物停止擺動，讀重物正下方的格子。")
@@ -264,6 +267,7 @@ def main() -> int:
     common.add_argument("--plan", default="configs/link_marker_plan_farwrist.json", help="only its HOME ('start') is used")
     common.add_argument("--hover-mm", type=float, default=None, help="default 20 mm, 60 mm with --plumb")
     common.add_argument("--plumb", action="store_true", help="read a plumb weight hung from the tip, from higher up")
+    common.add_argument("--far", action="store_true", help="grasp-region targets (26-31 cm), plumb, lift-torque cap 0.6")
     common.add_argument("--max-lift-torque", type=float, default=0.40,
                         help="skip targets whose shoulder_lift gravity torque (URDF masses) is above this; 10-15 tripped at 0.46")
     p = sub.add_parser("plan", parents=[common]); p.set_defaults(func=cmd_plan)
@@ -271,6 +275,9 @@ def main() -> int:
     s.add_argument("--port", default="COM8"); s.add_argument("--id", default="2026-09-18_omx_follower"); s.set_defaults(func=cmd_session)
     a = sub.add_parser("analyse", parents=[common]); a.add_argument("--csv", required=True); a.set_defaults(func=cmd_analyse)
     args = ap.parse_args()
+    if args.far:
+        args.plumb = True
+        args.max_lift_torque = max(args.max_lift_torque, 0.6)
     if args.hover_mm is None:
         args.hover_mm = 60.0 if args.plumb else 20.0
     return args.func(args)
