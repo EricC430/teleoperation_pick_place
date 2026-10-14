@@ -13,8 +13,8 @@ How it reads:
 
 Motion: the model's inverse (readings -> fingertip, with its sag) is solved for each target, gripper as close to
 straight down as reachable, roll and gripper fixed (gripper closed). From HOME the arm goes to a point 6 cm above the
-target, then down to --hover-mm above the paper, and `hold()` brings the Present readings onto the solved ones (position
-control alone sags a few units). At the hover: d / u lower / raise 3 mm, Enter = read. The analysis uses the readings
+target, then down to --hover-mm above the paper (by the model; the arm sags a few units under position control, which the
+readings record). At the hover: d / u lower / raise 3 mm, Enter = read. No hold(): it tripped shoulder_lift Overload on 10-15. The analysis uses the readings
 actually present, not the solved ones, so servo tracking does not enter the result.
 
     uv run python scripts/touch_test.py plan                    # solve and print, no arm
@@ -30,6 +30,7 @@ import argparse
 import csv
 import json
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -132,7 +133,8 @@ def cmd_session(args) -> int:
     plans = [p for p in plan(model, roll, args.hover_mm) if tuple(p["target_cm"]) not in done]
     print("=" * 76)
     print(f"touch test: {len(plans)} targets left, model {model.name}. 桌上只留座標紙；夾爪會閉合。")
-    print("每個點：手臂先到目標上方 6 cm，再降到紙面上方約 1 cm 停住。d / u = 降 / 升 3 mm（指尖約 3-5 mm 高最好讀）。")
+    print("每個點：手臂先到目標上方 6 cm，再降到紙面上方約 2 cm（依模型）。看著實際指尖用 d / u 降 / 升 3 mm，到離紙約 3-5 mm 讀數。")
+    print("停在低處時馬達負荷大：讀完就按 Enter 輸入，不要久停。馬達閃紅燈就 Ctrl+C，跑 scripts/dxl_status.py。")
     print("Enter 後輸入指尖正下方的格子座標（cm，到小數一位，x 往前、y 往左），例如 26.3 -0.4；s = 跳過，q = 結束。")
     print("=" * 76)
     with S7.Arm(args.port, args.id) as arm:
@@ -154,18 +156,18 @@ def cmd_session(args) -> int:
             z_mm = args.hover_mm
             hov = dict(zip(JOINTS, np.r_[p["hover"], roll, GRIP_CLOSED]))
             _go(arm, hov, 2.0)
-            left = arm.hold(hov, list(JOINTS[:4]))
+            # No hold(): pushing the goal past the sag kept shoulder_lift near stall and tripped Overload on 10-15
+            # (S8 10-12 too). The sag is fine -- the analysis uses the readings actually present.
             while True:
-                k = S7._ask(f"    指尖預計離紙 {z_mm:.0f} mm（hold 殘差 {left}）。d 降 / u 升 / Enter 讀數 / s 跳過: ").lower()
+                time.sleep(0.5)
+                z_now = model.tip(np.array([v for v in arm.read_avg(5).values()]))[2] * 1000
+                k = S7._ask(f"    指令高度 {z_mm:.0f} mm；依目前讀數模型算的指尖高度 {z_now:.0f} mm。"
+                            f"看實際指尖：d 降 3 mm / u 升 3 mm / Enter 讀數 / s 跳過: ").lower()
                 if k in ("d", "u"):
                     z_mm += -3 if k == "d" else 3
-                    if z_mm < 1:
-                        print("    已經到模型的 1 mm，不再往下（模型可能有誤差，避免撞紙）。")
-                        z_mm = 1
                     sol, _ = model.solve(np.array([x / 100, y / 100, z_mm / 1000]), roll, np.array(p["hover"]))
                     hov = dict(zip(JOINTS, np.r_[sol, roll, GRIP_CLOSED]))
                     _go(arm, hov, 0.8)
-                    left = arm.hold(hov, list(JOINTS[:4]))
                     continue
                 break
             if k == "s":
@@ -233,7 +235,7 @@ def main() -> int:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--fit", default="calibration/2026-10-14_link_marker_fit.json")
     common.add_argument("--plan", default="configs/link_marker_plan_farwrist.json", help="only its HOME ('start') is used")
-    common.add_argument("--hover-mm", type=float, default=10.0)
+    common.add_argument("--hover-mm", type=float, default=20.0)
     p = sub.add_parser("plan", parents=[common]); p.set_defaults(func=cmd_plan)
     s = sub.add_parser("session", parents=[common]); s.add_argument("--csv", required=True)
     s.add_argument("--port", default="COM8"); s.add_argument("--id", default="2026-09-18_omx_follower"); s.set_defaults(func=cmd_session)
