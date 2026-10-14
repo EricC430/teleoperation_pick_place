@@ -32,7 +32,7 @@
 | `docs/conventions.md` | commit / branch / tag 慣例 |
 | `docs/pipeline_validation.md` | 管線驗證資料的處理原則 |
 | `docs/exp_a3_recovery_ablation.md` | A3 recovery 消融實驗設計 |
-| `docs/meeting/` | 會議與現場工作紀錄（最新：`2026-10-10_open_loop.md` ＋far-wrist（ntfA1）與 tight 剪前段（ntcfA1）開環，100k 兩者分不出、20k 剪前段明顯較差；`2026-10-08_open_loop.md` 紙杯＋normal/tight A1 開環，100k 只在 N=20 顯著變差、人類下限依定義而變；`2026-10-07.md` ACT 夾哪裡由 front-left 決定、抓取前不用手腕修正，但遮手腕後搬運 0 成功；`2026-10-06.md` 紙杯 100k 閉環 N=30 17/32 與依位置分組的開環 MAE；`2026-10-05.md` 閉環 N=30 起始姿勢偏移與 `--goto-home`；`2026-10-04.md` 寶特瓶 100k 開環 N=30；`2026-09-29.md` open-loop × 推論間隔；最近一次老師會議 `2026-09-18.md`） |
+| `docs/meeting/` | 會議與現場工作紀錄（最新：`2026-10-10_open_loop.md` ＋far-wrist（ntfA1）與 tight 剪前段（ntcfA1）開環，100k 兩者分不出、20k 剪前段明顯較差；`2026-10-08_open_loop.md` 紙杯＋normal/tight A1 開環，100k 只在 N=20 顯著變差、人類下限依定義而變；`2026-10-07.md` ACT 夾哪裡由 front-left 決定、抓取前不用手腕修正，但遮手腕後搬運 0 成功；`2026-10-06.md` 紙杯 100k 閉環 N=30 17/32 與依位置分組的開環 MAE；`2026-10-05.md` 閉環 N=30 起始姿勢偏移與 `--goto-home`；`2026-10-04.md` 寶特瓶 100k 開環 N=30；`2026-09-29.md` open-loop × 推論間隔；最近一次老師會議 `2026-09-18.md`。**2026-10-13 補寫三場閉環**：`2026-09-21_bottle_closed_loop.md` 寶特瓶 100k 4/35、`2026-10-07_temporal_ensemble.md` 19/32、`2026-10-08_C_n30_home.md` recovery 模型 N=30 從 HOME 出發 19/34，比對腳本 `scripts/compare_closed_loop.py`） |
 | `eval/README.md` | 評估記錄規格（outcome/mechanism 兩軸） |
 | `docs/models.md` | 模型對照表：權重 hash ↔ 本機 run/step ↔ Hub repo ↔ 物品 ↔ 閉環用過哪次 |
 

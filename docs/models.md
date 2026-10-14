@@ -19,7 +19,7 @@
 | `e9e73dc35268` | `phase_a_pilot` / 500 | `act_omx_pick_place_pilot` | `[未確認]` | `EricC430/omx_pick_place_pilot` | — |
 | `0f9289fdd08c` | `phase_b1_uvc60` / 20k | `act_omx_b1_uvc60` | 紙杯 | `omx_pick_place_pilot_uvc_60`（全 60 集） | 9/14 `__8e0858b2`；9/17 `__9fa886a1`、`__f23baed2`（→ `rollout_omx_b1_uvc60_paper_cup_20260917_234916`） |
 | `2c227a8e2dde` | `phase_b1_uvc60` / 40k | `act_omx_b1_uvc60_40k` | 紙杯 | 同上 | 9/18 `__6be0f432`（5 集，中止） |
-| `2bdff2b3871e` | `phase_b1_uvc60` / 100k | `act_omx_b1_uvc60_100k` | 紙杯 | 同上 | 9/18 `__e07d8d97`、`__2c355eb4`、`__531812f6`、`__15e38ea5`、`__5b288ba5`（5 份 record，4 個 rollout 資料夾：一般／wristcovered／fall／lamp_without_light） |
+| `2bdff2b3871e` | `phase_b1_uvc60` / 100k | `act_omx_b1_uvc60_100k` | 紙杯 | 同上 | 9/18 `__e07d8d97`、`__2c355eb4`、`__531812f6`、`__15e38ea5`、`__5b288ba5`（5 份 record，4 個 rollout 資料夾：一般／wristcovered／fall／lamp_without_light）；10/6 N=30、10/7 遮手腕、10/7 temporal ensemble 三場（episode_meta 有 CSV，**config record 未入庫** `[未確認]`） |
 | `f1903a9f9385` | `phase_b1_diffusion` / 40k | `diffusion_omx_b1_uvc60`：**hash 不符**（Hub 是 `f2012eadb36d`，推測是 EMA 權重 `[未確認]`） | 紙杯 | `omx_pick_place_pilot_uvc_60_frontleft_only`（只有前左相機） | 9/18 `__70a6cc3f`、`__1caea808`（1 集測試） |
 | `ed81ea9f6cff` | `phase_b4a_plastic_bottle` / 40k | `act_omx_b4a_plastic_bottle`（main ＝ @40k） | 寶特瓶 | `omx_pick_place_pilot_60_plastic_bottle`（全 60 集） | 9/18 `__83b0d5fd` |
 | `8b2c3550f4ef` | `phase_b4a_plastic_bottle` / 20k | `act_omx_b4a_plastic_bottle_20k` | 寶特瓶 | 同上 | 9/21 `__fd20946e` |
@@ -32,7 +32,7 @@
 | `02bf0d69a088` | `alcan60_fixed` / 100k | `act_omx_alcan60_fixed_100k` | 鋁罐 | 同上 | 9/20 `__b504fd10`、`__a6f2a67a`（**沒有對應的 rollout 資料夾** `[未確認]`）；9/21 `__039dfb74` |
 | `24df8d1ce78b` | `cup_uvc60_normal_tight_A1` / 20k | —（`push_to_hub: false`） | 紙杯 | `omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1`（本機 merge：uvc_60 ＋ normal_A1 ＋ recovery_A1_tight，`exclude_episodes: [87]` → 88 集；`configs/train_omx_cup_uvc60_normal_tight_A1.yaml`） | — |
 | `dbf3d7b250de` | `cup_uvc60_normal_tight_A1` / 40k | — | 紙杯 | 同上 | — |
-| `e6ef7c0e9528` | `cup_uvc60_normal_tight_A1` / 100k | — | 紙杯 | 同上 | — |
+| `e6ef7c0e9528` | `cup_uvc60_normal_tight_A1` / 100k | `act_omx_b1_paper-cup_60-16-12rcvry_100k`（10-08 config record 的 `--policy.path`，註解寫 sha256 `e6ef7c0e9528`；Hub 端 hash 未比對 `[未確認]`） | 紙杯 | 同上 | 10/8 `__9c5e6c68`（16:58，未對應 CSV）、`__03d8e780`（17:09，N=100 → `rollout_..._20261008_171620`）、`__2a7a2415`（19:29，N=30 → `rollout_..._20261008_192921`）`[已查證 2026-10-13：config record 時間對 CSV 檔名]` |
 | `9eb05d355edc` | `cup_uvc60_normal_tight_far_A1` / 20k | — | 紙杯 | `omx_pick_place_pilot_paper_cup_uvc60_normalA1_tightA1_farwristA1`（本機 merge：uvc_60 ＋ normal_A1 ＋ recovery_A1_tight ＋ far_wrist_A1 = 137 集，`exclude_episodes` 8 集 → 129 集；排除理由見 `configs/train_omx_cup_uvc60_normal_tight_far_A1.yaml` 檔頭） | `[未確認]` |
 | `c39680beee6a` | `cup_uvc60_normal_tight_far_A1` / 40k | — | 紙杯 | 同上 | `[未確認]` |
 | `e97526c13766` | `cup_uvc60_normal_tight_far_A1` / 100k | — | 紙杯 | 同上 | `[未確認]` |
