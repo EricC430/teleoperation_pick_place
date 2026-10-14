@@ -86,8 +86,11 @@ def load_stills(captures: Path, excluded: Path, plan: Path):
     return stills
 
 
-def detect(stills, model):
-    det = cv2.aruco.ArucoDetector(cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50), cv2.aruco.DetectorParameters())
+def detect(stills, model, refine="none"):
+    prm = cv2.aruco.DetectorParameters()
+    prm.cornerRefinementMethod = {"none": cv2.aruco.CORNER_REFINE_NONE, "subpix": cv2.aruco.CORNER_REFINE_SUBPIX,
+                                  "contour": cv2.aruco.CORNER_REFINE_CONTOUR, "apriltag": cv2.aruco.CORNER_REFINE_APRILTAG}[refine]
+    det = cv2.aruco.ArucoDetector(cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50), prm)
     for s in stills:
         corners, ids, _ = det.detectMarkers(cv2.imread(str(s["image"]), cv2.IMREAD_GRAYSCALE))
         s["det"] = {}
@@ -170,7 +173,7 @@ class Model:
             names += [f"id{mid}_{a}" for a in ("r0", "r1", "r2", "x", "y", "z")]
         if free_lengths:
             names += ["scale_upper", "scale_fore"]
-        names += ["mat_scale", "marker_scale"]
+        names += ["mat_scale", "marker_scale", "focal_scale", "jscale_lift", "jscale_elbow", "jscale_flex"]
         self.names = names
         self.idx = {n: i for i, n in enumerate(names)}
         self.n_id1 = n_id1
@@ -193,7 +196,9 @@ class Model:
 
     def link_frames(self, x, state, cache=None):
         cam, base, off, sag, mounts, chain = self.unpack(x)
-        q = jm.SCALE_RAD_PER_UNIT["shoulder_lift"] * state[:5] + off
+        js = np.ones(5)
+        js[1:4] = x[self.idx["jscale_lift"]:self.idx["jscale_flex"] + 1]
+        q = jm.SCALE_RAD_PER_UNIT["shoulder_lift"] * js * state[:5] + off
         frames0 = chain_transforms(q, chain)
         g_base = base[:3, :3].T @ np.array([0.0, 0.0, -G])
         tau = gravity_torques(frames0, self.inertials, g_base)
@@ -214,6 +219,9 @@ def project(Kmat, world_from_cam, pts_w):
 
 def residuals(x, model, stills, Kmat, paper_w, seg, which=None):
     cam, base, off, sag, mounts, chain = model.unpack(x)
+    Kmat = Kmat.copy()
+    Kmat[0, 0] *= x[model.idx["focal_scale"]]
+    Kmat[1, 1] *= x[model.idx["focal_scale"]]
     res = []
     for s in stills:
         d = s["det"]
@@ -286,6 +294,11 @@ def main() -> int:
     ap.add_argument("--free-lengths", action="store_true")
     ap.add_argument("--free-mat-scale", action="store_true")
     ap.add_argument("--free-marker-size", action="store_true")
+    ap.add_argument("--free-focal", action="store_true", help="one scale on fx, fy (device-read intrinsics)")
+    ap.add_argument("--refine", choices=("none", "subpix", "contour", "apriltag"), default="none",
+                    help="ArUco corner refinement; without it the corners of a ~50 px marker can sit a fraction of a pixel inside")
+    ap.add_argument("--free-joint-scales", action="store_true",
+                    help="effective deg/unit for lift, elbow, flex (the encoder's is exact; play can make it look otherwise, S7)")
     ap.add_argument("--fore-mm", type=float, default=None, help="forearm joint3->4 length to use instead of the URDF's")
     ap.add_argument("--no-sag", action="store_true")
     ap.add_argument("--out", default="")
@@ -296,7 +309,7 @@ def main() -> int:
     paper_w = {int(r["marker_id"]): np.array([float(r["x_m"]), float(r["y_m"]), float(r["height_above_table_m"])])
                for r in csv.DictReader((REPO / args.points).open(encoding="utf-8"))}
     stills = load_stills(REPO / args.captures, REPO / args.excluded, REPO / args.plan)
-    detect(stills, model_cam)
+    detect(stills, model_cam, args.refine)
     seg = id1_segments(stills)
     hold = {int(e) for e in args.holdout.split(",") if e}
     train = [s for s in stills if s["ep"] not in hold]
@@ -322,7 +335,8 @@ def main() -> int:
     x[model.idx["off_lift"]:model.idx["off_flex"] + 1] = off0[1:4]
     if args.free_lengths:
         x[model.idx["scale_upper"]] = x[model.idx["scale_fore"]] = 1.0
-    x[model.idx["mat_scale"]] = x[model.idx["marker_scale"]] = 1.0
+    x[model.idx["mat_scale"]] = x[model.idx["marker_scale"]] = x[model.idx["focal_scale"]] = 1.0
+    x[model.idx["jscale_lift"]] = x[model.idx["jscale_elbow"]] = x[model.idx["jscale_flex"]] = 1.0
     inits = init_mounts(train, model, x, Kmat, seg)
     for key in [("id1", 0), ("id1", 1), ("id1", 2), ("id5", 0), ("id6", 0)]:
         if key not in inits:
@@ -334,6 +348,11 @@ def main() -> int:
         x[model.idx[f"{pre}_x"]:model.idx[f"{pre}_x"] + 3] = t
 
     lo = np.full(len(x), -np.inf); hi = np.full(len(x), np.inf)
+    if not args.free_joint_scales:
+        for n in ("jscale_lift", "jscale_elbow", "jscale_flex"):
+            lo[model.idx[n]], hi[model.idx[n]] = 1.0 - 1e-12, 1.0 + 1e-12
+    if not args.free_focal:
+        lo[model.idx["focal_scale"]], hi[model.idx["focal_scale"]] = 1.0 - 1e-12, 1.0 + 1e-12
     if not args.free_marker_size:
         lo[model.idx["marker_scale"]], hi[model.idx["marker_scale"]] = 1.0 - 1e-12, 1.0 + 1e-12
     if not args.free_mat_scale:
@@ -374,6 +393,10 @@ def main() -> int:
         up, fo = np.linalg.norm(fk._CHAIN[2][0]), fk._CHAIN[3][0][0]
         for n, u in (("scale_upper", up), ("scale_fore", fo)):
             print(f"{n}: {x[model.idx[n]]:.4f} ± {sd[model.idx[n]]:.4f} -> {x[model.idx[n]]*u*1000:.1f} mm (URDF {u*1000:.1f})")
+    if args.free_joint_scales:
+        print("effective joint scale (x 1.7996 deg/unit):", {n: f"{x[model.idx[n]]:.4f} ± {sd[model.idx[n]]:.4f}" for n in ("jscale_lift", "jscale_elbow", "jscale_flex")})
+    if args.free_focal:
+        print(f"focal scale: {x[model.idx['focal_scale']]:.4f} ± {sd[model.idx['focal_scale']]:.4f} (fx {Kmat[0, 0]:.1f} -> {Kmat[0, 0] * x[model.idx['focal_scale']]:.1f})")
     if args.free_marker_size:
         ms_ = x[model.idx["marker_scale"]]
         print(f"arm marker size: {ms_ * MARKER_M * 1000:.2f} ± {sd[model.idx['marker_scale']] * MARKER_M * 1000:.2f} mm (assumed 60)")
