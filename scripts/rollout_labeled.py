@@ -15,14 +15,21 @@ episode starts). Flags given on the command line override the template for every
     --placement-prefix c                                            placement_id = c<index+1>
 Without a template, rows get only the flags (placement_id defaults to c<index+1>).
 
-Keys (any time during the episode or the reset phase that follows it):
+Keys:
     Right  success  -> saved, outcome=success
     Up     fail     -> saved, outcome left blank (blank outcome = failed; fill no_grasp/... later)
     Left   redo     -> discarded, same episode index again
     Esc    stop     -> the unsaved episode is discarded; the arm returns to its start pose, then exit
-The last Right/Up pressed before the save wins. An episode is never saved without a verdict: when the
-reset time runs out and none was given, it keeps waiting for a key. Rows for episodes that were never
-saved are removed when the session ends, so a blank outcome always means a saved failure.
+One Right/Up is all an episode needs, whether it ended early or ran out its time: the verdict is spoken
+at once, the arm returns to its start pose, the episode is saved (re-place the object while it encodes)
+and the next one starts as soon as the save is done (user decision 2026-10-14).
+  - Pressed during the policy phase: ends the episode early, saved right after the arm is home.
+  - Episode ran out its time: waits for Right/Up (or Left), up to reset_time_s and past it until a key.
+Left must come instead of Right/Up. Once the save has started the episode and its verdict are final:
+Right/Up/Left are ignored until the save is done (Esc still stops the session after it). After Left the
+reset phase waits for one more key (or reset_time_s), since there is no save to re-place the object
+during. An episode is never saved without a verdict. Rows for episodes that were never saved are removed when the session
+ends, so a blank outcome always means a saved failure.
 
 Differences from lerobot's EpisodicStrategy: one voice line per transition (a new line cuts off the
 previous one instead of playing over it); Esc and crashes discard the in-progress episode instead of
@@ -37,6 +44,7 @@ import logging
 import platform
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -132,12 +140,18 @@ def new_events() -> dict:
     return {"exit_early": False, "rerecord_episode": False, "stop_recording": False, "verdict": None}
 
 
+def saves_without_reset_wait(events: dict) -> bool:
+    """After the policy phase: a verdict given during it (and no redo) means save at once, no reset wait."""
+    return events["verdict"] is not None and not events["rerecord_episode"]
+
+
 class Speaker:
     """One voice line at a time: starting a new line stops the one still playing."""
 
     def __init__(self, enabled: bool):
         self.enabled = enabled
         self._proc = None
+        self._lock = threading.Lock()  # verdict lines come from the key-listener thread
 
     def say(self, text: str, wait: bool = False) -> None:
         logger.info(text)
@@ -148,21 +162,24 @@ class Speaker:
 
             say(text, blocking=wait)
             return
-        if self._proc is not None and self._proc.poll() is None:
-            self._proc.kill()
         cmd = [
             "PowerShell",
             "-Command",
             "Add-Type -AssemblyName System.Speech; "
             f"(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('{text}')",
         ]
-        try:
-            self._proc = subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
-            if wait:
-                with contextlib.suppress(subprocess.TimeoutExpired):
-                    self._proc.wait(timeout=10)
-        except FileNotFoundError as e:
-            logger.warning("Text-to-speech failed: %s", e)
+        with self._lock:
+            if self._proc is not None and self._proc.poll() is None:
+                self._proc.kill()
+            try:
+                self._proc = subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+            except FileNotFoundError as e:
+                logger.warning("Text-to-speech failed: %s", e)
+                return
+            proc = self._proc
+        if wait:
+            with contextlib.suppress(subprocess.TimeoutExpired):
+                proc.wait(timeout=10)
 
 
 def make_strategy_class():
@@ -181,6 +198,7 @@ def make_strategy_class():
             self._pending = ""  # verdict line carried into the next voice line
             self._homed = False
             self._sheet = None
+            self._saving = False  # save_episode() running: the episode and its verdict are final
 
         def setup(self, ctx) -> None:
             if ctx.hardware.teleop is not None:
@@ -198,13 +216,21 @@ def make_strategy_class():
             )
             logger.info("episode_meta: %s", self._sheet.path)
 
-            def dispatch(name: str) -> None:
-                if apply_key(name, self._events):
-                    print(f"[key] {name} -> {self._describe()}", flush=True)
-
             self._listener = create_key_listener(
-                dispatch, controls_help="Right = success, Up = fail, Left = redo, Esc = stop"
+                self._on_key, controls_help="Right = success, Up = fail, Left = redo, Esc = stop"
             )
+
+        def _on_key(self, name: str) -> None:
+            """Key-listener thread."""
+            if self._saving and name != "esc":
+                print(f"[key] {name} ignored: this episode is being saved, its verdict is final", flush=True)
+                return
+            if not apply_key(name, self._events):
+                return
+            print(f"[key] {name} -> {self._describe()}", flush=True)
+            e = self._events
+            if name in VERDICT_KEYS and not e["rerecord_episode"] and not e["stop_recording"]:
+                self._speaker.say(e["verdict"])  # at once, not at the next episode's start
 
         def _describe(self) -> str:
             e = self._events
@@ -254,10 +280,13 @@ def make_strategy_class():
 
                         if self.config.reset_to_initial_position:
                             self._return_to_initial_position(hw=ctx.hardware, duration_s=1)
-                        is_last = recorded == num_episodes - 1
-                        if not is_last or events["rerecord_episode"]:
-                            self._speaker.say("Reset the environment")
-                        self._wait_for_verdict(ctx, reset_time_s, is_last)
+                        # verdict given during the policy phase (and no Left during the move home):
+                        # save now, the object is re-placed while it encodes
+                        if not saves_without_reset_wait(events):
+                            is_last = recorded == num_episodes - 1
+                            if not is_last or events["rerecord_episode"]:
+                                self._speaker.say("Reset the environment")
+                            self._wait_for_verdict(ctx, reset_time_s, is_last)
                         if events["stop_recording"] or ctx.runtime.shutdown_event.is_set():
                             break
 
@@ -266,11 +295,16 @@ def make_strategy_class():
                             redo = True
                             continue
 
+                        self._saving = True  # before reading the verdict: no press can slip in between
                         verdict = events["verdict"]
-                        dataset.save_episode()
+                        print(f"[saving] episode {idx}: {'success' if verdict == 'success' else 'FAIL'} ...", flush=True)
+                        try:
+                            dataset.save_episode()
+                        finally:
+                            self._saving = False
                         self._sheet.set_verdict(idx, verdict)
                         print(f"[saved] episode {idx}: {'success' if verdict == 'success' else 'FAIL'}", flush=True)
-                        self._pending = f"Saved, {verdict}. "
+                        self._pending = "Saved. "
                         recorded += 1
                         redo = False
                 finally:
