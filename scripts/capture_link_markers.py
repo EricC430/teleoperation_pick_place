@@ -12,13 +12,14 @@ Setup (once):
      10-13). Then move markers 1, 5, 6 to the arm, each glued flat on stiff card, taped to the LEFT side of the upper
      arm, the forearm, and the gripper servo body (not the lattice finger). They must not move during the session;
      where exactly they sit on the link is solved from the data. 0, 2, 3, 4, 7 stay on the paper.
-  2. Arm at the plan's start pose (`read_joint_pose.py --goto <the plan's start>`).
+  2. Arm at the plan's start pose, which is the closed-loop HOME (`read_joint_pose.py --goto-home --home-episode 10`).
 
     uv run python scripts/capture_link_markers.py session --plan configs/link_marker_plan_farwrist.json \\
         --csv calibration/<date>_link_markers.csv
 
-Each pose: Enter -> the arm follows the RECORDED path there (slowed down), settles, joint states are averaged, one
-front-left still (and a wrist still) is taken, then the arm retraces the path to the start pose. s = skip, q = quit;
+Each pose: Enter -> the arm eases from HOME onto the start of the RECORDED path (each episode began a few units away
+from HOME), follows it there (slowed down), settles, joint states are averaged, one front-left still (and a wrist
+still) is taken, then the arm retraces the path and eases back to HOME. s = skip, q = quit;
 rerunning with the same CSV skips poses already captured. Stills go to calibration/shots/<csv stem>/ and the index to
 <csv stem>_captures.csv (same format as S7's, so scripts/click_fingertips.py and the overlay tools read it).
 """
@@ -55,7 +56,7 @@ def cmd_session(args) -> int:
         far = {j: round(now[j] - start[j], 1) for j in JOINTS if j != "gripper" and abs(now[j] - start[j]) > args.max_start_jump}
         if far:
             print(f"🔴 手臂不在計畫的起始姿勢（差 {far}）。先執行：")
-            print("   uv run python scripts/read_joint_pose.py --goto " + " ".join(f"{v:.2f}" for v in plan["start"]))
+            print("   uv run python scripts/read_joint_pose.py --goto-home --home-episode 10")
             return 1
         if "B0" not in done:
             st = arm.read_avg(10)
@@ -69,12 +70,14 @@ def cmd_session(args) -> int:
                 return 0
             if go == "s":
                 continue
+            arm.follow(ps["path"][:1], args.ease)
             arm.follow(ps["path"], args.seconds_per_point)
             time.sleep(args.settle)
             st = arm.read_avg(10)
             S7.capture_stills(csv_path, ps["id"], "traj", st, cams)
             print("    沿原路徑退回起始姿勢……")
             arm.follow(list(reversed(ps["path"])), args.seconds_per_point)
+            arm.move_to(start, args.ease)
         print(f"\n完成。手臂停在起始姿勢、扭力開著。照片在 {csv_path.parent / 'shots' / csv_path.stem}/，索引 {log}")
     return 0
 
@@ -94,6 +97,7 @@ def main() -> int:
     se.add_argument("--seconds-per-point", type=float, default=0.3,
                     help="per kept path point (every 3rd recorded frame = 0.2 s), so 0.3 is 1.5x slower than recorded")
     se.add_argument("--settle", type=float, default=2.0)
+    se.add_argument("--ease", type=float, default=2.0, help="seconds for HOME <-> the recorded path's first point")
     se.add_argument("--max-start-jump", type=float, default=8.0)
     se.set_defaults(func=cmd_session)
     args = ap.parse_args()

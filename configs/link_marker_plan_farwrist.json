@@ -2,13 +2,14 @@
  "what": "S7 link-tilt pose plan (docs/specs/S7_link_tilt_calibration.md)",
  "dataset": "omx_pick_place_pilot_paper_cup_far_wrist_A1",
  "start": [
-  0.95,
-  -65.71,
-  55.31,
-  -3.88,
-  3.88,
-  59.93
+  -1.0,
+  -61.76,
+  54.68,
+  -8.08,
+  -2.81,
+  59.66
  ],
+ "start_source": "HOME of every closed-loop run since 10-06 = read_joint_pose.py --goto-home --home-episode 10 (uvc_60 ep10 frame-0 action). Was far_wrist_A1's own frame 0 0.95 -65.71 55.31 -3.88 3.88 59.93; each path still begins at its episode's frame 0, so session() eases from HOME onto it.",
  "constants_at_plan_time": {
   "s_shoulder_lift": 1.8,
   "o_shoulder_lift": 7.1235,
