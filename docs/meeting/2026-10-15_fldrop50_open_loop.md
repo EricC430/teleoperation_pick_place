@@ -69,7 +69,8 @@ hash ↔ run／step／Hub 見 `docs/models.md`（本次新增 3 列）。簡稱�
 ## 4. fldrop30-augfl 結果 `[已查證]`
 
 - 訓練：10-15 02:04 → 10:48（8 h 44 m），`exit=0`，最終 loss **0.054**（l1 0.053；fldrop30 是 0.060），log `data/logs/train_augfl.log`，wandb `zpeo0bz0`。
-  警告只有 Device None 與 kernel 5.4。hash：20k `cf3dd8f3b40b`、40k `8f0ad601c627`、100k `aebc8680b965`（60k／80k 在 `data/logs/chain_augfl_openloop.log`）。**沒上 Hub**。
+  警告只有 Device None 與 kernel 5.4。hash：20k `cf3dd8f3b40b`、40k `8f0ad601c627`、100k `aebc8680b965`（60k／80k 在 `data/logs/chain_augfl_openloop.log`）。
+- Hub：`ericc430/act_omx_b1_paper-cup_60-13-10rcvrycut-46far-augfl-fldrop30_{20k,40k,100k}`，private，LFS hash 與本機一致，各 repo 都附 `fl_dropout.json`（`data/logs/hf_upload_augfl.sh`）。
 - loss 比 fldrop30 低，因為手腕畫面不再隨機平移，訓練輸入的變化比較少；訓練 loss 不能直接拿來比 `[推論]`。
 - 開環：同 §2（`data/logs/openloop_augfl.sh`），輸出 `augfl_{step}_nas{N}/`，比較 `cmp_ntcfA1augfd_vs_augfl_*`、`cmp_ntcfA1aug_vs_augfl_*`。
 
@@ -109,5 +110,5 @@ hash ↔ run／step／Hub 見 `docs/models.md`（本次新增 3 列）。簡稱�
 - [ ] fldrop50 離線 h1（Windows，補充）：`H1_CKPT=<fldrop50 100k snapshot> uv run python scripts/input_reliance/h1_rollout_normalized.py`
 - [ ] h6（轉腕決定）沒有跑：這次沒排。
 - [x] fldrop30-augfl 訓練、開環 → §4。
-- [ ] fldrop30-augfl：開環在 N=100／50 一致變差（§4），原因未查；Hub 上不上、閉環要不要跑，待柏宇決定。
+- [ ] fldrop30-augfl：開環在 N=100／50 一致變差（§4），原因未查；10-15 已上 Hub（§4）；閉環要不要跑，待柏宇決定。
 - [ ] 手腕相機支架在 9/13 和 10/07 之後是否一樣（augfl 的前提，也可能是 §4 變差的原因）。
