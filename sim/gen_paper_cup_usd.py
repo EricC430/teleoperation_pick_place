@@ -4,7 +4,7 @@
 The real cup (`[Eric說 2026-09-21]`):
   - Opening diameter: 7.5 cm
   - Base diameter: 5.0 cm
-  - Height: 9.5 cm
+  - Height: 9.5 cm -> 9.3 cm (`[柏宇說 2026-10-15]` "紙杯高度9.3cm比較精確，半徑是真實的")
   - Standing UPRIGHT
 
 This generates a truncated cone with thin walls (~1 mm), suitable for
@@ -24,25 +24,33 @@ import math
 import os
 import sys
 
-from isaaclab.app import AppLauncher
+try:
+    from isaaclab.app import AppLauncher
+except ImportError:      # Isaac Sim standalone python: pxr loads once a SimulationApp is running
+    AppLauncher = None
 
 parser = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--out", required=True, help="output USD path")
 parser.add_argument("--top-dia", type=float, default=0.075, help="top opening diameter (m)")
 parser.add_argument("--bot-dia", type=float, default=0.050, help="bottom diameter (m)")
-parser.add_argument("--cup-height", type=float, default=0.095, help="cup height (m)")
+parser.add_argument("--cup-height", type=float, default=0.093, help="cup height (m)")
 parser.add_argument("--wall", type=float, default=0.001, help="wall thickness (m)")
 parser.add_argument("--sides", type=int, default=48, help="circumferential segments")
 parser.add_argument("--rings", type=int, default=8, help="vertical segments")
 parser.add_argument("--mass", type=float, default=0.012, help="mass (kg)")
 parser.add_argument("--mu-s", type=float, default=1.2, help="static friction")
 parser.add_argument("--mu-d", type=float, default=0.9, help="dynamic friction")
-AppLauncher.add_app_launcher_args(parser)
+if AppLauncher is not None:
+    AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 
-app_launcher = AppLauncher(args)
-simulation_app = app_launcher.app
+if AppLauncher is not None:
+    app_launcher = AppLauncher(args)
+    simulation_app = app_launcher.app
+else:
+    from isaacsim import SimulationApp
+    simulation_app = SimulationApp({"headless": True})
 
 import numpy as np  # noqa: E402
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade  # noqa: E402

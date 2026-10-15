@@ -9,12 +9,18 @@ fit -- `scripts/prep_closed_loop_replay.py` writes them. The old `current/provis
 link0 xy + tilt) still work with a joint_candidates.json.
 Asset: assets/omx_f_generated/omx_f_real.usda (sim/patch_omx_usd.py). Self-collision ON (at HOME the real forearm rests
 on the shoulder-lift servo). Cup collision SDF by default: with the asset's convex decomposition the 1 mm wall is fat
-enough that a finger lands on the rim instead of sliding down inside it (10-14 closed loop: sim agreed with the real
-outcome on 26/36 episodes with convex hulls, 33/36 with SDF).
+enough that a finger lands on the rim instead of sliding down inside it (10-14 closed loop, first gripper close, see
+scripts/score_closed_loop_replay.py: 27/35 agree with convex hulls, 32/35 with SDF; 9.3 cm cup also 32/35).
+Known gap (2026-10-15): in the second before the first close, lift lags its command by > 3 deg in 19/35 episodes
+(9.3 cm cup) -- the fingers press on the cup (no lag with the cup moved away, and not fixed by opening the gripper
+wider on ep08). The real paper cup deforms; this one is rigid.
+The real front-left image lags the recorded joint state by 1-3 frames and ~19% of its frames repeat the previous one
+while the arm moves; this replay renders frame k from state k (no latency).
 
 Args key=value: ep=<prep dir> cand=<fit|current|provisional> cands=<json> intr=<front-left intrinsics>
 ext=<front-left extrinsics> [render=1 stride=1] [wrist_intr=.. wrist_ext=..] [cup_coll=sdf|asset|cd_hi] [selfcol=1]
-[vel_ff=1] [max_frames=0] [tag=..]
+[vel_ff=1] [max_frames=0] [tag=..] [grip_open=<rad>: hold the gripper at this opening, ignoring the action]
+[cup_dx_mm=500: move the cup out of the arm's way]
 
     cd <isaac-sim-standalone> && ./python.bat <repo>/sim/physics_replay.py ep=<prep dir>/cl_ep00 cand=fit cands=<prep dir>/fit_candidate.json ...
 """
@@ -270,6 +276,8 @@ last = N - 1 if not MAXF else min(N - 1, K0 + MAXF * STRIDE)
 for k in range(K0, last):
     qa, qb = body_rad(ST[k], k), body_rad(ST[k + 1], k + 1)
     ga, gb = G["gripper_target_rad_from_action"][k], G["gripper_target_rad_from_action"][k + 1]
+    if "grip_open" in A:
+        ga = gb = float(A["grip_open"])
     for s in range(SUB):
         t = (s + 1) / SUB
         robot.set_dof_position_targets(full(qa * (1 - t) + qb * t, ga * (1 - t) + gb * t))
