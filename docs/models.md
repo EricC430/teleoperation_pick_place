@@ -20,6 +20,7 @@
   2026-10-13 加的 `cup_uvc60_normal_tight_far_A1_aug`／`cup_uvc60_normal_tightcut_far_A1_aug` 六列：hash 是直接 `sha256sum` 本機檔案算的，也和開環的 log 對過；同日上 Hub（private），Hub API 的 LFS oid 對過，一致。
   2026-10-14 加的 `…_aug_fldrop_p30_w30` 三列：同樣 `sha256sum` 本機檔案，上 Hub（private）後以 LFS oid 對過，一致；Hub 的 `train_config.json` 看不出 dropout，看同 repo 的 `fl_dropout.json`。
   Windows 另外從 Hub 下載到 `D:\hf\hub` 後 `sha256sum`，三個也都一致（2026-10-14）。
+  2026-10-15 加的 `…_aug_fldrop_p50_w30` 三列：同樣 `sha256sum` 本機檔案，上 Hub（private）後以 LFS oid 對過，一致；dropout 設定看同 repo 的 `fl_dropout.json`。
 
 ## ACT／Diffusion 模型
 
@@ -57,6 +58,9 @@
 | `74029f33e571` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30` / 20k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_20k` | 紙杯 | 同 `cup_uvc60_normal_tightcut_far_A1_aug`，加接近段 front-left dropout（p 0.3、第一次閉合前 30 幀；`scripts/train_fl_dropout.py`，設定在 repo 的 `fl_dropout.json`；理由見 `docs/handoff/2026-10-13_fl_dropout.md`） | — |
 | `4d954bc6d1c7` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30` / 40k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_40k` | 紙杯 | 同上 | — |
 | `7701bdd277ad` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_100k` | 紙杯 | 同上 | 10/14 `__f92698e7`（`docs/handoff/2026-10-13_fl_dropout.md`「閉環結果」） |
+| `df7a951a5752` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p50_w30` / 20k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop50_20k` | 紙杯 | 同 `…_aug_fldrop_p30_w30`，只把 dropout p 改成 0.5（理由見 `docs/handoff/2026-10-14_fl_dropout_p50.md`） | — |
+| `cac19f085404` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p50_w30` / 40k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop50_40k` | 紙杯 | 同上 | — |
+| `d826a9465f29` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p50_w30` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop50_100k` | 紙杯 | 同上 | — |
 
 未列：60k／80k checkpoint（沒上 Hub、沒閉環過）、`my-002`／`smoke-001`／`perf-*`／`openloop-eval`（煙霧測試與效能測試）。
 

@@ -70,10 +70,12 @@ hash ↔ run／step／Hub 見 `docs/models.md`（本次新增 3 列）。簡稱�
       handoff「閉環結果」）。
 - [ ] p 調高到 0.5 重訓：`docs/handoff/2026-10-14_fl_dropout_p50.md`。「p50 比 p30 好」的判準還沒定。
       4090 已開跑（10-14 17:00，`data/logs/train_fldrop50.log`，wandb `hx0gqm62`；`expected_masked_fraction` 0.047）。
+      → 10-15 訓練完、上 Hub、開環：`2026-10-15_fldrop50_open_loop.md`。閉環與判準仍待做。
 - [ ] 平移增強只套 front-left、手腕不套，配 p 0.3 重訓（柏宇 10-14 決定，等 p50 訓練完 GPU 空出來）：
       - 理由：增強是為了 front-left 跨場次的架設位置差（`2026-10-13_open_loop.md`）；手腕相機鎖在夾爪上、沒有這個問題，
         而指尖只在接近閉合時才入鏡，窗口前段手腕畫面裡的杯子位置被 ±32／±24 px 平移干擾 `[推論]`。
         fldrop30 的 7 集 `bad_aim`（失敗 4、成功 3）偏移沒看出固定方向（伸不夠 4、伸過頭 1、左右 3）`[柏宇說]`，與「精度被雜訊拉低」相容但不算支持。
       - 程式（`train_fl_dropout.py --transforms-fl-only`）已寫好並抽樣驗證；指令、驗證結果、Hub 名稱、比較方式：`docs/handoff/2026-10-14_fl_augfl.md`。
+      - 10-15 02:04 開始訓練，進度與結果：`2026-10-15_fldrop50_open_loop.md` §3–§4。
       - 前提 `[未確認]`：手腕相機的支架在各場次之間沒有動過。
 - [ ] 遮第一／第三視角看軌跡變化（柏宇 10-14 提出）：還在設計，量什麼、用哪些幀、遮成什麼要先定 `[柏宇說]`
