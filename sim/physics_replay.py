@@ -14,8 +14,10 @@ scripts/score_closed_loop_replay.py: 27/35 agree with convex hulls, 32/35 with S
 Known gap (2026-10-15): in the second before the first close, lift lags its command by > 3 deg in 19/35 episodes
 (9.3 cm cup) -- the fingers press on the cup (no lag with the cup moved away, and not fixed by opening the gripper
 wider on ep08). The real paper cup deforms; this one is rigid.
-The real front-left image lags the recorded joint state by 1-3 frames and ~19% of its frames repeat the previous one
-while the arm moves; this replay renders frame k from state k (no latency).
+This replay renders frame k from state k (no latency). The real recording pairs state k with the camera's latest frame
+read right after it; the physical lag is unmeasured (weak estimate: wrist ~1 frame, front-left none found) and ~1% of
+frames repeat while the arm moves (docs/meeting/2026-10-16_closed_loop.md section 3-5). An earlier "1-3 frames, ~19%
+repeat" here had no source and was not reproduced.
 
 Args key=value: ep=<prep dir> cand=<fit|current|provisional> cands=<json> intr=<front-left intrinsics>
 ext=<front-left extrinsics> [render=1 stride=1] [wrist_intr=.. wrist_ext=..] [cup_coll=sdf|asset|cd_hi] [selfcol=1]
