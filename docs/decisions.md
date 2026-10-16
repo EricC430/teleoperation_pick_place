@@ -520,6 +520,26 @@ Eric's own wording is not on record here; the definitions below were drafted by 
 - **Reverse if:** annotators cannot agree on `bad_aim` vs `pushed_away` on the same episodes, or
   `chunk_gap_rush` labels do not line up with action jumps at k·N frames when checked in the data.
 
+### Amendment 2026-10-16 — `chunk_gap_rush` narrowed to rushes that displace the object
+
+Proposed by 柏宇, agreed by Eric (relayed by 柏宇 on 2026-10-16).
+
+- **New definition:** label `chunk_gap_rush` only when the boundary rush **displaces the object** (a slight
+  shift counts; if it pushes the object away, also tag `pushed_away`). A rush that leaves the object
+  untouched is not labelled. Still valid alongside `outcome=success`.
+- **Why:** rushes happen in many episodes, so labelling every one says little; 柏宇 had in practice been
+  labelling only the ones that affected the grasp, i.e. moved the cup (`docs/meeting/2026-10-13_closed_loop.md` §3).
+  The 2026-10-06 wording did not match what was being recorded.
+- **Consequence:** the label count is not a rush count. Comparing rush frequency across N (E6) has to use
+  action jumps at frames k·N in the data, not this label.
+- **Data:** 柏宇's runs (10-06, 10-13, 10-14, 10-16) already follow a close version of this criterion
+  [柏宇說]. Whether the zeros in the 10-07 run (labelled by Eric) and the 10-08 C run (annotator unknown)
+  used it is unconfirmed.
+- **Implemented in:** `configs/episode_meta_schema.yaml` (v6), `docs/experiment_spec.md` §1-3 ② and §12,
+  `eval/README.md`.
+- **Reverse if:** two annotators labelling the same run disagree on whether the object moved, or a rush
+  that visibly derails the grasp without moving the object turns out to be common.
+
 ---
 
 ## D016 — Evaluation protocol: 30 trials per object
