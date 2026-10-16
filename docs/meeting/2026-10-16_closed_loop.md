@@ -91,7 +91,46 @@ uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_b1_pa
 - 對 fldrop30、ntcfA1aug 時還多了相機轉向、亮度兩個差別；而且這裡做了三次比較，沒有做多重比較校正。
 - **離線指標沒有預測到閉環**：augfl 開環在 N=100／50 比 fldrop30 差、離線 h1 手腕修正 +0.16／−0.00 也沒過暫定門檻（`2026-10-15_fldrop50_open_loop.md`），閉環卻是四場最高。fldrop50 的離線 h1 也沒過門檻，閉環 28/36。
 - 柏宇的判讀 `[柏宇說]`：fldrop30-augfl 表現很不錯。
-- 兩場的 `mechanism` 欄都還是空的；augfl handoff 要求的 `bad_aim` 偏移方向也還沒記。
+- 兩場的 `mechanism` 已補（10-16 晚）；augfl handoff 要求的 `bad_aim` 偏移方向 CSV 裡沒有。
+
+### 3-1. 柏宇對 fldrop30-augfl 的觀察（10-16 補）
+
+`[柏宇說]`
+- 認為 augfl **更常用第一視角（手腕）**：c17、c36 在 frame 0 時，第三視角裡的杯子被 C 型夾／底座擋住，手臂仍然瞄得到杯子。
+- 有些位置的夾取方式跟預期不同，但也成功了（哪些位置、哪一種抓法：未記）。
+- 兩次失敗：c6 撞到 C 型夾；c17（比較難的位置）把杯子推到夾不起來的地方。
+
+AI 補充（給下次判讀用，不推翻上面的觀察）
+- **c36 四場對照** `[已查證：CSV]`：ntcfA1aug（10/13）、fldrop30（10/14）、fldrop50（本日）都是 `no_grasp`／`bad_aim`，只有 augfl 成功。
+  fldrop50 跟 augfl 同一天、同一個相機和亮度，所以「相機轉了約 4°」解釋不了 c36 這一格的差別；但每個位置都只有 n = 1，
+  10-13 兩個 aug 模型之間有 14/36 個位置結果不同。
+- **c17 四場都失敗**。augfl 這集原本標 `bad_aim;pushed_away`，柏宇確認是瞄準之後才把杯子推走，所以改成只標 `pushed_away`。
+- 另外兩個被擋住的位置 c7、c16，四場都成功，所以分不出模型之間的差別。
+- **「以前一律往 c16 夾，這次往右」，關節資料也看得到** `[已查證：rollout 資料的 observation.state]`。
+  擺位座標：c16 的 y = +31.8，c17 = −22.8，c36 = −13.0（`docs/assets/placement_label_map_campA_136sym_20260908.csv`）。
+  第一次閉合（gripper .pos 從約 59 降到約 50）時的 shoulder_pan（每 2 s 取樣，約略值）：
+
+  | run | c16（對照） | c17 | c36 |
+  |---|---|---|---|
+  | ntcfA1aug（10/13） | ≈ +23～+33 | ≈ +34 | ≈ +34 |
+  | fldrop30（10/14） | ≈ +35 | 整集沒閉合，pan 停在 ≈ +34 | ≈ +36 |
+  | fldrop50（本日） | ≈ +27 | ≈ +25～+34 | ≈ +31～+37 |
+  | **augfl（本日）** | ≈ +36 | **≈ −33** | **≈ −16** |
+
+  - 前三場的 c17、c36 都轉到跟 c16 一樣的 pan ≈ +34，也就是杯子的反方向；只有 augfl 轉向負的一側，也就是杯子那一側。
+  - augfl c17 在約 16 s 張開夾爪之後，20–28 s 的 pan 又一路轉回 +30（c16 那一側）。
+  - 這裡只看正負號，沒有用 FK 核對轉的幅度對不對。
+- 上面這些能說明 augfl 在這兩格沒有照背下來的 c16 軌跡走。但它是靠手腕畫面，還是靠第三視角裡沒被擋住的部分（這一版只對第三視角做平移增強），
+  用閉環資料分不出來 `[推論]`。
+- **離線指標沒有支持「更用手腕」**：augfl 的離線 h1 手腕修正 +0.16／−0.00，是三個 dropout 模型裡最低的（`2026-10-15_fldrop50_open_loop.md` §4-1）。
+  h1 量的是 front-left 看得到時的幀，量不到「第三視角被擋住時改用手腕」，所以兩者不算矛盾；但目前支持這個說法的只有 c36（n = 1），
+  加上 c17（如果確實有瞄準）。**「augfl 更用手腕」目前是假設** `[推論]`。
+- 可以拿來驗證的資料已經錄下來了：augfl 和 fldrop50 本日的 c17、c36 都有 rollout 資料，可以在這幾集上離線把手腕畫面換成灰色
+  （同 h6 的做法），看接近段的預測動作改變多少 `[未定：要不要做、判準是什麼]`。
+
+> CSV 修正（10-16）：augfl 的 CSV 表頭被改成 `episode`，`compare_closed_loop.py` 讀不到任何列，已改回 `episode_index`。
+> c6 原本 `outcome` 填 `collision`（那是 mechanism 的值），改成 `outcome=no_grasp`、`mechanism=collision`，同 10-14 c12 的寫法。
+> c17 拿掉 `bad_aim`（見上）。改完重跑 `compare_closed_loop.py`：34/36，對 fldrop50 p 0.070，跟 §3 相同。
 
 ## 4. 下一步（柏宇 2026-10-16 提出，細節未定）
 
@@ -127,6 +166,9 @@ uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_b1_pa
 
 ## 待辦
 
-- [ ] 兩場補 `mechanism`；augfl 的 `bad_aim` 補偏移方向（本場只有 2 集失敗）
+- [x] 兩場補 `mechanism`
+- [x] c6 的 `outcome`、c17 的 `bad_aim`（§3-1）
+- [ ] augfl 的 `bad_aim` 補偏移方向（c17 改掉之後，augfl 已經沒有標 `bad_aim` 的失敗；這項只剩 c7（成功、自行修正）可以補）
+- [ ] 「跟預期不同但成功」的抓法：哪些位置、哪一種抓法（§3-1）
 - [ ] §4-1 的比較對象與判準
 - [ ] §4-2 的距離定義與驗證方式
