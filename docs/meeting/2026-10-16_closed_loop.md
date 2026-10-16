@@ -223,6 +223,24 @@ AI 判讀 `[推論]`：
 - 下一步可以測的：augfl 有轉、fldrop50 沒轉的 c3、c4、c10、c11、c13、c15，用 h7 的做法，看轉腕的決定是不是跟著手腕畫面走。
 - 「靠近相機那一側不夾最近的杯壁」：要先知道是哪幾個位置，才能用 `d_tan`／`d_rad` 去核對。
 
+### 3-5. 資料集影片（front-left／wrist）和關節讀數對不對得上（柏宇問）
+
+**同一個 index 的畫面和關節是同一筆觀測** `[已查證]`：
+- **程式碼：** rollout 每一步呼叫一次 `robot.get_observation()`，先 `sync_read` 馬達，再 `cam.read_latest()`。
+  同一份觀測同時送進模型、也存進資料集（`lerobot/src/lerobot/robots/omx_follower/omx_follower.py` L173–186、`rollout/strategies/episodic.py` `_policy_loop`）。錄示範時也走同一個 `get_observation`。
+- **檔案：** augfl、fldrop50 兩份資料，兩路影片的幀數都等於資料列數，包含 fldrop50 續錄產生的第二個檔（3918＋6312）。
+  每一集的 `from_timestamp`／`to_timestamp` 都對得上它在檔案裡的位置，36／36。幀間隔全部是 1/15 s。
+- **限制：** 資料裡的 `timestamp` 是照 frame index 算出來的名目時間，不是實際時鐘，看不出迴圈有沒有變慢（同 `2026-10-06_diagnosis.md`）。
+
+**物理延遲（畫面比關節晚幾幀）** `[未確認]`：用畫面變化量和關節速度做相關，峰值很弱（≤ 0.17）。手腕在 3 份資料裡有 2 份落在 +1 幀，front-left 看不出峰值。
+要量準，得做階躍測試。
+
+**重複幀** `[已查證，方法粗略]`：手臂移動的時段裡，畫面幾乎沒變的孤立幀，front-left 約 1%（22/2014），手腕不到 1%。
+注意：影片的 GOP 是 2，手臂靜止時相鄰幀的變化量也會一大一小交替（0.08 ↔ 1.24），很容易被誤認成「每兩幀重複一次」。
+`sim/physics_replay.py` docstring 寫的「front-left 晚 1–3 幀、約 19% 重複」，repo 裡找不到出處，和這次量到的不一致，待確認。
+
+**影響**：h7／h7b 重放的是模型當時拿到的那一對畫面和關節，不受物理延遲影響；pan 正負號、rim distance 也不受影響。精確到幀的分析（h1 的 1/3 s ＝ 5 幀）才需要擔心。
+
 > CSV 修正（10-16）：augfl 的 CSV 表頭被改成 `episode`，`compare_closed_loop.py` 讀不到任何列，已改回 `episode_index`。
 > c6 原本 `outcome` 填 `collision`（那是 mechanism 的值），改成 `outcome=no_grasp`、`mechanism=collision`，同 10-14 c12 的寫法。
 > c17 拿掉 `bad_aim`（見上）。改完重跑 `compare_closed_loop.py`：34/36，對 fldrop50 p 0.070，跟 §3 相同。
