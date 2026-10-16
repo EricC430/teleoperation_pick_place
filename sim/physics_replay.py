@@ -20,7 +20,7 @@ while the arm moves; this replay renders frame k from state k (no latency).
 Args key=value: ep=<prep dir> cand=<fit|current|provisional> cands=<json> intr=<front-left intrinsics>
 ext=<front-left extrinsics> [render=1 stride=1] [wrist_intr=.. wrist_ext=..] [cup_coll=sdf|asset|cd_hi] [selfcol=1]
 [vel_ff=1] [max_frames=0] [tag=..] [grip_open=<rad>: hold the gripper at this opening, ignoring the action]
-[cup_dx_mm=500: move the cup out of the arm's way]
+[cup_dx_mm=500: move the cup out of the arm's way] [finger_coll=sdf] [contacts=1: log what touches the cup]
 
     cd <isaac-sim-standalone> && ./python.bat <repo>/sim/physics_replay.py ep=<prep dir>/cl_ep00 cand=fit cands=<prep dir>/fit_candidate.json ...
 """
@@ -106,6 +106,26 @@ for p in Usd.PrimRange(rp):
         if A.get("selfcol", "1") == "0":   # 10-15: ON by default -- at HOME the real forearm rests on the lift servo
             PhysxSchema.PhysxArticulationAPI.Apply(p).CreateEnabledSelfCollisionsAttr(False)
             print("self collisions disabled", flush=True)
+# finger_coll=sdf (2026-10-15): the asset's colliders are all convexDecomposition. The fingers are hooked (the cup wall
+# sits in the inner curve during a grasp); a convex hull fills that curve. Uninstance the finger links and give their
+# colliders an SDF, like the cup. finger_links=link6,link7 by default.
+if A.get("finger_coll"):
+    FL = A.get("finger_links", "link6,link7").split(",")
+    under = lambda p: any(f"/{l}/" in str(p.GetPath()) + "/" for l in FL)
+    for _ in range(4):
+        inst = [p for p in Usd.PrimRange(rp) if p.IsInstance() and under(p)]
+        for p in inst:
+            p.SetInstanceable(False)
+        if not inst:
+            break
+    for p in Usd.PrimRange(rp):
+        if under(p) and p.HasAPI(UsdPhysics.MeshCollisionAPI):
+            mc = UsdPhysics.MeshCollisionAPI(p)
+            if A["finger_coll"] == "sdf":
+                mc.GetApproximationAttr().Set("sdf"); PhysxSchema.PhysxSDFMeshCollisionAPI.Apply(p).CreateSdfResolutionAttr(int(A.get("finger_sdf_res", "256")))
+            else:
+                mc.GetApproximationAttr().Set(A["finger_coll"])
+            print("finger collider", p.GetPath(), p.GetTypeName(), "->", A["finger_coll"], flush=True)
 # [已查證 2026-10-14] end_effector_link (and the fixed 'world' link) carry physics:mass = 0 in the asset; PhysX
 # turns a zero-mass, collider-less rigid body into 1 kg, which hung 1 kg on the fingertip (elbow gravity torque at
 # home 2.31 N.m against a 1.5 N.m motor). Give the marker link a negligible mass.
@@ -218,6 +238,25 @@ app.update()
 
 ap = [str(p.GetPath()) for p in Usd.PrimRange(rp) if p.HasAPI(UsdPhysics.ArticulationRootAPI)]
 cup_body = [str(p.GetPath()) for p in Usd.PrimRange(cp) if p.HasAPI(UsdPhysics.RigidBodyAPI)]
+CONTACTS = A.get("contacts", "0") == "1"
+if CONTACTS:   # which collider touches the cup, where and how hard -- summed over the substeps of each frame
+    from omni.physx import get_physx_simulation_interface
+    from pxr import PhysicsSchemaTools
+    PhysxSchema.PhysxContactReportAPI.Apply(stage.GetPrimAtPath(cup_body[0])).CreateThresholdAttr().Set(0.0)
+    CUR = {}
+
+    def _on_contact(headers, data):
+        for h in headers:
+            c0, c1 = str(PhysicsSchemaTools.intToSdfPath(h.collider0)), str(PhysicsSchemaTools.intToSdfPath(h.collider1))
+            other = c1 if c0.startswith(cup_body[0]) else c0
+            if other.startswith("/World/Table"):
+                continue
+            e = CUR.setdefault(other, {"n": 0, "pos": np.zeros(3), "imp": np.zeros(3), "zmin": 9.0, "zmax": -9.0})
+            for i in range(h.contact_data_offset, h.contact_data_offset + h.num_contact_data):
+                d = data[i]; pz = np.array([d.position[0], d.position[1], d.position[2]])
+                e["n"] += 1; e["pos"] += pz; e["imp"] += np.array([d.impulse[0], d.impulse[1], d.impulse[2]])
+                e["zmin"] = min(e["zmin"], pz[2]); e["zmax"] = max(e["zmax"], pz[2])
+    _contact_sub = get_physx_simulation_interface().subscribe_contact_report_events(_on_contact)
 app_utils.play(commit=True); app.update()
 robot = Articulation(ap[0]); names = list(robot.dof_names); cup = RigidPrim(cup_body[0])
 print("DOFS", names, "CUP", cup_body[0], "dt", SimulationManager.get_physics_dt(), flush=True)
@@ -288,6 +327,10 @@ for k in range(K0, last):
     pos, _ = cup.get_world_poses(); pos = np.asarray(pos.numpy() if hasattr(pos, "numpy") else pos)[0]
     jp = robot.get_dof_positions(); jp = np.asarray(jp.numpy() if hasattr(jp, "numpy") else jp)[0]
     log.append({"frame": k + 1, "cup_xyz": [float(v) for v in pos], "q_sim": [float(v) for v in jp], "q_cmd": [float(v) for v in full(qb, gb)[0]]})
+    if CONTACTS:
+        log[-1]["contacts"] = {c: {"n": e["n"], "pos_mean": (e["pos"] / max(e["n"], 1)).tolist(), "impulse": e["imp"].tolist(),
+                                   "z_range": [e["zmin"], e["zmax"]]} for c, e in CUR.items()}
+        CUR.clear()
     if A.get("render", "1") == "1" and (k + 1) % STRIDE == 0:
         grab(k + 1, [jp[names.index(n)] for n in ("joint1", "joint2", "joint3", "joint4", "joint5")])
     if A.get("linkdbg", "0") == "1" and k < 2:
