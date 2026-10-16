@@ -61,10 +61,10 @@
 | `7701bdd277ad` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p30_w30` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop30_100k` | 紙杯 | 同上 | 10/14 `__f92698e7`（`docs/handoff/2026-10-13_fl_dropout.md`「閉環結果」） |
 | `df7a951a5752` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p50_w30` / 20k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop50_20k` | 紙杯 | 同 `…_aug_fldrop_p30_w30`，只把 dropout p 改成 0.5（理由見 `docs/handoff/2026-10-14_fl_dropout_p50.md`） | — |
 | `cac19f085404` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p50_w30` / 40k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop50_40k` | 紙杯 | 同上 | — |
-| `d826a9465f29` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p50_w30` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop50_100k` | 紙杯 | 同上 | — |
+| `d826a9465f29` | `cup_uvc60_normal_tightcut_far_A1_aug_fldrop_p50_w30` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-aug-fldrop50_100k` | 紙杯 | 同上 | 10/16 `__ab0df39c`＋續錄 `__ca4db9c5`（`2026-10-16_closed_loop.md`：28/36） |
 | `cf3dd8f3b40b` | `cup_uvc60_normal_tightcut_far_A1_augfl_fldrop_p30_w30` / 20k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-augfl-fldrop30_20k` | 紙杯 | 同 `…_aug_fldrop_p30_w30`，但隨機平移只套 front-left、手腕不套（`train_fl_dropout.py --transforms-fl-only`；理由見 `docs/handoff/2026-10-14_fl_augfl.md`） | — |
 | `8f0ad601c627` | `cup_uvc60_normal_tightcut_far_A1_augfl_fldrop_p30_w30` / 40k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-augfl-fldrop30_40k` | 紙杯 | 同上 | — |
-| `aebc8680b965` | `cup_uvc60_normal_tightcut_far_A1_augfl_fldrop_p30_w30` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-augfl-fldrop30_100k` | 紙杯 | 同上 | — |
+| `aebc8680b965` | `cup_uvc60_normal_tightcut_far_A1_augfl_fldrop_p30_w30` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-augfl-fldrop30_100k` | 紙杯 | 同上 | 10/16 `__b9d19490`（`2026-10-16_closed_loop.md`：34/36） |
 
 未列：60k／80k checkpoint（沒上 Hub、沒閉環過）、`my-002`／`smoke-001`／`perf-*`／`openloop-eval`（煙霧測試與效能測試）。
 
