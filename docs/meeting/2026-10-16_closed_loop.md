@@ -255,12 +255,33 @@ AI 判讀 `[推論]`：
 - 訓練入口與設定可沿用 `scripts/train_fl_dropout.py --fl-p 0.3 --fl-window 30 --transforms-fl-only`；資料改成只有 `omx_pick_place_pilot_uvc_60`。
 - 只用 uvc_60、不加增強的舊模型是 `act_omx_b1_uvc60_100k`（`2bdff2b3871e`，`docs/models.md`）。
 
-開跑前要先定的 `[未定]`：
-- 比較對象是誰：只看「60 集＋增強」對「129 集＋增強」（本日 34/36）？還是也要在現在的條件下重跑舊的 60 集模型，才分得出「增強」和「資料量」各自的貢獻？
+訓練（2026-10-16 16:21 開跑，widm 4090；容器內 log 是 UTC，顯示 08:21）`[已查證]`：
+- `configs/train_omx_uvc60_augfl_fldrop.yaml`（資料只換成 uvc_60，其餘照抄 `…_aug_fldrop.yaml`）＋ `--fl-p 0.3 --fl-window 30 --transforms-fl-only`；
+  output `data/train/uvc60_augfl_fldrop_p30_w30`，log `data/logs/train_uvc60_augfl.log`，wandb `6cnoeibs`。
+- 開跑前 `data/logs/fldrop_check/check_uvc60_augfl.py`（同 10-14 `check_augfl.py`）：60 集都有閉合，front-left 每次抽樣不同、手腕不變，窗口內遮 62/200、65/200（期望 60）。
+- `expected_masked_fraction` 0.0338（129 集版 0.0282）：uvc_60 每集較短，30 幀窗口佔比較高，不是設定不同。
+- 3.24 step/s，10/17 01:07 跑完（8 h 45 m，EXIT 0，log 無錯誤）；hash 見 `docs/models.md`（20k `c7c9dfceb900`、40k `27c5ba98b2c4`、100k `f55b0fa71b50`）。
+  `fl_dropout.json`：60 集、`image_transforms_cameras` 只有 front-left、`expected_masked_fraction` 0.0338。100k loss 0.044（200 epoch）。
+- Hub 與開環 → `2026-10-17_uvc60_augfl_open_loop.md`。
+
+已定 `[柏宇決定 2026-10-16]`：
+- **比較對象**：舊的 60 集模型 `act_omx_b1_uvc60_100k`（`2bdff2b3871e`）和本日 fldrop30-augfl（34/36）。
+- **判準**：綜合手腕瞄準準確度（§4-2）和成功率；**成功率到 8 成**就先不收新資料，直接用相同超參數訓練寶特瓶或鋁罐模型。
+
+已查：uvc_60 的擺位涵蓋遠區 `[已查證：t1–t60 的 r 由 placement_label_map_campA_136sym_20260908.csv 算，切點同 compare_closed_loop.py]`：
+
+| | near < 22 | mid 22–33 | far ≥ 33 | r 範圍 |
+|---|---|---|---|---|
+| uvc_60（t1–t60） | 10 | 30 | 20 | 12.6–38.6 cm |
+| 閉環（c1–c36） | 6 | 18 | 12 | 13.0–39.0 cm |
+
+只比了距離，沒有比角度；而且錄的時候是不是照這張表擺的，是 `[推論]`。
+
+還沒定 `[未定]`：
+- 舊的 60 集模型上一次閉環是 10/6（N=30，17/32，`2026-10-06.md`），當時的相機、位置都跟現在不同。要比的話，是在現在的條件下重跑一場，還是直接用 10/6 的結果？
+- 8 成換算成 36 集是 ≥ 29/36。§4-2 的準確度還沒定義，怎麼跟成功率「綜合」也還沒定。
 - uvc_60 錄製時的相機視角和 far_wrist 視角不同（uvc_60 ↔ 10-07 約 1°／3–6 px，`scripts/align_camera.py` docstring；10-07 ↔ far_wrist 約 20 px，`docs/handoff/2026-10-13_aug_retrain.md`），閉環要對哪一個？現在相機又比 far_wrist 偏 +29 px。
-- uvc_60 的擺位有沒有涵蓋 c1–c36 的遠區（far ≥ 33 有 12 個位置）？如果沒有，遠區失敗會跟「資料不夠」混在一起。
-- uvc_60 沒有轉腕示範；本日 augfl 的成功裡有多少是轉腕抓的，也還沒算。
-- 什麼結果算「不用多收資料」。
+- uvc_60 沒有轉腕示範；本日 augfl 的 34 次成功裡，有 21 次是轉腕抓（近中區 14、遠區 7；jaw ≥ 0.5，§3-4）。
 
 ### 4-2. 量化夾取時手腕相機瞄準杯壁的準確度
 
@@ -281,7 +302,10 @@ AI 判讀 `[推論]`：
 
 - [x] 兩場補 `mechanism`
 - [x] c6 的 `outcome`、c17 的 `bad_aim`（§3-1）
-- [ ] augfl 的 `bad_aim` 補偏移方向（c17 改掉之後，augfl 已經沒有標 `bad_aim` 的失敗；這項只剩 c7（成功、自行修正）可以補）
+- [ ] augfl 的 `bad_aim` 補偏移方向（標 `bad_aim` 的失敗只有 c17）
 - [ ] 「跟預期不同但成功」的抓法：哪些位置、哪一種抓法（§3-1）
-- [ ] §4-1 的比較對象與判準
+- [x] §4-1 的比較對象與判準（成功率 8 成；準確度怎麼綜合未定）
+- [x] §4-1 訓練跑完、hash、`docs/models.md` 補列
+- [x] §4-1 上 Hub；開環 → `2026-10-17_uvc60_augfl_open_loop.md`
+- [ ] §4-1 閉環（舊 60 集模型要不要在現在的條件下重跑）
 - [ ] §4-2 的距離定義與驗證方式
