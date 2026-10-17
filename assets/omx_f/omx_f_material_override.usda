@@ -1,0 +1,90 @@
+#usda 1.0
+(
+    defaultPrim = "omx_f"
+)
+
+over "omx_f"
+{
+    def Scope "Looks"
+    {
+        def Material "Black_Matte"
+        {
+            token outputs:surface.connect = </omx_f/Looks/Black_Matte/PBRShader.outputs:surface>
+            token outputs:displacement.connect = </omx_f/Looks/Black_Matte/PBRShader.outputs:displacement>
+
+            def Shader "PBRShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.08, 0.08, 0.08)
+                color3f inputs:diffuseColor.connect = </omx_f/Looks/Black_Matte/diffuseTexture.outputs:rgb>
+                float inputs:roughness = 0.45
+                float inputs:roughness.connect = </omx_f/Looks/Black_Matte/roughnessTexture.outputs:r>
+                normal3f inputs:normal.connect = </omx_f/Looks/Black_Matte/normalTexture.outputs:rgb>
+                float inputs:metallic = 0.05
+                float inputs:opacity = 1.0
+                token outputs:surface
+                token outputs:displacement
+            }
+
+            def Shader "stReader"
+            {
+                uniform token info:id = "UsdPrimvarReader_float2"
+                token inputs:varname = "st"
+                float2 outputs:result
+            }
+
+            def Shader "diffuseTexture"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @textures/black_matte.png@
+                float2 inputs:st.connect = </omx_f/Looks/Black_Matte/stReader.outputs:result>
+                token inputs:wrapS = "repeat"
+                token inputs:wrapT = "repeat"
+                float3 outputs:rgb
+            }
+
+            def Shader "roughnessTexture"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @textures/black_matte_roughness.png@
+                float2 inputs:st.connect = </omx_f/Looks/Black_Matte/stReader.outputs:result>
+                token inputs:wrapS = "repeat"
+                token inputs:wrapT = "repeat"
+                float outputs:r
+            }
+
+            def Shader "normalTexture"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @textures/black_matte_normal.png@
+                float2 inputs:st.connect = </omx_f/Looks/Black_Matte/stReader.outputs:result>
+                float4 inputs:scale = (2.0, 2.0, 2.0, 1.0)
+                float4 inputs:bias = (-1.0, -1.0, -1.0, 0.0)
+                normal3f outputs:rgb
+            }
+
+            def Shader "OmniPBR"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:mdl:sourceAsset = @OmniPBR.mdl@
+                uniform token info:mdl:sourceAsset:subIdentifier = "OmniPBR"
+                color3f inputs:diffuse_color_constant = (0.08, 0.08, 0.08)
+                asset inputs:diffuse_texture = @textures/black_matte.png@
+                float inputs:reflection_roughness_constant = 0.45
+                asset inputs:reflection_roughness_texture = @textures/black_matte_roughness.png@
+                float inputs:metallic_constant = 0.05
+                asset inputs:normal_texture = @textures/black_matte_normal.png@
+                token outputs:out
+            }
+        }
+    }
+
+    over "link0" { rel material:binding = </omx_f/Looks/Black_Matte> }
+    over "link1" { rel material:binding = </omx_f/Looks/Black_Matte> }
+    over "link2" { rel material:binding = </omx_f/Looks/Black_Matte> }
+    over "link3" { rel material:binding = </omx_f/Looks/Black_Matte> }
+    over "link4" { rel material:binding = </omx_f/Looks/Black_Matte> }
+    over "link5" { rel material:binding = </omx_f/Looks/Black_Matte> }
+    over "link6" { rel material:binding = </omx_f/Looks/Black_Matte> }
+    over "link7" { rel material:binding = </omx_f/Looks/Black_Matte> }
+}

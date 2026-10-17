@@ -1,0 +1,629 @@
+#usda 1.0
+(
+    defaultPrim = "omx_f"
+    metersPerUnit = 1.0
+    upAxis = "Z"
+)
+
+def Xform "omx_f" (
+    prepend apiSchemas = ["PhysicsArticulationRootAPI", "PhysxArticulationAPI"]
+)
+{
+    def Scope "Looks"
+    {
+        def Material "Black_Matte"
+        {
+            token outputs:surface.connect = </omx_f/Looks/Black_Matte/PBRShader.outputs:surface>
+            token outputs:displacement.connect = </omx_f/Looks/Black_Matte/PBRShader.outputs:displacement>
+
+            def Shader "PBRShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.08, 0.08, 0.08)
+                color3f inputs:diffuseColor.connect = </omx_f/Looks/Black_Matte/diffuseTexture.outputs:rgb>
+                float inputs:roughness = 0.45
+                float inputs:roughness.connect = </omx_f/Looks/Black_Matte/roughnessTexture.outputs:r>
+                normal3f inputs:normal.connect = </omx_f/Looks/Black_Matte/normalTexture.outputs:rgb>
+                float inputs:metallic = 0.05
+                float inputs:opacity = 1.0
+                float inputs:clearcoat = 0.0
+                float inputs:ior = 1.5
+                token outputs:surface
+                token outputs:displacement
+            }
+
+            def Shader "stReader"
+            {
+                uniform token info:id = "UsdPrimvarReader_float2"
+                token inputs:varname = "st"
+                float2 outputs:result
+            }
+
+            def Shader "diffuseTexture"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @textures/black_matte.png@
+                float2 inputs:st.connect = </omx_f/Looks/Black_Matte/stReader.outputs:result>
+                token inputs:wrapS = "repeat"
+                token inputs:wrapT = "repeat"
+                float3 outputs:rgb
+            }
+
+            def Shader "roughnessTexture"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @textures/black_matte_roughness.png@
+                float2 inputs:st.connect = </omx_f/Looks/Black_Matte/stReader.outputs:result>
+                token inputs:wrapS = "repeat"
+                token inputs:wrapT = "repeat"
+                float outputs:r
+            }
+
+            def Shader "normalTexture"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @textures/black_matte_normal.png@
+                float2 inputs:st.connect = </omx_f/Looks/Black_Matte/stReader.outputs:result>
+                float4 inputs:scale = (2.0, 2.0, 2.0, 1.0)
+                float4 inputs:bias = (-1.0, -1.0, -1.0, 0.0)
+                token inputs:wrapS = "repeat"
+                token inputs:wrapT = "repeat"
+                normal3f outputs:rgb
+            }
+
+            # NVIDIA Omniverse RTX MDL shader for Isaac Sim
+            def Shader "OmniPBR"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:mdl:sourceAsset = @OmniPBR.mdl@
+                uniform token info:mdl:sourceAsset:subIdentifier = "OmniPBR"
+                color3f inputs:diffuse_color_constant = (0.08, 0.08, 0.08)
+                asset inputs:diffuse_texture = @textures/black_matte.png@
+                float inputs:reflection_roughness_constant = 0.45
+                asset inputs:reflection_roughness_texture = @textures/black_matte_roughness.png@
+                float inputs:metallic_constant = 0.05
+                asset inputs:normal_texture = @textures/black_matte_normal.png@
+                token outputs:out
+            }
+        }
+
+        def Material "RedMarker"
+        {
+            token outputs:surface.connect = </omx_f/Looks/RedMarker/Shader.outputs:surface>
+
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (1.0, 0.0, 0.0)
+                float inputs:roughness = 0.3
+                token outputs:surface
+            }
+        }
+    }
+
+    def Xform "world"
+    {
+    }
+
+    def Xform "link0" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+    )
+    {
+        float physics:mass = 0.22389051
+        point3f physics:centerOfMass = (-0.014412508, -0.0031498879, 0.019276599)
+        float3 physics:diagonalInertia = (0.00035680461, 0.00021941932, 0.00045575899)
+
+        def Scope "visuals"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </omx_f/Looks/Black_Matte>
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_01_base.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+
+        def Scope "collisions"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+            )
+            {
+                uniform token physics:approximation = "convexDecomposition"
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_01_base.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+    }
+
+    def PhysicsFixedJoint "world_fixed"
+    {
+        rel physics:body0 = </omx_f/world>
+        rel physics:body1 = </omx_f/link0>
+        point3f physics:localPos0 = (0, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+    }
+
+    def Xform "link1" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+    )
+    {
+        double3 xformOp:translate = (-0.01125, 0, 0.034)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        float physics:mass = 0.065987041
+        point3f physics:centerOfMass = (-0.00000622362, 0.0006049232, 0.047418803)
+        float3 physics:diagonalInertia = (0.000021731667, 0.000021351513, 0.000011657955)
+
+        def Scope "visuals"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </omx_f/Looks/Black_Matte>
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_02_base_tilt_Revised.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+
+        def Scope "collisions"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+            )
+            {
+                uniform token physics:approximation = "convexDecomposition"
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_02_base_tilt_Revised.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+    }
+
+    def PhysicsRevoluteJoint "joint1" (
+        prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysxJointAPI"]
+    )
+    {
+        uniform token physics:axis = "Z"
+        rel physics:body0 = </omx_f/link0>
+        rel physics:body1 = </omx_f/link1>
+        point3f physics:localPos0 = (-0.01125, 0, 0.034)
+        point3f physics:localPos1 = (0, 0, 0)
+        float physics:lowerLimit = -270.0
+        float physics:upperLimit = 360.0
+        float drive:angular:physics:maxForce = 1.5
+        float drive:angular:physics:stiffness = 5.7296
+        float drive:angular:physics:damping = 0.0873
+        float physxJoint:maxJointVelocity = 366.0
+    }
+
+    def Xform "link2" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+    )
+    {
+        double3 xformOp:translate = (-0.01125, 0, 0.0975)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        float physics:mass = 0.087221471
+        point3f physics:centerOfMass = (0.018089916, 0.00029778758, 0.099005452)
+        float3 physics:diagonalInertia = (0.00010307915, 0.00012086327, 0.000041993677)
+
+        def Scope "visuals"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </omx_f/Looks/Black_Matte>
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_03_middle_verticle.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+
+        def Scope "collisions"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+            )
+            {
+                uniform token physics:approximation = "convexDecomposition"
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_03_middle_verticle.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+    }
+
+    def PhysicsRevoluteJoint "joint2" (
+        prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysxJointAPI"]
+    )
+    {
+        uniform token physics:axis = "Y"
+        rel physics:body0 = </omx_f/link1>
+        rel physics:body1 = </omx_f/link2>
+        point3f physics:localPos0 = (0, 0, 0.0635)
+        point3f physics:localPos1 = (0, 0, 0)
+        float physics:lowerLimit = -120.0
+        float physics:upperLimit = 90.0
+        float drive:angular:physics:maxForce = 1.5
+        float drive:angular:physics:stiffness = 5.7296
+        float drive:angular:physics:damping = 0.0873
+        float physxJoint:maxJointVelocity = 366.0
+    }
+
+    def Xform "link3" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+    )
+    {
+        double3 xformOp:translate = (0.03025, 0, 0.21065)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        float physics:mass = 0.083759129
+        point3f physics:centerOfMass = (0.087398602, 0.00041310065, -0.003582921)
+        float3 physics:diagonalInertia = (0.000015203101, 0.00022606158, 0.00023066887)
+
+        def Scope "visuals"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </omx_f/Looks/Black_Matte>
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_04_middle_horizontal.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+
+        def Scope "collisions"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+            )
+            {
+                uniform token physics:approximation = "convexDecomposition"
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_04_middle_horizontal.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+    }
+
+    def PhysicsRevoluteJoint "joint3" (
+        prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysxJointAPI"]
+    )
+    {
+        uniform token physics:axis = "Y"
+        rel physics:body0 = </omx_f/link2>
+        rel physics:body1 = </omx_f/link3>
+        point3f physics:localPos0 = (0.0415, 0, 0.11315)
+        point3f physics:localPos1 = (0, 0, 0)
+        float physics:lowerLimit = -120.0
+        float physics:upperLimit = 90.0
+        float drive:angular:physics:maxForce = 1.5
+        float drive:angular:physics:stiffness = 5.7296
+        float drive:angular:physics:damping = 0.0873
+        float physxJoint:maxJointVelocity = 366.0
+    }
+
+    def Xform "link4" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+    )
+    {
+        double3 xformOp:translate = (0.19225, 0, 0.21065)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        float physics:mass = 0.029975063
+        point3f physics:centerOfMass = (0.02323498, 0.000067735378, 0.0059761312)
+        float3 physics:diagonalInertia = (0.000005099513, 0.0000070990471, 0.0000063119495)
+
+        def Scope "visuals"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </omx_f/Looks/Black_Matte>
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_05_tip.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+
+        def Scope "collisions"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+            )
+            {
+                uniform token physics:approximation = "convexDecomposition"
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_05_tip.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+    }
+
+    def PhysicsRevoluteJoint "joint4" (
+        prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysxJointAPI"]
+    )
+    {
+        uniform token physics:axis = "Y"
+        rel physics:body0 = </omx_f/link3>
+        rel physics:body1 = </omx_f/link4>
+        point3f physics:localPos0 = (0.162, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        float physics:lowerLimit = -100.0
+        float physics:upperLimit = 100.0
+        float drive:angular:physics:maxForce = 0.52
+        float drive:angular:physics:stiffness = 3.8197
+        float drive:angular:physics:damping = 0.0573
+        float physxJoint:maxJointVelocity = 618.0
+    }
+
+    def Xform "link5" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+    )
+    {
+        double3 xformOp:translate = (0.22095, 0, 0.21065)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        float physics:mass = 0.043810887
+        point3f physics:centerOfMass = (0.028072407, 0.000024135941, 0.013528914)
+        float3 physics:diagonalInertia = (0.000023694459, 0.000023236924, 0.0000071806291)
+
+        def Scope "visuals"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </omx_f/Looks/Black_Matte>
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_06_pan_Revised.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+
+        def Scope "collisions"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+            )
+            {
+                uniform token physics:approximation = "convexDecomposition"
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_06_pan_Revised.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+    }
+
+    def PhysicsRevoluteJoint "joint5" (
+        prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysxJointAPI"]
+    )
+    {
+        uniform token physics:axis = "X"
+        rel physics:body0 = </omx_f/link4>
+        rel physics:body1 = </omx_f/link5>
+        point3f physics:localPos0 = (0.0287, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        float physics:lowerLimit = -270.0
+        float physics:upperLimit = 270.0
+        float drive:angular:physics:maxForce = 0.52
+        float drive:angular:physics:stiffness = 3.8197
+        float drive:angular:physics:damping = 0.0573
+        float physxJoint:maxJointVelocity = 618.0
+    }
+
+    def Xform "link6" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+    )
+    {
+        double3 xformOp:translate = (0.25045, 0.0075, 0.21065)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        float physics:mass = 0.012090677
+        point3f physics:centerOfMass = (0.016164565, 0.0012731032, 0.00027291598)
+        float3 physics:diagonalInertia = (0.0000027083287, 0.0000068733728, 0.0000046941881)
+
+        def Scope "visuals"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </omx_f/Looks/Black_Matte>
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_07_gripper_motorized.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+
+        def Scope "collisions"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+            )
+            {
+                uniform token physics:approximation = "convexDecomposition"
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_07_gripper_motorized.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+    }
+
+    def PhysicsRevoluteJoint "gripper_joint_1" (
+        prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysxJointAPI"]
+    )
+    {
+        uniform token physics:axis = "Z"
+        rel physics:body0 = </omx_f/link5>
+        rel physics:body1 = </omx_f/link6>
+        point3f physics:localPos0 = (0.0295, 0.0075, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        float physics:lowerLimit = 0.0
+        float physics:upperLimit = 100.0
+        float drive:angular:physics:maxForce = 0.52
+        float drive:angular:physics:stiffness = 3.8197
+        float drive:angular:physics:damping = 0.0573
+    }
+
+    def Xform "link7" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+    )
+    {
+        double3 xformOp:translate = (0.25045, -0.0108, 0.21065)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        float physics:mass = 0.012090677
+        point3f physics:centerOfMass = (0.016164565, 0.0012731032, 0.00027291598)
+        float3 physics:diagonalInertia = (0.0000027083287, 0.0000068733728, 0.0000046941881)
+
+        def Scope "visuals"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </omx_f/Looks/Black_Matte>
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_08_gripper_gear.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+
+        def Scope "collisions"
+        {
+            def Xform "mesh" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+            )
+            {
+                uniform token physics:approximation = "convexDecomposition"
+                def "geometry" (
+                    prepend payload = @package://open_manipulator_description/meshes/omx_f/follower_08_gripper_gear.stl@
+                )
+                {
+                    double3 xformOp:scale = (0.001, 0.001, 0.001)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+    }
+
+    def PhysicsRevoluteJoint "gripper_joint_2" (
+        prepend apiSchemas = ["PhysxJointAPI", "PhysxMimicJointAPI:rotZ"]
+    )
+    {
+        uniform token physics:axis = "Z"
+        rel physics:body0 = </omx_f/link5>
+        rel physics:body1 = </omx_f/link7>
+        point3f physics:localPos0 = (0.0295, -0.0108, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        float physics:lowerLimit = -100.0
+        float physics:upperLimit = 0.0
+        rel physxMimicJoint:rotZ:referenceJoint = </omx_f/gripper_joint_1>
+        uniform token physxMimicJoint:rotZ:referenceJointAxis = "rotZ"
+        float physxMimicJoint:rotZ:gearing = -1.0
+        float physxMimicJoint:rotZ:offset = 0.0
+        float physxMimicJoint:rotZ:naturalFrequency = 300.0
+        float physxMimicJoint:rotZ:dampingRatio = 1.0
+    }
+
+    def Xform "end_effector_link" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+    )
+    {
+        double3 xformOp:translate = (0.31288, -0.0016, 0.21065)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        float physics:mass = 0.0001
+
+        def Scope "visuals"
+        {
+            def Cube "marker_box" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </omx_f/Looks/RedMarker>
+                double size = 0.01
+            }
+        }
+    }
+
+    def PhysicsFixedJoint "end_effector_joint"
+    {
+        rel physics:body0 = </omx_f/link5>
+        rel physics:body1 = </omx_f/end_effector_link>
+        point3f physics:localPos0 = (0.09193, -0.0016, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+    }
+}
