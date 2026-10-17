@@ -138,7 +138,8 @@ def _grasp_frame(frames: list[tuple[int, list[float]]], drop: float = 3.0) -> in
 
 
 def plan_walk(by_ep, home: list[float], n_episodes: int, stop_every: int, path_every: int,
-              min_from_home: float, min_spacing: float, episodes: list[int] | None, exclude: set[int] = frozenset()):
+              min_from_home: float, min_spacing: float, episodes: list[int] | None, exclude: set[int] = frozenset(),
+              stop_frames: set[int] | None = None):
     grasp = {e: _grasp_frame(fr) for e, fr in by_ep.items()}
     # No grasp found -> _grasp_frame returns the last frame, back at HOME (seen: ep46). Not a walk.
     by_ep = {e: fr for e, fr in by_ep.items() if e not in exclude
@@ -162,7 +163,10 @@ def plan_walk(by_ep, home: list[float], n_episodes: int, stop_every: int, path_e
         if idx[-1] != len(fr) - 1:
             idx.append(len(fr) - 1)
         stops, last = [], None
-        for n, k in enumerate(idx):
+        if stop_frames:   # explicit recorded frame numbers: stop exactly there (the walk ends at the last one)
+            stops = [n for n, k in enumerate(idx) if fr[k][0] in stop_frames]
+            idx = idx[: stops[-1] + 1] if stops else idx
+        for n, k in enumerate([] if stop_frames else idx):
             st = fr[k][1]
             if n % stop_every and k != idx[-1]:
                 continue
@@ -197,7 +201,8 @@ def cmd_walk(args) -> int:
     walks = plan_walk(_load_episodes(args.dataset_root), home, args.n_episodes, args.stop_every, args.path_every,
                       args.min_from_home, args.min_spacing,
                       [int(e) for e in args.episodes.split(",")] if args.episodes else None,
-                      {int(e) for e in args.exclude_episodes.split(",") if e})
+                      {int(e) for e in args.exclude_episodes.split(",") if e},
+                      {int(f) for f in args.frames.split(",") if f} or None)
     n_stops = sum(len(w["stops"]) for w in walks)
     secs = sum(2 * args.ease + 2 * len(w["path"]) * args.seconds_per_point + len(w["stops"]) * (args.settle + 4)
                for w in walks)
@@ -244,6 +249,9 @@ def cmd_walk(args) -> int:
                 st = arm.read_avg(10)
                 appr = "traj_retake" if pid in retake else "traj"
                 S7.capture_stills(csv_path, pid, appr, st, cams)
+                if args.frames:   # target marker on the mat, not on the arm: report what each camera saw
+                    print(f"      {pid}: " + "，".join(f"{c} 看到 {_detect(shot_dir / f'{pid}_{appr}_{c}.png')}" for c in cams))
+                    continue
                 seen = _detect(shot_dir / f"{pid}_{appr}_front-left.png") if "front-left" in cams else []
                 arm_seen = [i for i in seen if i in ARM_IDS]
                 paper_seen = [i for i in seen if i in PAPER_IDS]
@@ -394,6 +402,8 @@ def main() -> int:
     walks.add_argument("--ease", type=float, default=1.5)
     walks.add_argument("--max-start-jump", type=float, default=8.0)
     walks.add_argument("--dry-run", action="store_true", help="print what would be walked; no arm")
+    walks.add_argument("--frames", default="",
+                       help="comma-separated recorded frame numbers to stop at (walk mode only); the walk ends at the last")
     wk = sub.add_parser("walk", parents=[walks],
                         help="walk recorded approaches, stop and photograph along the way (needs the arm)")
     wk.add_argument("--retake", default="")
