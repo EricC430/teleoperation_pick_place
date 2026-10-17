@@ -27,6 +27,7 @@
 | `docs/act_evidence.md` | ACT 相關文獻與數據佐證 |
 | `docs/hardware.md` | 硬體清單與現況（含已否決項目與 ETA） |
 | `docs/camera_mount.md` | 相機位置與支架設計、量測協定 |
+| `docs/depth_sensing.md` | 深度相機原理對照（被動／主動雙目、ToF、結構光），2026-10-17 查證筆記；本專案 RealSense 全是雙目 |
 | `docs/environment.md` | 兩台機器的版本釘選與已知陷阱 |
 | `docs/field_manual.md` | 現場操作手冊（Windows/COM port 版指令） |
 | `docs/conventions.md` | commit / branch / tag 慣例 |
