@@ -6,8 +6,9 @@ Why (2026-10-18, docs/meeting/2026-10-16_closed_loop.md §4-2 step 3):
   - measuring at "the rim nearest the jaw line" scores a rim parallel to the jaws as well as any other, although
     there is nothing to grasp there (Boyu, 10-18). So the target is the graspable point instead.
 Graspable point (Boyu 10-18): the rim point whose tangent is perpendicular to the jaw line -- where the jaw line would
-cross the rim if it went through the cup centre. Of the two such points, the wall the model actually grasped
-(success) or was heading for (failure); not necessarily the one nearest the jaws.
+cross the rim if it went through the cup centre. Of the two such points, the one nearest the jaw-gap centre G in that
+frame (Boyu 10-18: which wall the model "meant" cannot be told from one image, so no guessing). When the jaw line is
+parallel to the rim, that point is far to the side of the cup and p is large -- which is the measurement.
 
 Per episode, two frames (Boyu 10-17, "both"):
   tip_rim       the TIP@RIM frame (export_episode_clips.tip_at_rim), fixed
@@ -24,14 +25,17 @@ Keys:
   left click      graspable point (click again to move it)    right click / u   clear
   Enter / space   accept the click
   n               no graspable point in view in this frame
+  m               cup already pushed / moved -- not measured (Boyu 10-18, c6)
   x               unsure (Boyu, c5 10-18)
+A magenta line through the cursor, perpendicular to the jaw line, follows the mouse: where it lies along the rim is
+the graspable point. (Boyu's third pass clicked the jaw-line / rim crossing instead -- the help text was cut off.)
   a / d           previous / next frame      A / D   5 frames   (last_visible only; tip_rim is fixed)
   s               skip this episode           q / Esc   quit (rows already accepted are saved)
 
     uv run python scripts/label_rim_aim.py <rollout dataset name>                  # all episodes
     uv run python scripts/label_rim_aim.py <rollout dataset name> --pid c2 c5
 Output: eval/rim_aim/<dataset name>.csv, one row per accepted frame, written immediately; episodes / steps already
-in the file are skipped on the next run (delete a row to redo it). source = click, none (n), unsure (x).
+in the file are skipped on the next run (delete a row to redo it). source = click, none (n), moved (m), unsure (x).
 """
 from __future__ import annotations
 
@@ -140,14 +144,28 @@ def run_gui(jobs, writer: Writer, load) -> None:
     from PIL import Image, ImageTk
 
     win = tk.Tk()
-    canvas = tk.Canvas(win, width=int(640 * SCALE), height=int(480 * SCALE))
-    canvas.pack()
-    status = tk.Label(win, justify="left", anchor="w", font=("Microsoft JhengHei", 11))
-    status.pack(fill="x")
-    tk.Label(win, justify="left", anchor="w", fg="#555", font=("Microsoft JhengHei", 10),
-             text="左鍵＝點「可以夾的地方」：杯緣上和白線垂直的那一點，取模型實際夾的（或要去夾的）那面壁；再點一次可移動\n"
-                  "右鍵/u＝清除  Enter/空白＝接受  n＝這幀看不到可以夾的地方  x＝不確定  "
-                  "a/d＝前/後一幀  A/D＝5 幀（只限步驟 2）  s＝跳過這集  q/Esc＝結束").pack(fill="x")
+    panel_w = 380
+    scale = min(SCALE, (win.winfo_screenheight() - 200) / 480, (win.winfo_screenwidth() - panel_w - 40) / 640)
+    canvas = tk.Canvas(win, width=int(640 * scale), height=int(480 * scale), cursor="crosshair")
+    canvas.grid(row=0, column=0, sticky="nw")
+    side = tk.Frame(win, width=panel_w)
+    side.grid(row=0, column=1, sticky="nw", padx=10, pady=6)
+    status = tk.Label(side, justify="left", anchor="w", wraplength=panel_w, font=("Microsoft JhengHei", 11))
+    status.pack(fill="x", anchor="w")
+    tk.Label(side, justify="left", anchor="w", wraplength=panel_w, fg="#333", font=("Microsoft JhengHei", 10),
+             text="要點的是「可以夾的地方」，不是白線和杯緣的交點：\n"
+                  "• 杯緣上，切線和白線（兩爪連線）垂直的那一點。\n"
+                  "• 紫色細線會跟著滑鼠，方向和白線垂直：把它移到杯緣上，紫線剛好和杯緣重合（貼著杯緣走）的地方就是。\n"
+                  "• 這種點杯子兩側各有一個：取離綠十字（兩爪空隙中心）最近的那一個。\n"
+                  "• 白線和杯緣平行時，那一點會在杯子側邊、離白線很遠，照樣點；畫面裡看不到就按 n。\n\n"
+                  "左鍵　點（再點一次可移動）\n"
+                  "右鍵 / u　清除\n"
+                  "Enter / 空白　接受\n"
+                  "n　這幀看不到可以夾的地方\n"
+                  "m　杯子已經被推動（不量）\n"
+                  "x　不確定\n"
+                  "a / d　前 / 後一幀；A / D　5 幀（只限步驟 2）\n"
+                  "s　跳過這集　　q / Esc　結束（已接受的都存了）").pack(fill="x", anchor="w", pady=(10, 0))
     S = {"job": -1, "steps": [], "k": 0, "click": None}
 
     def next_step():
@@ -172,7 +190,7 @@ def run_gui(jobs, writer: Writer, load) -> None:
     def show(note: str = ""):
         (e, meta), (rim, close, frames, st) = jobs[S["job"]], S["ep"]
         k = S["k"]
-        im = cv2.resize(draw(frames[k], S["click"]), None, fx=SCALE, fy=SCALE)
+        im = cv2.resize(draw(frames[k], S["click"]), None, fx=scale, fy=scale)
         S["img"] = ImageTk.PhotoImage(Image.fromarray(cv2.cvtColor(im, cv2.COLOR_BGR2RGB)))
         canvas.delete("all")
         canvas.create_image(0, 0, anchor="nw", image=S["img"])
@@ -214,6 +232,8 @@ def run_gui(jobs, writer: Writer, load) -> None:
             accept("none")
         elif ev.keysym == "x":
             accept("unsure")
+        elif ev.keysym == "m":
+            accept("moved")
         elif ev.keysym == "u":
             S["click"] = None
             show()
@@ -224,8 +244,13 @@ def run_gui(jobs, writer: Writer, load) -> None:
             win.destroy()
 
     def click(ev):
-        S["click"] = np.array([ev.x / SCALE, ev.y / SCALE])
+        S["click"] = np.array([ev.x / scale, ev.y / scale])
         show()
+
+    def guide(ev):  # line through the cursor, perpendicular to the jaw line: lay it along the rim to find the point
+        canvas.delete("guide")
+        c, h = np.array([ev.x, ev.y]), 90 * scale * N
+        canvas.create_line(*(c - h), *(c + h), fill="#ff40ff", width=1, tags="guide")
 
     def clear(_):
         S["click"] = None
@@ -234,6 +259,7 @@ def run_gui(jobs, writer: Writer, load) -> None:
     win.bind("<Key>", key)
     canvas.bind("<Button-1>", click)
     canvas.bind("<Button-3>", clear)
+    canvas.bind("<Motion>", guide)
     next_step()
     win.mainloop()
 
