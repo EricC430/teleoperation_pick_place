@@ -52,6 +52,7 @@ G = np.array([322.0, 292.0])
 U = np.array([1.0, 0.28]) / np.hypot(1.0, 0.28)
 T_MIN, T_MAX = -322, 240  # beyond +240 px the right jaw's tissue pad looks like cup
 SCALE = 1.5
+MIN_CLICK_PX = 30  # two clicks 8 px apart with ~1.5 px click error -> angle off by ~20 deg (Boyu's first pass, 10-18)
 COLS = ["placement_id", "episode_index", "outcome", "step", "frame", "tip_rim_frame", "close_frame", "source",
         "x1", "y1", "x2", "y2", "t_px", "angle_deg", "auto_x1", "auto_y1", "auto_x2", "auto_y2"]
 
@@ -219,7 +220,7 @@ def run_gui(jobs, writer: Writer, load) -> None:
     status = tk.Label(win, justify="left", anchor="w", font=("Microsoft JhengHei", 11))
     status.pack(fill="x")
     tk.Label(win, justify="left", anchor="w", fg="#555", font=("Microsoft JhengHei", 10),
-             text="左鍵點兩下＝杯緣（第三下重來）  右鍵/u＝清除  Enter/空白＝接受（有點選用點選，否則用黃線）\n"
+             text="左鍵點兩點＝杯緣（沿杯緣相隔 ≥ 30 px，第三下重來）  右鍵/u＝清除  Enter/空白＝接受（有點選用點選，否則用黃線）\n"
                   "n＝這幀兩爪連線附近沒有杯緣  a/d＝前/後一幀  A/D＝5 幀  s＝跳過這集  q/Esc＝結束").pack(fill="x")
     S = {"job": -1, "steps": [], "k": 0, "clicks": [], "auto": None}
 
@@ -265,6 +266,10 @@ def run_gui(jobs, writer: Writer, load) -> None:
         line = None
         if source != "none":
             if len(S["clicks"]) == 2:
+                gap = float(np.hypot(*(S["clicks"][1] - S["clicks"][0])))
+                if gap < MIN_CLICK_PX:
+                    status.config(text=status.cget("text") + f"\n→ 兩點只差 {gap:.0f} px，角度會不準：請沿杯緣點遠一點（≥ {MIN_CLICK_PX} px，連線兩側各一點）")
+                    return
                 line, source = (S["clicks"][0], S["clicks"][1]), "manual"
             elif S["auto"] is not None:
                 line, source = S["auto"], "auto"
