@@ -68,6 +68,9 @@
 | `c7c9dfceb900` | `uvc60_augfl_fldrop_p30_w30` / 20k | `act_omx_b1_paper-cup_60-augfl-fldrop30_20k` | 紙杯 | `omx_pick_place_pilot_uvc_60`（全 60 集）；增強與 dropout 同 `…_augfl_fldrop_p30_w30`（`configs/train_omx_uvc60_augfl_fldrop.yaml`；理由見 `2026-10-16_closed_loop.md` §4-1） | — |
 | `27c5ba98b2c4` | `uvc60_augfl_fldrop_p30_w30` / 40k | `act_omx_b1_paper-cup_60-augfl-fldrop30_40k` | 紙杯 | 同上 | — |
 | `f55b0fa71b50` | `uvc60_augfl_fldrop_p30_w30` / 100k | `act_omx_b1_paper-cup_60-augfl-fldrop30_100k` | 紙杯 | 同上 | — |
+| `0dd8b31a90a0` | `bottle60_augfl_fldrop_p30_w30` / 20k | `act_omx_b4a_plastic-bottle_60-augfl-fldrop30_20k` | 寶特瓶 | `omx_pick_place_pilot_60_plastic_bottle`（全 60 集，同 `phase_b4a_plastic_bottle`）；增強與 dropout 同 `uvc60_augfl_fldrop_p30_w30`（`configs/train_omx_bottle60_augfl_fldrop.yaml`；理由見 `2026-10-17_uvc60_augfl_open_loop.md` §4） | — |
+| `0eea003c1abb` | `bottle60_augfl_fldrop_p30_w30` / 40k | `act_omx_b4a_plastic-bottle_60-augfl-fldrop30_40k` | 寶特瓶 | 同上 | — |
+| `35ffc9043713` | `bottle60_augfl_fldrop_p30_w30` / 100k | `act_omx_b4a_plastic-bottle_60-augfl-fldrop30_100k` | 寶特瓶 | 同上 | — |
 
 未列：60k／80k checkpoint（沒上 Hub、沒閉環過）、`my-002`／`smoke-001`／`perf-*`／`openloop-eval`（煙霧測試與效能測試）。
 
