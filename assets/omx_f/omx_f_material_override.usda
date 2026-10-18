@@ -79,12 +79,28 @@ over "omx_f"
         }
     }
 
-    over "link0" { rel material:binding = </omx_f/Looks/Black_Matte> }
-    over "link1" { rel material:binding = </omx_f/Looks/Black_Matte> }
-    over "link2" { rel material:binding = </omx_f/Looks/Black_Matte> }
-    over "link3" { rel material:binding = </omx_f/Looks/Black_Matte> }
-    over "link4" { rel material:binding = </omx_f/Looks/Black_Matte> }
-    over "link5" { rel material:binding = </omx_f/Looks/Black_Matte> }
-    over "link6" { rel material:binding = </omx_f/Looks/Black_Matte> }
-    over "link7" { rel material:binding = </omx_f/Looks/Black_Matte> }
+    over "link0" {
+        rel material:binding = </omx_f/Looks/Black_Matte>
+    }
+    over "link1" {
+        rel material:binding = </omx_f/Looks/Black_Matte>
+    }
+    over "link2" {
+        rel material:binding = </omx_f/Looks/Black_Matte>
+    }
+    over "link3" {
+        rel material:binding = </omx_f/Looks/Black_Matte>
+    }
+    over "link4" {
+        rel material:binding = </omx_f/Looks/Black_Matte>
+    }
+    over "link5" {
+        rel material:binding = </omx_f/Looks/Black_Matte>
+    }
+    over "link6" {
+        rel material:binding = </omx_f/Looks/Black_Matte>
+    }
+    over "link7" {
+        rel material:binding = </omx_f/Looks/Black_Matte>
+    }
 }
