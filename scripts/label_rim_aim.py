@@ -223,7 +223,8 @@ def run_gui(jobs, writer: Writer, load) -> None:
         if step and S["steps"][0] == "tip_rim":
             show("步驟 1 固定在 TIP@RIM 這一幀，不能移；移幀是步驟 2 的事")
         elif step:
-            S["k"] = min(max(S["k"] + step, min(frames)), max(frames))
+            last = S["ep"][1] if S["ep"][1] is not None else max(frames)  # "before the first close": stop at CLOSE
+            S["k"] = min(max(S["k"] + step, min(frames)), last)
             S["click"] = None
             show()
         elif ev.keysym in ("Return", "space"):
