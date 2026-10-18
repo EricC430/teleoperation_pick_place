@@ -19,7 +19,9 @@ Keys (window title shows the current step):
   left click x2   rim line (a third click starts over)       right click / u   clear the clicks
   Enter / space   accept: the clicked line, else the program's (yellow) line
   n               no rim near the jaw line in this frame (nothing to measure)
-  a / d           previous / next frame      A / D   5 frames
+  x               unsure whether the rim is visible / where it is (Boyu, c5 10-18)
+  a / d           previous / next frame      A / D   5 frames   (last_visible only; tip_rim is fixed -- Boyu moved
+                  it on c2 / c12 / c33 in the first pass, thinking step 1 was also "last visible")
   s               skip this episode           q / Esc   quit (rows already accepted are saved)
 
     uv run python scripts/label_rim_aim.py <rollout dataset name>                  # all episodes
@@ -27,7 +29,7 @@ Keys (window title shows the current step):
     uv run python scripts/label_rim_aim.py <rollout dataset name> --auto-only      # no window, tip_rim only
 Output: eval/rim_aim/<dataset name>.csv, one row per accepted frame, written immediately; episodes / steps already
 in the file are skipped on the next run (delete a row to redo it). source = auto (accepted as drawn), manual
-(clicked), none (n), auto_unreviewed (--auto-only); auto / (auto + manual) is the hit rate of the detector.
+(clicked), none (n), unsure (x), auto_unreviewed (--auto-only); auto / (auto + manual) is the hit rate of the detector.
 """
 from __future__ import annotations
 
@@ -221,7 +223,7 @@ def run_gui(jobs, writer: Writer, load) -> None:
     status.pack(fill="x")
     tk.Label(win, justify="left", anchor="w", fg="#555", font=("Microsoft JhengHei", 10),
              text="左鍵點兩點＝杯緣（沿杯緣相隔 ≥ 30 px，第三下重來）  右鍵/u＝清除  Enter/空白＝接受（有點選用點選，否則用黃線）\n"
-                  "n＝這幀兩爪連線附近沒有杯緣  a/d＝前/後一幀  A/D＝5 幀  s＝跳過這集  q/Esc＝結束").pack(fill="x")
+                  "n＝這幀兩爪連線附近沒有杯緣  x＝看不出來／不確定  a/d＝前/後一幀（只限步驟 2）  A/D＝5 幀  s＝跳過這集  q/Esc＝結束").pack(fill="x")
     S = {"job": -1, "steps": [], "k": 0, "clicks": [], "auto": None}
 
     def next_step():
@@ -252,7 +254,8 @@ def run_gui(jobs, writer: Writer, load) -> None:
         canvas.delete("all")
         canvas.create_image(0, 0, anchor="nw", image=S["img"])
         step = S["steps"][0]
-        what = "TIP@RIM 那一幀" if step == "tip_rim" else "閉合前最後一幀還看得到杯緣（用 a/d 移到那一幀）"
+        what = ("1/2  TIP@RIM 那一幀（固定，不能移幀）" if step == "tip_rim"
+                else "2/2  閉合前最後一幀還看得到杯緣（用 a/d 移到那一幀）")
         line = (S["clicks"][0], S["clicks"][1]) if len(S["clicks"]) == 2 else S["auto"]
         m = measure(*line) if line is not None else None
         ms = f"t {m[0]:+.0f} px  夾角 {m[1]:.0f}°" if m else "（沒有線）"
@@ -264,7 +267,7 @@ def run_gui(jobs, writer: Writer, load) -> None:
     def accept(source: str):
         (e, meta), (rim, close, _) = jobs[S["job"]], S["ep"]
         line = None
-        if source != "none":
+        if source not in ("none", "unsure"):
             if len(S["clicks"]) == 2:
                 gap = float(np.hypot(*(S["clicks"][1] - S["clicks"][0])))
                 if gap < MIN_CLICK_PX:
@@ -286,7 +289,9 @@ def run_gui(jobs, writer: Writer, load) -> None:
     def key(ev):
         frames = S["ep"][2]
         step = {"a": -1, "d": 1, "A": -5, "D": 5, "Left": -1, "Right": 1}.get(ev.keysym)
-        if step:
+        if step and S["steps"][0] == "tip_rim":
+            status.config(text=status.cget("text") + "\n→ 步驟 1 固定在 TIP@RIM 這一幀，不能移；移幀是步驟 2 的事")
+        elif step:
             S["k"] = min(max(S["k"] + step, min(frames)), max(frames))
             S["clicks"] = []
             show()
@@ -294,6 +299,8 @@ def run_gui(jobs, writer: Writer, load) -> None:
             accept("auto")
         elif ev.keysym == "n":
             accept("none")
+        elif ev.keysym == "x":
+            accept("unsure")
         elif ev.keysym == "u":
             S["clicks"] = []
             show()
