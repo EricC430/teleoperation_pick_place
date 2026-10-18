@@ -1,0 +1,46 @@
+Offline wrist diagnosis; original calibration unchanged.
+Overlays: green=detected, red=old camera (jointly estimated marker yaw), cyan=train-only candidate.
+Pixel errors are measured in undistorted image coordinates.
+{
+  "train": {
+    "views": 10,
+    "median_corner_px": 2.9987873477100164,
+    "max_corner_px": 6.737813161927725,
+    "rms_corner_px": 3.417905856268347
+  },
+  "validation": {
+    "views": 5,
+    "median_corner_px": 6.02568878475862,
+    "max_corner_px": 24.791070652976664,
+    "rms_corner_px": 13.009172171889524
+  },
+  "all_fit": {
+    "views": 15,
+    "median_corner_px": 4.328201731256526,
+    "max_corner_px": 17.247583879246815,
+    "rms_corner_px": 6.014211115441597
+  },
+  "swapped_dimension_validation": {
+    "views": 5,
+    "median_corner_px": 6.013291025974144,
+    "max_corner_px": 24.831316340193442,
+    "rms_corner_px": 13.127228485771939
+  }
+}
+Front-left detected IDs: [0]
+Front-left ID0 nominal delta median (mm): [-179.4     1.18    0.  ]; edge median (mm): [81.59 73.35 83.42 72.44]
+{'pose': 'E00_F0046', 'id': 0, 'split': 'validation', 'old_mean_corner_px': 44.04172498550593, 'new_mean_corner_px': 2.9772914826517285}
+{'pose': 'E00_F0050', 'id': 0, 'split': 'train', 'old_mean_corner_px': 44.6136435191413, 'new_mean_corner_px': 1.7356283206584013}
+{'pose': 'E00_F0052', 'id': 0, 'split': 'train', 'old_mean_corner_px': 45.421754764535194, 'new_mean_corner_px': 2.8505856621120627}
+{'pose': 'E00_F0056', 'id': 0, 'split': 'validation', 'old_mean_corner_px': 45.32877098028002, 'new_mean_corner_px': 5.008294977527742}
+{'pose': 'E08_F0030', 'id': 0, 'split': 'validation', 'old_mean_corner_px': 45.99203201852486, 'new_mean_corner_px': 22.98490519529187}
+{'pose': 'E08_F0040', 'id': 2, 'split': 'train', 'old_mean_corner_px': 25.37554662075244, 'new_mean_corner_px': 4.393777601803121}
+{'pose': 'E08_F0044', 'id': 2, 'split': 'train', 'old_mean_corner_px': 23.759342603951914, 'new_mean_corner_px': 2.7241654444069527}
+{'pose': 'E08_F0046', 'id': 2, 'split': 'train', 'old_mean_corner_px': 23.557453223454235, 'new_mean_corner_px': 1.9902240162711653}
+{'pose': 'E08_F0048', 'id': 2, 'split': 'validation', 'old_mean_corner_px': 22.57114701695126, 'new_mean_corner_px': 2.669314750903914}
+{'pose': 'E08_F0050', 'id': 2, 'split': 'train', 'old_mean_corner_px': 22.658026859679314, 'new_mean_corner_px': 2.1079092274119895}
+{'pose': 'E08_F0052', 'id': 2, 'split': 'train', 'old_mean_corner_px': 19.950466222440316, 'new_mean_corner_px': 4.127981398194276}
+{'pose': 'E08_F0054', 'id': 2, 'split': 'train', 'old_mean_corner_px': 20.033597944769983, 'new_mean_corner_px': 3.663118199773731}
+{'pose': 'E08_F0056', 'id': 2, 'split': 'train', 'old_mean_corner_px': 21.50916307754439, 'new_mean_corner_px': 2.5455193463400474}
+{'pose': 'E08_F0060', 'id': 2, 'split': 'train', 'old_mean_corner_px': 24.869917541187633, 'new_mean_corner_px': 4.4369822231656935}
+{'pose': 'E08_F0065', 'id': 2, 'split': 'validation', 'old_mean_corner_px': 35.59917818108525, 'new_mean_corner_px': 15.492529360069287}

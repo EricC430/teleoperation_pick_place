@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-18",
+  "points_csv": "calibration\\2026-10-18_aruco_points_rigid.csv",
+  "configuration": "rigid cardboard markers; new setup, not applicable to earlier ID0/ID2 captures",
+  "replacements": {
+    "0": 5,
+    "2": 6
+  },
+  "positions": {
+    "5": {
+      "placement": "c1",
+      "x_m": 0.2415,
+      "y_m": -0.0238
+    },
+    "6": {
+      "placement": "c9",
+      "x_m": 0.1391,
+      "y_m": 0.2147
+    }
+  },
+  "cardboard_thickness_range_m": [
+    0.0025,
+    0.003
+  ],
+  "nominal_height_above_table_m": 0.00275,
+  "height_assumption": "Midpoint of reported cardboard thickness; actual marker-plane height also depends on paper surface, tilt, and print/adhesive thickness. Not a surveyed height.",
+  "marker_dimensions_m": [
+    0.06,
+    0.059
+  ],
+  "dimension_assumption": "Prior nominal black-border dimensions carried forward; replacement prints not separately confirmed.",
+  "other_markers": "IDs1,3,4,7 retained at previous coordinates and z=0; not moved according to current conversation"
+}

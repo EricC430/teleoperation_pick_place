@@ -1,0 +1,1029 @@
+{
+  "data_sufficiency": "planned capture complete; sufficient for current offline model fitting and validation",
+  "capture_quality_status": "data_quality_passed",
+  "missing_images": [],
+  "state_source": "measured state_* only",
+  "counts": {
+    "train": {
+      "views": 44,
+      "marker_observations": 63
+    },
+    "development_f40": {
+      "views": 4,
+      "marker_observations": 5
+    },
+    "holdout_f60": {
+      "views": 12,
+      "marker_observations": 12
+    },
+    "drift_end": {
+      "views": 2,
+      "marker_observations": 3
+    }
+  },
+  "total_read_wrist_images": 70,
+  "total_marker_observations": 83,
+  "sources": [
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\baseline_end_captures.csv",
+      "split": "drift_end",
+      "sha256": "f1b987e221a94dbc894854a7ee33d4e2ff5e096f2a8084bb481ad16abc4322ea"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\baseline_start_captures.csv",
+      "split": "train",
+      "sha256": "fa8a8086156591cf3a0b2857d299365d5ac383bde5a7678b194365d11524334d"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\f30_captures.csv",
+      "split": "train",
+      "sha256": "59b61ad386fa8369855d9a50f10637a0b81f2e0b0ea2a997b6a5b2744913d04e"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\f30_extra_captures.csv",
+      "split": "train",
+      "sha256": "d939a9763aaead39371774c391122865f41c89111e28a6ba430a945e9aac4703"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv",
+      "split": "holdout_f60",
+      "sha256": "3f40a9c67f5f3e1097260ac3c5a0bf5541769aef6cc46d897ead69d77d6fa04c"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\f70_captures.csv",
+      "split": "train",
+      "sha256": "7545ad34db09adff920632b77fe03b4ff2d34ab58cfcd81d1ce3c09292488fc8"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv",
+      "split": "train",
+      "sha256": "39f6d0c78da395639901824740d1a33e4eac99e4b8a18ab5ca4a3263f7b2a3a6"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_flex_diag_captures.csv",
+      "split": "train",
+      "sha256": "94aeb6b7aaf4da414d6da074d3d8455297ba15da1b6c0f1544f2f1a8f461d3bb"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_rigid_f40_captures.csv",
+      "split": "development_f40",
+      "sha256": "6d9abb42b17515f4775c436eb117798f0b048e718d15af211f621b02c780410e"
+    }
+  ],
+  "models": {
+    "original": {
+      "train": {
+        "views": 44,
+        "marker_observations": 63,
+        "corners": 252,
+        "median_corner_px": 3.374611036568295,
+        "rms_corner_px": 5.1647938517333705,
+        "p95_corner_px": 8.878812689783306,
+        "max_corner_px": 18.737781924530633
+      },
+      "development_f40": {
+        "views": 4,
+        "marker_observations": 5,
+        "corners": 20,
+        "median_corner_px": 5.853698364721653,
+        "rms_corner_px": 5.918840096250844,
+        "p95_corner_px": 8.754682233249014,
+        "max_corner_px": 9.422724881521157
+      },
+      "parameters": [
+        -1.697998116341973,
+        1.6859911267584526,
+        -0.8956625224107685,
+        0.03467723444664093,
+        0.006980995166158141,
+        0.05422164295558604,
+        0.055370314745542625,
+        0.03561766173594886,
+        -1.6024975527348402,
+        0.21354646820142018,
+        -0.11956243615921823,
+        0.03951368313505704,
+        0.019357767429496013,
+        -0.0384659047426256,
+        -1.604897213975891,
+        0.3119810857162027,
+        0.15577596534550303,
+        0.030000575164926484,
+        0.03316652527245773,
+        -0.129802468830784,
+        -1.5716100238018842,
+        0.254170219822691,
+        -0.02804261618679762,
+        0.032458254842398664,
+        0.017591551898037176,
+        -0.135294910133444,
+        -1.578857465629924,
+        0.152861012838959,
+        0.21409517132842326,
+        0.02112344816219509
+      ],
+      "success": true,
+      "camera_mount_pos_mm": [
+        34.677234446640924,
+        6.9809951661581415,
+        54.22164295558604
+      ],
+      "holdout_f60": {
+        "views": 12,
+        "marker_observations": 12,
+        "corners": 48,
+        "median_corner_px": 7.321069634893794,
+        "rms_corner_px": 11.178381514053514,
+        "p95_corner_px": 27.838189360187087,
+        "max_corner_px": 29.725448115334032
+      },
+      "drift_end": {
+        "views": 2,
+        "marker_observations": 3,
+        "corners": 12,
+        "median_corner_px": 5.386556245909761,
+        "rms_corner_px": 5.802050583146417,
+        "p95_corner_px": 8.165323456048458,
+        "max_corner_px": 8.965895139947353
+      }
+    },
+    "no_sag": {
+      "train": {
+        "views": 44,
+        "marker_observations": 63,
+        "corners": 252,
+        "median_corner_px": 3.1104319263895075,
+        "rms_corner_px": 6.366583054946766,
+        "p95_corner_px": 11.430128251028739,
+        "max_corner_px": 31.907889344899896
+      },
+      "development_f40": {
+        "views": 4,
+        "marker_observations": 5,
+        "corners": 20,
+        "median_corner_px": 3.191291564310694,
+        "rms_corner_px": 3.747478660713862,
+        "p95_corner_px": 6.032268215046496,
+        "max_corner_px": 7.277681654461609
+      },
+      "parameters": [
+        -1.6557192390768487,
+        1.6030745923295777,
+        -0.8796287011600012,
+        0.022343024486289734,
+        -0.004868796196018269,
+        0.03302665404491847,
+        0.0293419332192204,
+        -0.042863683425239385,
+        -1.6169459708616254,
+        0.19812340253513513,
+        -0.11920030530611289,
+        0.00843951729629508,
+        0.057017291326598184,
+        -0.0013474537101089078,
+        -1.6216349439315478,
+        0.3008502072345936,
+        0.15611744288123433,
+        0.031907026909281516,
+        0.002410632584176634,
+        -0.03382437227046971,
+        -1.5941651535591728,
+        0.2424825277473739,
+        -0.021577270685427162,
+        0.021738951999250137,
+        0.03508517279550085,
+        -0.09652908226451795,
+        -1.5971058814661372,
+        0.14352167875510247,
+        0.2147851019839516,
+        0.02984420867346105
+      ],
+      "success": true,
+      "camera_mount_pos_mm": [
+        22.343024486289735,
+        -4.868796196018269,
+        33.026654044918466
+      ],
+      "holdout_f60": {
+        "views": 12,
+        "marker_observations": 12,
+        "corners": 48,
+        "median_corner_px": 4.533479511351701,
+        "rms_corner_px": 7.401079091988949,
+        "p95_corner_px": 14.985383388949668,
+        "max_corner_px": 17.81961309407601
+      },
+      "drift_end": {
+        "views": 2,
+        "marker_observations": 3,
+        "corners": 12,
+        "median_corner_px": 7.0530040522034305,
+        "rms_corner_px": 8.608100116715912,
+        "p95_corner_px": 13.004950729564074,
+        "max_corner_px": 13.264380475574912
+      }
+    },
+    "fit_sag": {
+      "train": {
+        "views": 44,
+        "marker_observations": 63,
+        "corners": 252,
+        "median_corner_px": 1.8457370947543115,
+        "rms_corner_px": 2.566079763211342,
+        "p95_corner_px": 4.55055261364384,
+        "max_corner_px": 7.240444936370227
+      },
+      "development_f40": {
+        "views": 4,
+        "marker_observations": 5,
+        "corners": 20,
+        "median_corner_px": 3.8419800546103717,
+        "rms_corner_px": 4.013363492270011,
+        "p95_corner_px": 5.621548707605583,
+        "max_corner_px": 6.171255928213651
+      },
+      "parameters": [
+        -1.6766891606374688,
+        1.6504004095524316,
+        -0.8896965581804407,
+        0.03950486762276691,
+        0.00236050249930232,
+        0.04400596676271329,
+        0.046096541355340186,
+        0.014637404197161204,
+        -1.6089270558848423,
+        0.20477293884370704,
+        -0.11872930925399539,
+        0.016075422531390778,
+        0.008871662125797519,
+        -0.012100318717115161,
+        -1.6139919914747825,
+        0.3055020687407786,
+        0.1554316969752398,
+        0.018667879695636203,
+        -0.02307928043168204,
+        -0.03759220048303249,
+        -1.5872074335431574,
+        0.24736814003607047,
+        -0.025106688773944816,
+        0.01579980921801315,
+        0.004836607416666343,
+        -0.13010031574395503,
+        -1.5865033422064805,
+        0.1476318017644529,
+        0.214220803994411,
+        0.01470376582847958,
+        0.5522512784492438,
+        0.4611074520780267,
+        1.3180058919499267
+      ],
+      "success": true,
+      "camera_mount_pos_mm": [
+        39.50486762276691,
+        2.36050249930232,
+        44.005966762713285
+      ],
+      "sag_scale_factors": [
+        0.5522512784492438,
+        0.4611074520780267,
+        1.3180058919499267
+      ],
+      "holdout_f60": {
+        "views": 12,
+        "marker_observations": 12,
+        "corners": 48,
+        "median_corner_px": 3.5270950485876513,
+        "rms_corner_px": 7.139718226178832,
+        "p95_corner_px": 20.70533522026426,
+        "max_corner_px": 22.5424955029865
+      },
+      "drift_end": {
+        "views": 2,
+        "marker_observations": 3,
+        "corners": 12,
+        "median_corner_px": 6.4157231131966395,
+        "rms_corner_px": 6.3201157679494955,
+        "p95_corner_px": 8.260749254815499,
+        "max_corner_px": 8.85097232254015
+      }
+    }
+  },
+  "selected_model": "no_sag",
+  "selection_rule": "Minimum development-f40 RMS; f60/end baseline excluded from fitting and selection",
+  "selected_train_jacobian_singular_values": [
+    45220.731990375934,
+    44953.7555182652,
+    24240.730614175394,
+    23139.162195186836,
+    19292.866236064965,
+    17667.885229601194,
+    13906.439349997316,
+    13122.056428896223,
+    8637.921936092676,
+    5725.69722908004,
+    5069.945522319453,
+    4593.1202101495865,
+    3588.8007867172964,
+    2532.5324171404213,
+    2278.328681200037,
+    1794.5635455579807,
+    1665.818553420166,
+    967.3421246422575,
+    778.6677772932402,
+    593.219162767514,
+    558.2549913728583,
+    439.2033004349301,
+    255.63295674774287,
+    231.46055166665388,
+    138.25180263207804,
+    121.78102213063697,
+    119.62153651991073,
+    111.08913446073755,
+    110.89722586105424,
+    106.01739500128059
+  ],
+  "marker_dimensions_m": [
+    0.06,
+    0.059
+  ],
+  "marker_ids": [
+    1,
+    4,
+    5,
+    6
+  ],
+  "per_observation": [
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\baseline_end_captures.csv:S00_F0050_r+0_f-4",
+      "pose": "S00_F0050_r+0_f-4",
+      "split": "drift_end",
+      "marker_id": 5,
+      "mean_corner_px": 9.866568068377973,
+      "max_corner_px": 13.264380475574912
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\baseline_end_captures.csv:S00_F0050_r+0_f-4",
+      "pose": "S00_F0050_r+0_f-4",
+      "split": "drift_end",
+      "marker_id": 1,
+      "mean_corner_px": 8.511313130504764,
+      "max_corner_px": 12.792690028282479
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\baseline_end_captures.csv:S08_F0050_r+0_f-4",
+      "pose": "S08_F0050_r+0_f-4",
+      "split": "drift_end",
+      "marker_id": 6,
+      "mean_corner_px": 5.891998900183713,
+      "max_corner_px": 7.167153188459302
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\baseline_start_captures.csv:S00_F0050_r+0_f-4",
+      "pose": "S00_F0050_r+0_f-4",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 4.828339844735655,
+      "max_corner_px": 7.383310426399854
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\baseline_start_captures.csv:S00_F0050_r+0_f-4",
+      "pose": "S00_F0050_r+0_f-4",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 3.7817674059763076,
+      "max_corner_px": 6.684045685392598
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\baseline_start_captures.csv:S08_F0050_r+0_f-4",
+      "pose": "S08_F0050_r+0_f-4",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 3.5285425790020652,
+      "max_corner_px": 4.78667982861515
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_captures.csv:S00_F0030_r+0_f-6",
+      "pose": "S00_F0030_r+0_f-6",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 4.490358774528134,
+      "max_corner_px": 6.017414521872184
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_captures.csv:S00_F0030_r+16_f-6",
+      "pose": "S00_F0030_r+16_f-6",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 5.346062480185302,
+      "max_corner_px": 9.67469527274277
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_captures.csv:S00_F0030_r+0_f-2",
+      "pose": "S00_F0030_r+0_f-2",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 2.709673773390191,
+      "max_corner_px": 4.039506112560713
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_captures.csv:S08_F0030_r+0_f-6",
+      "pose": "S08_F0030_r+0_f-6",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 8.974177056827664,
+      "max_corner_px": 10.908538708120885
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_captures.csv:S08_F0030_r+8_f-6",
+      "pose": "S08_F0030_r+8_f-6",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 2.352399912774267,
+      "max_corner_px": 4.373563133553367
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_captures.csv:S08_F0030_r+16_f-6",
+      "pose": "S08_F0030_r+16_f-6",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 2.241806533940239,
+      "max_corner_px": 4.246102430879272
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_captures.csv:S08_F0030_r+16_f-2",
+      "pose": "S08_F0030_r+16_f-2",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 1.8584160095285933,
+      "max_corner_px": 3.6883322556622193
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_captures.csv:S08_F0030_r+8_f-2",
+      "pose": "S08_F0030_r+8_f-2",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 3.44191635484655,
+      "max_corner_px": 5.541602571117224
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_captures.csv:S08_F0030_r+0_f-2",
+      "pose": "S08_F0030_r+0_f-2",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 9.020386360905654,
+      "max_corner_px": 10.915394595838913
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_extra_captures.csv:S00_F0030_r+0_f-10",
+      "pose": "S00_F0030_r+0_f-10",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 9.717020436416632,
+      "max_corner_px": 9.95254781718349
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_extra_captures.csv:S00_F0030_r+0_f-10",
+      "pose": "S00_F0030_r+0_f-10",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 8.311914668357401,
+      "max_corner_px": 10.931202138541972
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_extra_captures.csv:S00_F0030_r+8_f-10",
+      "pose": "S00_F0030_r+8_f-10",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 10.55933410760461,
+      "max_corner_px": 11.178906582351281
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_extra_captures.csv:S00_F0030_r+16_f-10",
+      "pose": "S00_F0030_r+16_f-10",
+      "split": "train",
+      "marker_id": 4,
+      "mean_corner_px": 6.862801023556103,
+      "max_corner_px": 8.655558025606515
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_extra_captures.csv:S00_F0030_r+16_f-10",
+      "pose": "S00_F0030_r+16_f-10",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 4.65705682317208,
+      "max_corner_px": 8.941913720858278
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_extra_captures.csv:S00_F0030_r+16_f-8",
+      "pose": "S00_F0030_r+16_f-8",
+      "split": "train",
+      "marker_id": 4,
+      "mean_corner_px": 6.758574507050248,
+      "max_corner_px": 8.747881151871857
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_extra_captures.csv:S00_F0030_r+16_f-8",
+      "pose": "S00_F0030_r+16_f-8",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 4.474125111589842,
+      "max_corner_px": 8.724291410888457
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_extra_captures.csv:S00_F0030_r+8_f-8",
+      "pose": "S00_F0030_r+8_f-8",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 9.894175824457964,
+      "max_corner_px": 10.297138883861315
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_extra_captures.csv:S00_F0030_r+0_f-8",
+      "pose": "S00_F0030_r+0_f-8",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 9.018739994147088,
+      "max_corner_px": 9.380676315298162
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f30_extra_captures.csv:S00_F0030_r+0_f-8",
+      "pose": "S00_F0030_r+0_f-8",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 7.8448730908880036,
+      "max_corner_px": 10.517957715723602
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv:S00_F0060_r+0_f-6",
+      "pose": "S00_F0060_r+0_f-6",
+      "split": "holdout_f60",
+      "marker_id": 5,
+      "mean_corner_px": 6.476499895743049,
+      "max_corner_px": 11.229329098397491
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv:S00_F0060_r+8_f-6",
+      "pose": "S00_F0060_r+8_f-6",
+      "split": "holdout_f60",
+      "marker_id": 5,
+      "mean_corner_px": 5.177504169548818,
+      "max_corner_px": 8.413498478131896
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv:S00_F0060_r+16_f-6",
+      "pose": "S00_F0060_r+16_f-6",
+      "split": "holdout_f60",
+      "marker_id": 5,
+      "mean_corner_px": 6.026279608453402,
+      "max_corner_px": 8.338136871292077
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv:S00_F0060_r+16_f-2",
+      "pose": "S00_F0060_r+16_f-2",
+      "split": "holdout_f60",
+      "marker_id": 5,
+      "mean_corner_px": 6.716142564743819,
+      "max_corner_px": 10.068176604342556
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv:S00_F0060_r+8_f-2",
+      "pose": "S00_F0060_r+8_f-2",
+      "split": "holdout_f60",
+      "marker_id": 5,
+      "mean_corner_px": 8.600423064685497,
+      "max_corner_px": 14.316414533625776
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv:S00_F0060_r+0_f-2",
+      "pose": "S00_F0060_r+0_f-2",
+      "split": "holdout_f60",
+      "marker_id": 5,
+      "mean_corner_px": 9.709773829240874,
+      "max_corner_px": 15.933125424750342
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv:S08_F0060_r+0_f-6",
+      "pose": "S08_F0060_r+0_f-6",
+      "split": "holdout_f60",
+      "marker_id": 6,
+      "mean_corner_px": 2.605997257604932,
+      "max_corner_px": 4.313208596120661
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv:S08_F0060_r+8_f-6",
+      "pose": "S08_F0060_r+8_f-6",
+      "split": "holdout_f60",
+      "marker_id": 6,
+      "mean_corner_px": 2.060228797879646,
+      "max_corner_px": 3.313482262050284
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv:S08_F0060_r+16_f-6",
+      "pose": "S08_F0060_r+16_f-6",
+      "split": "holdout_f60",
+      "marker_id": 6,
+      "mean_corner_px": 14.537951892419681,
+      "max_corner_px": 17.81961309407601
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv:S08_F0060_r+16_f-2",
+      "pose": "S08_F0060_r+16_f-2",
+      "split": "holdout_f60",
+      "marker_id": 6,
+      "mean_corner_px": 4.020127838832423,
+      "max_corner_px": 5.2448869874311175
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv:S08_F0060_r+8_f-2",
+      "pose": "S08_F0060_r+8_f-2",
+      "split": "holdout_f60",
+      "marker_id": 6,
+      "mean_corner_px": 3.206831251393876,
+      "max_corner_px": 3.9355435641970686
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv:S08_F0060_r+0_f-2",
+      "pose": "S08_F0060_r+0_f-2",
+      "split": "holdout_f60",
+      "marker_id": 6,
+      "mean_corner_px": 3.4181070116522063,
+      "max_corner_px": 5.229172837797513
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f70_captures.csv:S00_F0070_r+0_f-6",
+      "pose": "S00_F0070_r+0_f-6",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 15.622933131171706,
+      "max_corner_px": 26.99085698761237
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f70_captures.csv:S00_F0070_r+8_f-6",
+      "pose": "S00_F0070_r+8_f-6",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 13.150654568958862,
+      "max_corner_px": 21.304869713260498
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f70_captures.csv:S00_F0070_r+0_f-2",
+      "pose": "S00_F0070_r+0_f-2",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 18.396494674881527,
+      "max_corner_px": 31.907889344899896
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f70_captures.csv:S08_F0070_r+8_f-6",
+      "pose": "S08_F0070_r+8_f-6",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 6.57570426455651,
+      "max_corner_px": 10.457444034880943
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f70_captures.csv:S08_F0070_r+16_f-6",
+      "pose": "S08_F0070_r+16_f-6",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 9.048897602909369,
+      "max_corner_px": 11.56252842836541
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f70_captures.csv:S08_F0070_r+16_f-2",
+      "pose": "S08_F0070_r+16_f-2",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 10.037923655350449,
+      "max_corner_px": 15.877212818005377
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_validation_batch\\f70_captures.csv:S08_F0070_r+8_f-2",
+      "pose": "S08_F0070_r+8_f-2",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 8.732051221900122,
+      "max_corner_px": 12.46404375787291
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r-8_f-6",
+      "pose": "S00_F0050_r-8_f-6",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 1.6471418982979658,
+      "max_corner_px": 2.894967129296045
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r-8_f-6",
+      "pose": "S00_F0050_r-8_f-6",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 2.104863345613256,
+      "max_corner_px": 4.060713387218602
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r+0_f-6",
+      "pose": "S00_F0050_r+0_f-6",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 1.7470172854856676,
+      "max_corner_px": 2.9069905734906296
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r+0_f-6",
+      "pose": "S00_F0050_r+0_f-6",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 2.3404312515421988,
+      "max_corner_px": 3.3899888863726075
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r+8_f-6",
+      "pose": "S00_F0050_r+8_f-6",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 2.4790561068037134,
+      "max_corner_px": 3.483954531461875
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r+8_f-4",
+      "pose": "S00_F0050_r+8_f-4",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 2.5606810434707583,
+      "max_corner_px": 3.519925009032399
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r+0_f-4",
+      "pose": "S00_F0050_r+0_f-4",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 1.988422856856318,
+      "max_corner_px": 3.5158452405429332
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r+0_f-4",
+      "pose": "S00_F0050_r+0_f-4",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 2.329644737923844,
+      "max_corner_px": 3.5581762031613597
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r-8_f-4",
+      "pose": "S00_F0050_r-8_f-4",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 2.3898891610251054,
+      "max_corner_px": 4.438310441867386
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r-8_f-4",
+      "pose": "S00_F0050_r-8_f-4",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 3.066412556704635,
+      "max_corner_px": 5.200557233758597
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r+0_f-2",
+      "pose": "S00_F0050_r+0_f-2",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 3.6119244696476356,
+      "max_corner_px": 6.009938334579996
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r+0_f-2",
+      "pose": "S00_F0050_r+0_f-2",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 3.34352499115858,
+      "max_corner_px": 5.6817305319352664
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S00_F0050_r+8_f-2",
+      "pose": "S00_F0050_r+8_f-2",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 3.4316201670931465,
+      "max_corner_px": 5.797665783312072
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r-8_f-6",
+      "pose": "S08_F0050_r-8_f-6",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 1.1021826846365186,
+      "max_corner_px": 1.8114847535375207
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r-8_f-6",
+      "pose": "S08_F0050_r-8_f-6",
+      "split": "train",
+      "marker_id": 4,
+      "mean_corner_px": 1.7257890101062443,
+      "max_corner_px": 2.0510132958025955
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r+0_f-6",
+      "pose": "S08_F0050_r+0_f-6",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 1.2184609189922038,
+      "max_corner_px": 2.5726695898647276
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r+0_f-6",
+      "pose": "S08_F0050_r+0_f-6",
+      "split": "train",
+      "marker_id": 4,
+      "mean_corner_px": 1.819750675334174,
+      "max_corner_px": 2.1338243119913143
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r+8_f-6",
+      "pose": "S08_F0050_r+8_f-6",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 1.7324859588908035,
+      "max_corner_px": 3.0170388269025468
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r+8_f-4",
+      "pose": "S08_F0050_r+8_f-4",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 1.930165013239111,
+      "max_corner_px": 3.62352855919775
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r+0_f-4",
+      "pose": "S08_F0050_r+0_f-4",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 1.8416642023915868,
+      "max_corner_px": 3.3828186508222706
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r+0_f-4",
+      "pose": "S08_F0050_r+0_f-4",
+      "split": "train",
+      "marker_id": 4,
+      "mean_corner_px": 1.7631040711453465,
+      "max_corner_px": 2.2199697714781834
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r-8_f-4",
+      "pose": "S08_F0050_r-8_f-4",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 1.0547512832159098,
+      "max_corner_px": 1.6741259183799875
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r-8_f-4",
+      "pose": "S08_F0050_r-8_f-4",
+      "split": "train",
+      "marker_id": 4,
+      "mean_corner_px": 1.9850300775650211,
+      "max_corner_px": 2.3279628297970953
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r-8_f-2",
+      "pose": "S08_F0050_r-8_f-2",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 0.9094645138371195,
+      "max_corner_px": 1.5457197239394609
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r-8_f-2",
+      "pose": "S08_F0050_r-8_f-2",
+      "split": "train",
+      "marker_id": 4,
+      "mean_corner_px": 2.3578636257018553,
+      "max_corner_px": 3.3321958616220972
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r+0_f-2",
+      "pose": "S08_F0050_r+0_f-2",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 1.3249747401070637,
+      "max_corner_px": 2.423799849668723
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r+0_f-2",
+      "pose": "S08_F0050_r+0_f-2",
+      "split": "train",
+      "marker_id": 4,
+      "mean_corner_px": 2.282315704989598,
+      "max_corner_px": 3.3346420100975416
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv:S08_F0050_r+8_f-2",
+      "pose": "S08_F0050_r+8_f-2",
+      "split": "train",
+      "marker_id": 6,
+      "mean_corner_px": 2.7061191150199084,
+      "max_corner_px": 4.12760663697681
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_flex_diag_captures.csv:S00_F0050_r+0_f-6",
+      "pose": "S00_F0050_r+0_f-6",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 3.1659346781505637,
+      "max_corner_px": 5.233181029446474
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_flex_diag_captures.csv:S00_F0050_r+0_f-6",
+      "pose": "S00_F0050_r+0_f-6",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 2.3547747275187656,
+      "max_corner_px": 4.508657002110325
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_flex_diag_captures.csv:S00_F0050_r+0_f-4",
+      "pose": "S00_F0050_r+0_f-4",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 3.924595877098076,
+      "max_corner_px": 6.245671414365904
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_flex_diag_captures.csv:S00_F0050_r+0_f-4",
+      "pose": "S00_F0050_r+0_f-4",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 3.0300153392254696,
+      "max_corner_px": 5.6972968069571115
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_flex_diag_captures.csv:S00_F0050_r+0_f-2",
+      "pose": "S00_F0050_r+0_f-2",
+      "split": "train",
+      "marker_id": 5,
+      "mean_corner_px": 3.773053600747867,
+      "max_corner_px": 6.244023159423478
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_flex_diag_captures.csv:S00_F0050_r+0_f-2",
+      "pose": "S00_F0050_r+0_f-2",
+      "split": "train",
+      "marker_id": 1,
+      "mean_corner_px": 3.166236950183993,
+      "max_corner_px": 5.490467503171665
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_f40_captures.csv:S00_F0040_r+0_f-4",
+      "pose": "S00_F0040_r+0_f-4",
+      "split": "development_f40",
+      "marker_id": 5,
+      "mean_corner_px": 2.1458471321654424,
+      "max_corner_px": 3.2225157756360283
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_f40_captures.csv:S00_F0040_r+0_f-4",
+      "pose": "S00_F0040_r+0_f-4",
+      "split": "development_f40",
+      "marker_id": 1,
+      "mean_corner_px": 5.342945845512961,
+      "max_corner_px": 7.277681654461609
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_f40_captures.csv:S00_F0040_r+8_f-4",
+      "pose": "S00_F0040_r+8_f-4",
+      "split": "development_f40",
+      "marker_id": 5,
+      "mean_corner_px": 2.3908398508045208,
+      "max_corner_px": 3.5216578096213564
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_f40_captures.csv:S08_F0040_r+0_f-4",
+      "pose": "S08_F0040_r+0_f-4",
+      "split": "development_f40",
+      "marker_id": 6,
+      "mean_corner_px": 3.8501120792948873,
+      "max_corner_px": 5.079321293956144
+    },
+    {
+      "uid": "calibration\\2026-10-18_wrist_rigid_f40_captures.csv:S08_F0040_r+8_f-4",
+      "pose": "S08_F0040_r+8_f-4",
+      "split": "development_f40",
+      "marker_id": 6,
+      "mean_corner_px": 3.249857015016908,
+      "max_corner_px": 4.668743780004082
+    }
+  ],
+  "limitations": [
+    "Same setup throughout rigid-marker captures; original ID0/2 paper captures excluded",
+    "60x59mm assumed for all included printed markers; 0.5mm size uncertainty and paper curvature remain",
+    "Marker world poses are free fitted variables, not independent ground truth",
+    "Image reprojection validates image geometry, not absolute fingertip grasp error in mm",
+    "Fitted sag factors restricted to 0..2 times original per-axis coefficients",
+    "No formal calibration, robot settings or PID changed"
+  ]
+}

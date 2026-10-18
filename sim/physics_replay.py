@@ -14,13 +14,16 @@ scripts/score_closed_loop_replay.py: 27/35 agree with convex hulls, 32/35 with S
 Known gap (2026-10-15): in the second before the first close, lift lags its command by > 3 deg in 19/35 episodes
 (9.3 cm cup) -- the fingers press on the cup (no lag with the cup moved away, and not fixed by opening the gripper
 wider on ep08). The real paper cup deforms; this one is rigid.
-The real front-left image lags the recorded joint state by 1-3 frames and ~19% of its frames repeat the previous one
-while the arm moves; this replay renders frame k from state k (no latency).
+This replay renders frame k from state k (no latency). The real recording pairs state k with the camera's latest frame
+read right after it; the physical lag is unmeasured (weak estimate: wrist ~1 frame, front-left none found) and ~1% of
+frames repeat while the arm moves (docs/meeting/2026-10-16_closed_loop.md section 3-5). An earlier "1-3 frames, ~19%
+repeat" here had no source and was not reproduced.
 
 Args key=value: ep=<prep dir> cand=<fit|current|provisional> cands=<json> intr=<front-left intrinsics>
 ext=<front-left extrinsics> [render=1 stride=1] [wrist_intr=.. wrist_ext=..] [cup_coll=sdf|asset|cd_hi] [selfcol=1]
 [vel_ff=1] [max_frames=0] [tag=..] [grip_open=<rad>: hold the gripper at this opening, ignoring the action]
-[cup_dx_mm=500: move the cup out of the arm's way]
+[gripper_source=state|action (default action)] [cup_asset=<USD path>] [wrist_near_m=0.005]
+[cup_dx_mm=500: move the cup out of the arm's way] [finger_coll=sdf] [contacts=1: log what touches the cup]
 
     cd <isaac-sim-standalone> && ./python.bat <repo>/sim/physics_replay.py ep=<prep dir>/cl_ep00 cand=fit cands=<prep dir>/fit_candidate.json ...
 """
@@ -58,6 +61,10 @@ E = json.load(open(EP / "episode.json")); G = json.load(open(EP / "gripper.json"
 C = json.load(open(A["cands"]))[CAND]
 QB = np.array(E["q_body_rad"]) if CAND == "fit" else None   # per-frame link angles from the fit (offsets + sag)
 ST = np.array(E["state"]); N = len(ST)
+GRIP_SOURCE = A.get("gripper_source", "action")
+if GRIP_SOURCE not in ("state", "action"):
+    raise ValueError("gripper_source must be state or action")
+GRIP_TARGET = G["gripper_rad_from_state"] if GRIP_SOURCE == "state" else G["gripper_target_rad_from_action"]
 OUT = EP / (f"sim_{CAND}" + (f"_{A['tag']}" if 'tag' in A else "")); OUT.mkdir(exist_ok=True)
 BODY = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll")
 
@@ -71,7 +78,11 @@ def body_rad(st, k=None):
 ctx = omni.usd.get_context(); ctx.new_stage(); stage = ctx.get_stage()
 UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.z); UsdGeom.SetStageMetersPerUnit(stage, 1.0)
 scene = UsdPhysics.Scene.Define(stage, "/World/PhysicsScene")
-scene.CreateGravityDirectionAttr(Gf.Vec3f(0, 0, -1)); scene.CreateGravityMagnitudeAttr(9.81)
+gravity_direction = np.asarray(C.get("gravity_direction", [0., 0., -1.]), dtype=float)
+if gravity_direction.shape != (3,) or not np.isfinite(gravity_direction).all() or np.linalg.norm(gravity_direction) <= 0:
+    raise ValueError("Invalid candidate gravity_direction")
+gravity_direction /= np.linalg.norm(gravity_direction)
+scene.CreateGravityDirectionAttr(Gf.Vec3f(*gravity_direction.tolist())); scene.CreateGravityMagnitudeAttr(9.81)
 PhysxSchema.PhysxSceneAPI.Apply(scene.GetPrim()).CreateTimeStepsPerSecondAttr(int(A.get("phys_hz", "120")))
 UsdGeom.Xform.Define(stage, "/World")
 tbl = UsdGeom.Cube.Define(stage, "/World/Table"); tbl.CreateSizeAttr(1.0)
@@ -106,6 +117,26 @@ for p in Usd.PrimRange(rp):
         if A.get("selfcol", "1") == "0":   # 10-15: ON by default -- at HOME the real forearm rests on the lift servo
             PhysxSchema.PhysxArticulationAPI.Apply(p).CreateEnabledSelfCollisionsAttr(False)
             print("self collisions disabled", flush=True)
+# finger_coll=sdf (2026-10-15): the asset's colliders are all convexDecomposition. The fingers are hooked (the cup wall
+# sits in the inner curve during a grasp); a convex hull fills that curve. Uninstance the finger links and give their
+# colliders an SDF, like the cup. finger_links=link6,link7 by default.
+if A.get("finger_coll"):
+    FL = A.get("finger_links", "link6,link7").split(",")
+    under = lambda p: any(f"/{l}/" in str(p.GetPath()) + "/" for l in FL)
+    for _ in range(4):
+        inst = [p for p in Usd.PrimRange(rp) if p.IsInstance() and under(p)]
+        for p in inst:
+            p.SetInstanceable(False)
+        if not inst:
+            break
+    for p in Usd.PrimRange(rp):
+        if under(p) and p.HasAPI(UsdPhysics.MeshCollisionAPI):
+            mc = UsdPhysics.MeshCollisionAPI(p)
+            if A["finger_coll"] == "sdf":
+                mc.GetApproximationAttr().Set("sdf"); PhysxSchema.PhysxSDFMeshCollisionAPI.Apply(p).CreateSdfResolutionAttr(int(A.get("finger_sdf_res", "256")))
+            else:
+                mc.GetApproximationAttr().Set(A["finger_coll"])
+            print("finger collider", p.GetPath(), p.GetTypeName(), "->", A["finger_coll"], flush=True)
 # [已查證 2026-10-14] end_effector_link (and the fixed 'world' link) carry physics:mass = 0 in the asset; PhysX
 # turns a zero-mass, collider-less rigid body into 1 kg, which hung 1 kg on the fingertip (elbow gravity torque at
 # home 2.31 N.m against a 1.5 N.m motor). Give the marker link a negligible mass.
@@ -162,7 +193,7 @@ for p in Usd.PrimRange(rp):
         print("mimic", MIMIC_NF, MIMIC_DR, flush=True)
 DX, DY = float(A.get("cup_dx_mm", "0")) / 1000, float(A.get("cup_dy_mm", "0")) / 1000
 cm = UsdGeom.Xform.Define(stage, "/World/CupMount"); cm.AddTranslateOp().Set(Gf.Vec3d(E["cup_xy_m"][0] + DX, E["cup_xy_m"][1] + DY, 0.0005))
-cp = stage.DefinePrim("/World/CupMount/Cup", "Xform"); cp.GetReferences().AddReference(str(REPO / "assets/paper_cup/paper_cup.usd"))
+cp = stage.DefinePrim("/World/CupMount/Cup", "Xform"); cp.GetReferences().AddReference(str(REPO / A.get("cup_asset", "assets/paper_cup/paper_cup.usd")))
 GRIP_K, GRIP_F = A.get("grip_k"), A.get("grip_f")
 for p in Usd.PrimRange(rp):
     if p.GetName() == "gripper_joint_1" and (GRIP_K or GRIP_F):
@@ -210,7 +241,7 @@ if WRIST:
     camw = RtxCamera("/World/CamWrist", positions=[[0, 0, 1.0]], orientations=[[1, 0, 0, 0]])
     ccw = next(UsdGeom.Camera(ch) for ch in Usd.PrimRange(stage.GetPrimAtPath("/World/CamWrist")) if ch.IsA(UsdGeom.Camera))
     ccw.GetFocalLengthAttr().Set(Iw.K[0, 0] * AP / RWw); ccw.GetHorizontalApertureAttr().Set(AP)
-    ccw.GetVerticalApertureAttr().Set(AP * RHw / RWw * Iw.K[0, 0] / Iw.K[1, 1]); ccw.GetClippingRangeAttr().Set(Gf.Vec2f(0.005, 20.0))
+    ccw.GetVerticalApertureAttr().Set(AP * RHw / RWw * Iw.K[0, 0] / Iw.K[1, 1]); ccw.GetClippingRangeAttr().Set(Gf.Vec2f(float(A.get("wrist_near_m", "0.005")), 20.0))
     sensorw = CameraSensor(camw, resolution=(RHw, RWw), annotators=["rgb"])
     Xw = json.load(open(A["wrist_ext"])); qw = Xw["quat_wxyz"]
     X5c = np.eye(4); X5c[:3, :3] = Rr.from_quat([qw[1], qw[2], qw[3], qw[0]]).as_matrix(); X5c[:3, 3] = Xw["pos_m"]
@@ -218,6 +249,25 @@ app.update()
 
 ap = [str(p.GetPath()) for p in Usd.PrimRange(rp) if p.HasAPI(UsdPhysics.ArticulationRootAPI)]
 cup_body = [str(p.GetPath()) for p in Usd.PrimRange(cp) if p.HasAPI(UsdPhysics.RigidBodyAPI)]
+CONTACTS = A.get("contacts", "0") == "1"
+if CONTACTS:   # which collider touches the cup, where and how hard -- summed over the substeps of each frame
+    from omni.physx import get_physx_simulation_interface
+    from pxr import PhysicsSchemaTools
+    PhysxSchema.PhysxContactReportAPI.Apply(stage.GetPrimAtPath(cup_body[0])).CreateThresholdAttr().Set(0.0)
+    CUR = {}
+
+    def _on_contact(headers, data):
+        for h in headers:
+            c0, c1 = str(PhysicsSchemaTools.intToSdfPath(h.collider0)), str(PhysicsSchemaTools.intToSdfPath(h.collider1))
+            other = c1 if c0.startswith(cup_body[0]) else c0
+            if other.startswith("/World/Table"):
+                continue
+            e = CUR.setdefault(other, {"n": 0, "pos": np.zeros(3), "imp": np.zeros(3), "zmin": 9.0, "zmax": -9.0})
+            for i in range(h.contact_data_offset, h.contact_data_offset + h.num_contact_data):
+                d = data[i]; pz = np.array([d.position[0], d.position[1], d.position[2]])
+                e["n"] += 1; e["pos"] += pz; e["imp"] += np.array([d.impulse[0], d.impulse[1], d.impulse[2]])
+                e["zmin"] = min(e["zmin"], pz[2]); e["zmax"] = max(e["zmax"], pz[2])
+    _contact_sub = get_physx_simulation_interface().subscribe_contact_report_events(_on_contact)
 app_utils.play(commit=True); app.update()
 robot = Articulation(ap[0]); names = list(robot.dof_names); cup = RigidPrim(cup_body[0])
 print("DOFS", names, "CUP", cup_body[0], "dt", SimulationManager.get_physics_dt(), flush=True)
@@ -275,7 +325,7 @@ def grab(k, qsim=None):
 last = N - 1 if not MAXF else min(N - 1, K0 + MAXF * STRIDE)
 for k in range(K0, last):
     qa, qb = body_rad(ST[k], k), body_rad(ST[k + 1], k + 1)
-    ga, gb = G["gripper_target_rad_from_action"][k], G["gripper_target_rad_from_action"][k + 1]
+    ga, gb = GRIP_TARGET[k], GRIP_TARGET[k + 1]
     if "grip_open" in A:
         ga = gb = float(A["grip_open"])
     for s in range(SUB):
@@ -288,6 +338,10 @@ for k in range(K0, last):
     pos, _ = cup.get_world_poses(); pos = np.asarray(pos.numpy() if hasattr(pos, "numpy") else pos)[0]
     jp = robot.get_dof_positions(); jp = np.asarray(jp.numpy() if hasattr(jp, "numpy") else jp)[0]
     log.append({"frame": k + 1, "cup_xyz": [float(v) for v in pos], "q_sim": [float(v) for v in jp], "q_cmd": [float(v) for v in full(qb, gb)[0]]})
+    if CONTACTS:
+        log[-1]["contacts"] = {c: {"n": e["n"], "pos_mean": (e["pos"] / max(e["n"], 1)).tolist(), "impulse": e["imp"].tolist(),
+                                   "z_range": [e["zmin"], e["zmax"]]} for c, e in CUR.items()}
+        CUR.clear()
     if A.get("render", "1") == "1" and (k + 1) % STRIDE == 0:
         grab(k + 1, [jp[names.index(n)] for n in ("joint1", "joint2", "joint3", "joint4", "joint5")])
     if A.get("linkdbg", "0") == "1" and k < 2:
@@ -301,7 +355,12 @@ for k in range(K0, last):
             pass
     if CHECK and k > 4:
         break
-json.dump({"cand": C["name"], "dof_names": names, "log": log}, open(OUT / "physics_log.json", "w"))
+json.dump({"cand": C["name"], "dof_names": names, "log": log,
+           "input_pose_source": "recorded observation.state plus selected geometric calibration",
+           "render_pose_source": "simulated articulation; physics tracking residuals are retained",
+           "gripper_target_source": GRIP_SOURCE, "gravity_direction": gravity_direction.tolist(),
+           "wrist_near_m": float(A.get("wrist_near_m", "0.005")), "wrist_ext": A.get("wrist_ext"), "cup_asset": A.get("cup_asset", "assets/paper_cup/paper_cup.usd")},
+          open(OUT / "physics_log.json", "w"))
 z = [r["cup_xyz"][2] for r in log]
 print(f"DONE frames {len(log)} cup z start {z[0]:.4f} max {max(z):.4f} end {z[-1]:.4f} xy end {log[-1]['cup_xyz'][:2]}", flush=True)
 app.close()

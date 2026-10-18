@@ -1,0 +1,463 @@
+{
+  "status": "diagnostic_only_not_activated",
+  "state_source": "measured state_* averages only",
+  "common_plane": "Paper coordinates define z=0, shared normal; ID1/4 z=0, ID5/6 common cardboard height 2.5..3mm",
+  "gravity": "Independent paper-frame gravity direction, constrained by historical inclinometer magnitudes; not assumed aligned with base",
+  "base": "Six pose parameters refitted; roll/pitch relative to level bounded +/-1deg, yaw +/-3deg around prior. Paper-relative pose derived jointly with gravity.",
+  "gravity_bounds_deg": {
+    "paper_level_rotation_x": [
+      -1,
+      1
+    ],
+    "paper_level_rotation_y": [
+      1.75,
+      3.75
+    ]
+  },
+  "parameterization": "camera6, level-from-base Euler3 and paper base position3, marker yaw4, marker XY8, paper-from-level XY2, card height1, sag scale3",
+  "image_loss": "soft_l1 equivalent applied only to image rows; historical priors quadratic",
+  "historical_priors": {
+    "desk_tilt_deg": 2.75,
+    "desk_sigma_deg": 0.4,
+    "base_tilt_deg": 0.45,
+    "base_sigma_deg": 0.35,
+    "provenance": "solve_link_markers.py historical 10/15 notes; 10/13 level-check axes/sign notes are not fully consistent",
+    "caution": "Magnitude priors; not a new 10/18 measurement. Gravity direction and sag can trade off."
+  },
+  "marker_xy_prior_sigma_mm": 2.0,
+  "marker_xy_bounds_mm": 5.0,
+  "marker_dimensions_m": [
+    0.06,
+    0.059
+  ],
+  "sources": [
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\baseline_end_captures.csv",
+      "sha256": "f1b987e221a94dbc894854a7ee33d4e2ff5e096f2a8084bb481ad16abc4322ea",
+      "split": "drift_end"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\baseline_start_captures.csv",
+      "sha256": "fa8a8086156591cf3a0b2857d299365d5ac383bde5a7678b194365d11524334d",
+      "split": "train"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\f30_captures.csv",
+      "sha256": "59b61ad386fa8369855d9a50f10637a0b81f2e0b0ea2a997b6a5b2744913d04e",
+      "split": "train"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\f30_extra_captures.csv",
+      "sha256": "d939a9763aaead39371774c391122865f41c89111e28a6ba430a945e9aac4703",
+      "split": "train"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv",
+      "sha256": "3f40a9c67f5f3e1097260ac3c5a0bf5541769aef6cc46d897ead69d77d6fa04c",
+      "split": "holdout_f60"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\f70_captures.csv",
+      "sha256": "7545ad34db09adff920632b77fe03b4ff2d34ab58cfcd81d1ce3c09292488fc8",
+      "split": "train"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_rigid_orientation_captures.csv",
+      "sha256": "39f6d0c78da395639901824740d1a33e4eac99e4b8a18ab5ca4a3263f7b2a3a6",
+      "split": "train"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_flex_diag_captures.csv",
+      "sha256": "94aeb6b7aaf4da414d6da074d3d8455297ba15da1b6c0f1544f2f1a8f461d3bb",
+      "split": "train"
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_rigid_f40_captures.csv",
+      "sha256": "6d9abb42b17515f4775c436eb117798f0b048e718d15af211f621b02c780410e",
+      "split": "development_f40"
+    }
+  ],
+  "excluded_motion": [
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\baseline_start_captures.csv",
+      "pose": "S08_F0050_r+0_f-4",
+      "drift_units": 0.24420024420024333
+    },
+    {
+      "csv": "calibration\\2026-10-18_wrist_validation_batch\\f60_captures.csv",
+      "pose": "S08_F0060_r+16_f-6",
+      "drift_units": 0.6349206349206291
+    }
+  ],
+  "models": {
+    "common_plane_original_sag": {
+      "train": {
+        "views": 43,
+        "marker_observations": 62,
+        "median_corner_px": 3.707468063559129,
+        "rms_corner_px": 5.721124919532338,
+        "max_corner_px": 18.75779985551294
+      },
+      "development_f40": {
+        "views": 4,
+        "marker_observations": 5,
+        "median_corner_px": 5.575199403233853,
+        "rms_corner_px": 6.234419302947311,
+        "max_corner_px": 9.569259083560933
+      },
+      "parameters": [
+        -1.7009504506110658,
+        1.6920934177386218,
+        -0.8914933002946179,
+        0.03785973993907792,
+        0.007554953875304089,
+        0.056037555038328385,
+        0.017453292518391048,
+        0.017453292519443296,
+        0.0285918990089615,
+        0.004601693168936215,
+        -0.001118288694129077,
+        0.1284866821127698,
+        -1.586517325313758,
+        -1.6038711742083136,
+        -1.5724095954395252,
+        -1.58017651725512,
+        0.0003286522423145606,
+        -0.00030175810543372046,
+        -0.0004099267875973139,
+        -0.0006520084703785605,
+        0.0007544127993945865,
+        -0.001601752250555545,
+        -0.00033918201688134825,
+        0.0026724269506394074,
+        0.017453292375517543,
+        0.06544984694924907,
+        0.002500000000626448,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "success": true,
+      "base_position_m": [
+        0.004601693168936215,
+        -0.001118288694129077,
+        0.1284866821127698
+      ],
+      "base_rpy_deg": [
+        2.108356062603752,
+        4.719692223367407,
+        1.6607877864648233
+      ],
+      "desk_tilt_to_gravity_deg": 3.8808596537583275,
+      "base_tilt_to_gravity_deg": 1.4141776608681798,
+      "gravity_paper_unit": [
+        -0.06539316801640195,
+        0.01745240629287976,
+        -0.9977069444939065
+      ],
+      "camera_mount_mm": [
+        37.859739939077926,
+        7.554953875304089,
+        56.037555038328385
+      ],
+      "marker_xy_corrections_mm": [
+        [
+          0.3286522423145606,
+          -0.30175810543372045
+        ],
+        [
+          -0.4099267875973139,
+          -0.6520084703785605
+        ],
+        [
+          0.7544127993945865,
+          -1.601752250555545
+        ],
+        [
+          -0.33918201688134825,
+          2.6724269506394074
+        ]
+      ],
+      "shared_cardboard_height_mm": 2.5000000006264482,
+      "sag_factors": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "holdout_f60": {
+        "views": 11,
+        "marker_observations": 11,
+        "median_corner_px": 7.8343562709949275,
+        "rms_corner_px": 8.1955076551398,
+        "max_corner_px": 14.096816337025283
+      },
+      "drift_end": {
+        "views": 2,
+        "marker_observations": 3,
+        "median_corner_px": 5.688022711762043,
+        "rms_corner_px": 5.45240345877357,
+        "max_corner_px": 7.159440543991282
+      }
+    },
+    "common_plane_fit_sag": {
+      "train": {
+        "views": 43,
+        "marker_observations": 62,
+        "median_corner_px": 2.1161236877036425,
+        "rms_corner_px": 3.1264098938423155,
+        "max_corner_px": 8.271448827746578
+      },
+      "development_f40": {
+        "views": 4,
+        "marker_observations": 5,
+        "median_corner_px": 3.862185370195407,
+        "rms_corner_px": 4.216448010512653,
+        "max_corner_px": 6.506234973634439
+      },
+      "parameters": [
+        -1.6820771428737908,
+        1.658293712000127,
+        -0.8887593722427108,
+        0.03796721148563401,
+        0.0035919515305511663,
+        0.04652007761423896,
+        0.007897255018036656,
+        0.017453103187118926,
+        0.03151580350379613,
+        0.010382336258283347,
+        0.00034596379799482584,
+        0.1369490603072015,
+        -1.5919989223366924,
+        -1.6034682875054518,
+        -1.5750000886559008,
+        -1.585667680642772,
+        0.0002492964471462789,
+        0.0007215474981189429,
+        -0.000898096672710506,
+        -0.0015832199138703597,
+        0.0007672218492285727,
+        -0.00024527281791866665,
+        -1.578227726176067e-05,
+        0.0011816248944139338,
+        -0.0044833127671422765,
+        0.06331886538238198,
+        0.0025000000000000005,
+        0.5527321351635504,
+        0.5074947070637043,
+        0.9185528521421427
+      ],
+      "success": true,
+      "base_position_m": [
+        0.010382336258283347,
+        0.00034596379799482584,
+        0.1369490603072015
+      ],
+      "base_rpy_deg": [
+        0.3100225585219018,
+        4.634180126112218,
+        1.8068528378312438
+      ],
+      "desk_tilt_to_gravity_deg": 3.636974309198854,
+      "base_tilt_to_gravity_deg": 1.0975860360893526,
+      "gravity_paper_unit": [
+        -0.06327592743542891,
+        -0.004483297747989834,
+        -0.9979860004271047
+      ],
+      "camera_mount_mm": [
+        37.96721148563401,
+        3.5919515305511664,
+        46.52007761423896
+      ],
+      "marker_xy_corrections_mm": [
+        [
+          0.2492964471462789,
+          0.7215474981189429
+        ],
+        [
+          -0.8980966727105061,
+          -1.5832199138703598
+        ],
+        [
+          0.7672218492285726,
+          -0.24527281791866665
+        ],
+        [
+          -0.01578227726176067,
+          1.1816248944139338
+        ]
+      ],
+      "shared_cardboard_height_mm": 2.5000000000000004,
+      "sag_factors": [
+        0.5527321351635504,
+        0.5074947070637043,
+        0.9185528521421427
+      ],
+      "holdout_f60": {
+        "views": 11,
+        "marker_observations": 11,
+        "median_corner_px": 3.71140049427473,
+        "rms_corner_px": 4.191116106330668,
+        "max_corner_px": 7.208333006316525
+      },
+      "drift_end": {
+        "views": 2,
+        "marker_observations": 3,
+        "median_corner_px": 6.0873894587174275,
+        "rms_corner_px": 6.3207741863027795,
+        "max_corner_px": 8.515903973374076
+      }
+    },
+    "common_plane_weaker_priors": {
+      "train": {
+        "views": 43,
+        "marker_observations": 62,
+        "median_corner_px": 2.153549192653713,
+        "rms_corner_px": 3.1216195652905196,
+        "max_corner_px": 8.283395698963943
+      },
+      "development_f40": {
+        "views": 4,
+        "marker_observations": 5,
+        "median_corner_px": 3.899258870668664,
+        "rms_corner_px": 4.26111281673156,
+        "max_corner_px": 6.572605956235883
+      },
+      "parameters": [
+        -1.6822460814845586,
+        1.6583502398401164,
+        -0.888814012211157,
+        0.03698882481648216,
+        0.0036198586076247566,
+        0.04652133703547828,
+        0.017453292135555316,
+        0.017453292518765522,
+        0.030422915141963366,
+        0.01055139356517315,
+        0.0006973507449983173,
+        0.1363100528376717,
+        -1.5930355547263844,
+        -1.604734693851795,
+        -1.5761113338021182,
+        -1.5868084049681768,
+        0.00013545964145984498,
+        0.0007228483465802845,
+        -0.0007322605275288686,
+        -0.0015989650914404556,
+        0.0007645587488935876,
+        -0.00025231657447739614,
+        0.00023750113477101267,
+        0.0013708291745951585,
+        -0.014520935839112004,
+        0.06544984694851974,
+        0.0025000000005000003,
+        0.5553735091004542,
+        0.5254342296089253,
+        0.8726755565693503
+      ],
+      "success": true,
+      "base_position_m": [
+        0.01055139356517315,
+        0.0006973507449983173,
+        0.1363100528376717
+      ],
+      "base_rpy_deg": [
+        0.2816829791814608,
+        4.7734907929374515,
+        1.7341456905909247
+      ],
+      "desk_tilt_to_gravity_deg": 3.841056612852073,
+      "base_tilt_to_gravity_deg": 1.4141776453326653,
+      "gravity_paper_unit": [
+        -0.06539623397733935,
+        -0.014520425536266068,
+        -0.997753722029553
+      ],
+      "camera_mount_mm": [
+        36.988824816482165,
+        3.6198586076247565,
+        46.52133703547828
+      ],
+      "marker_xy_corrections_mm": [
+        [
+          0.135459641459845,
+          0.7228483465802845
+        ],
+        [
+          -0.7322605275288686,
+          -1.5989650914404556
+        ],
+        [
+          0.7645587488935875,
+          -0.25231657447739614
+        ],
+        [
+          0.23750113477101267,
+          1.3708291745951584
+        ]
+      ],
+      "shared_cardboard_height_mm": 2.5000000005000005,
+      "sag_factors": [
+        0.5553735091004542,
+        0.5254342296089253,
+        0.8726755565693503
+      ],
+      "holdout_f60": {
+        "views": 11,
+        "marker_observations": 11,
+        "median_corner_px": 3.7519672602742777,
+        "rms_corner_px": 4.197031904856899,
+        "max_corner_px": 7.192712182675991
+      },
+      "drift_end": {
+        "views": 2,
+        "marker_observations": 3,
+        "median_corner_px": 6.1230445390508805,
+        "rms_corner_px": 6.352433611039501,
+        "max_corner_px": 8.564927571106915
+      }
+    }
+  },
+  "selected_by_f40": "common_plane_fit_sag",
+  "normalized_data_jacobian_singular_values": [
+    1226.7723011214675,
+    377.30614338208284,
+    293.8565633038962,
+    146.52150009736633,
+    103.2877957865633,
+    84.92185079855723,
+    79.16565992051227,
+    74.04215903734537,
+    66.6692662211879,
+    58.20556868608179,
+    47.43429417867003,
+    44.464822669633215,
+    38.6507770445939,
+    37.30270679766798,
+    32.618823433415784,
+    28.912496978985317,
+    23.083984427088797,
+    22.139717341548003,
+    15.664789238378097,
+    15.06145079993453,
+    8.271290261853135,
+    6.655715433138688,
+    5.006269050517975,
+    2.380065551358842,
+    0.7522628741558404,
+    0.1466659347466829,
+    0.14160097399529356,
+    1.0804149675786514e-06,
+    3.249440851125638e-07,
+    2.521350383525561e-07
+  ],
+  "normalized_data_jacobian_rank_1e6": 27,
+  "limitations": [
+    "Desk plane is one common geometric plane; real local paper warp is not modeled",
+    "Only relative base-to-paper pose is estimated; absolute world yaw is a coordinate choice",
+    "Gravity direction is inferred with historical priors and sag model, not independently measured by images",
+    "Relative base/table inclinations are constrained, not independent evidence that both historical readings still hold",
+    "f40 development chooses candidates; f60 and end baseline remain outside fitting",
+    "No formal calibration or PID changed; candidate is not a validated mm-level fingertip calibration"
+  ]
+}
