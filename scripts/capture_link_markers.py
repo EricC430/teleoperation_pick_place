@@ -184,9 +184,16 @@ def plan_walk(by_ep, home: list[float], n_episodes: int, stop_every: int, path_e
 def _detect(img: Path) -> list[int]:
     import cv2  # noqa: PLC0415
 
+    if not img.is_file():
+        print(f"    Missing photo; marker detection skipped: {img}")
+        return []
+    gray = cv2.imread(str(img), cv2.IMREAD_GRAYSCALE)
+    if gray is None:
+        print(f"    Unreadable photo; marker detection skipped: {img}")
+        return []
     det = cv2.aruco.ArucoDetector(cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50),
                                   cv2.aruco.DetectorParameters())
-    _, ids, _ = det.detectMarkers(cv2.imread(str(img), cv2.IMREAD_GRAYSCALE))
+    _, ids, _ = det.detectMarkers(gray)
     return sorted(int(i) for i in ids.ravel()) if ids is not None else []
 
 
@@ -271,25 +278,74 @@ def _serpentine(rolls: list[float], flexes: list[float]) -> list[tuple[float, fl
     return out
 
 
+def _log_scan_servo(arm, csv_path: Path, pose_id: str, phase: str, target, measured):
+    from read_servo_status import read_status
+
+    path = csv_path.with_name(csv_path.stem + "_servo.jsonl")
+    snapshot = {"pose_id": pose_id, "phase": phase, "time_unix": time.time(),
+                "target_lerobot": dict(target), "measured_lerobot": dict(measured),
+                "motors": read_status(arm.bus, ["wrist_flex"]),
+                "note": "Registers read sequentially; no servo settings changed."}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(snapshot, ensure_ascii=False) + "\n")
+    motor = snapshot["motors"]["wrist_flex"]
+    print(f"    servo {phase}: wrist_flex target {target['wrist_flex']:.3f}, "
+          f"goal {motor.get('Goal_Position_lerobot')}, actual {motor.get('Present_Position_lerobot')}, "
+          f"current {motor.get('Present_Current')}, PWM {motor.get('Present_PWM')}")
+    return snapshot
+
+
+def _complete_scan_poses(log: Path, cameras):
+    if not log.exists():
+        return set()
+    root = Path(__file__).resolve().parents[1]
+    with log.open(encoding="utf-8") as fh:
+        last = {(r["pose_id"], r["camera"]): r for r in csv.DictReader(fh)}
+    complete = set()
+    for pose_id, _ in last:
+        good = True
+        for cam in cameras:
+            row = last.get((pose_id, cam))
+            if row is None:
+                good = False
+                break
+            image_path = Path(row["image"])
+            if not image_path.is_absolute():
+                image_path = root / image_path
+            if not image_path.is_file() or image_path.stat().st_size == 0:
+                good = False
+                break
+        if good:
+            complete.add(pose_id)
+    return complete
+
+
 def cmd_scan(args) -> int:
     csv_path = Path(args.csv)
     log = csv_path.with_name(csv_path.stem + "_captures.csv")
-    done = {r["pose_id"] for r in csv.DictReader(log.open(encoding="utf-8"))} if log.exists() else set()
+    done = _complete_scan_poses(log, [c for c in args.cameras.split(",") if c])
     plan = json.loads(Path(args.plan).read_text(encoding="utf-8"))
     home = plan["start"]
     walks = plan_walk(_load_episodes(args.dataset_root), home, args.n_episodes, args.stop_every, args.path_every,
                       args.min_from_home, args.min_spacing,
                       [int(e) for e in args.episodes.split(",")] if args.episodes else None,
                       {int(e) for e in args.exclude_episodes.split(",") if e})
+    target_ids = {int(i) for i in args.target_ids.split(",") if i}
     p = S7.nominal_params()
     grid = _serpentine([float(v) for v in args.rolls.split(",")], [float(v) for v in args.flexes.split(",")])
     bases = []
     for w in walks:
-        ok = [n for n in w["stops"]
-              if S7._fingertip_above_table_m(dict(zip(JOINTS, w["path"][n])), p) * 100 >= args.min_tip_cm]
-        if not ok:
-            continue
-        n = ok[-1]
+        if args.base_frame is not None:
+            if args.base_frame not in w["frames"]:
+                raise ValueError(f"ep{w['episode']:02d}: base frame {args.base_frame} is not on the approach path; use --path-every 1")
+            n = w["frames"].index(args.base_frame)
+        else:
+            ok = [n for n in w["stops"]
+                  if S7._fingertip_above_table_m(dict(zip(JOINTS, w["path"][n])), p) * 100 >= args.min_tip_cm]
+            if not ok:
+                continue
+            n = ok[-1]
         path = [list(pt) for pt in w["path"][: n + 1]]
         tag = ""
         if args.pan_to is not None and path[-1][0] < args.min_pan:
@@ -300,6 +356,14 @@ def cmd_scan(args) -> int:
             for k, pt in enumerate(path):
                 pt[0] += d * k / max(1, len(path) - 1)
             tag = f"_p{args.pan_to:+.0f}"
+        if args.base_frame is not None:
+            for dr, df in [(0.0, 0.0), *grid]:
+                target = dict(zip(JOINTS, path[-1]))
+                target["wrist_roll"] += dr
+                target["wrist_flex"] += df
+                height = S7._fingertip_above_table_m(target, p) * 100
+                if height < args.min_tip_cm:
+                    raise ValueError(f"ep{w['episode']:02d} frame {args.base_frame}: nominal fingertip {height:.1f} cm at roll {dr:+g}, flex {df:+g}; minimum {args.min_tip_cm:g} cm")
         bases.append((w, n, path, tag))
     print("=" * 76)
     print(f"scan: {len(bases)} base poses x {len(grid)} (roll, flex) = {len(bases) * len(grid)} stills; "
@@ -350,11 +414,21 @@ def cmd_scan(args) -> int:
                 arm.move_to(tgt, max(args.step_seconds, jump / 20.0))  # <= 20 units/s
                 time.sleep(args.settle)
                 st = arm.read_avg(10)
+                if args.servo_diagnostics:
+                    _log_scan_servo(arm, csv_path, pid, "before_capture", tgt, st)
                 S7.capture_stills(csv_path, pid, "scan", st, cams)
-                seen = _detect(shot_dir / f"{pid}_scan_front-left.png") if "front-left" in cams else []
-                hits += 6 in seen
-                print(f"      {pid}: 手臂標記 {[i for i in seen if i in ARM_IDS]}")
-            print(f"    這個基準姿勢 ID6 偵測到 {hits}/{len(ids)} 張。回基準姿勢，沿原路徑退回 HOME……")
+                if args.servo_diagnostics:
+                    _log_scan_servo(arm, csv_path, pid, "after_capture", tgt, arm.read_avg(3))
+                if target_ids:
+                    detected = {c: _detect(shot_dir / f"{pid}_scan_{c}.png") for c in cams}
+                    hits += bool(target_ids.intersection(detected.get("wrist", [])))
+                    print(f"      {pid}: " + ", ".join(f"{c} IDs {seen}" for c, seen in detected.items()))
+                else:
+                    seen = _detect(shot_dir / f"{pid}_scan_front-left.png") if "front-left" in cams else []
+                    hits += 6 in seen
+                    print(f"      {pid}: arm markers {[i for i in seen if i in ARM_IDS]}")
+            label = f"wrist target IDs {sorted(target_ids)}" if target_ids else "front-left ID6"
+            print(f"    {label}: {hits}/{len(ids)} views. Returning via base and recorded path to HOME.")
             arm.move_to(base, max(args.step_seconds, max(abs(base[j] - arm.goal[j]) for j in JOINTS) / 20.0))
             arm.follow(list(reversed(path)), args.seconds_per_point)
             arm.move_to(start, args.ease)
@@ -421,6 +495,12 @@ def main() -> int:
                     help="bases whose pan is below --min-pan are swung to this pan (the camera side), same reach. "
                          "10-14: ID6 12/12 at pan +22.9, 0/12 at -10.5 (edge-on)")
     sc.add_argument("--min-pan", type=float, default=10.0)
+    sc.add_argument("--base-frame", type=int, default=None,
+                    help="use this exact recorded approach frame as scan base; validates nominal fingertip height at each offset")
+    sc.add_argument("--target-ids", default="",
+                    help="comma-separated table-marker IDs; report each camera and wrist hits instead of legacy arm-marker IDs")
+    sc.add_argument("--servo-diagnostics", action="store_true",
+                    help="append wrist_flex target/position/PID/PWM/status snapshots before and after each capture to <csv stem>_servo.jsonl; no gain changes")
     sc.set_defaults(func=cmd_scan)
     args = ap.parse_args()
     return args.func(args)

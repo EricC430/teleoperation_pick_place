@@ -1,0 +1,59 @@
+{
+  "servo_station_evidence": [
+    {
+      "pose": "S00_F0050_r+0_f-6",
+      "goal_ticks": 1535,
+      "actual_ticks": 1601,
+      "error_deg": 5.80078125,
+      "pwm": -105,
+      "pwm_limit": 885,
+      "current_raw": -48,
+      "before_after_position_change_ticks": 0,
+      "capture_interval_s": 10.432763814926147
+    },
+    {
+      "pose": "S00_F0050_r+0_f-4",
+      "goal_ticks": 1576,
+      "actual_ticks": 1601,
+      "error_deg": 2.197265625,
+      "pwm": -40,
+      "pwm_limit": 885,
+      "current_raw": -25,
+      "before_after_position_change_ticks": 0,
+      "capture_interval_s": 9.30106234550476
+    },
+    {
+      "pose": "S00_F0050_r+0_f-2",
+      "goal_ticks": 1617,
+      "actual_ticks": 1618,
+      "error_deg": 0.087890625,
+      "pwm": -2,
+      "pwm_limit": 885,
+      "current_raw": -17,
+      "before_after_position_change_ticks": 0,
+      "capture_interval_s": 9.403044939041138
+    }
+  ],
+  "repeat_validation": {
+    "views": 3,
+    "marker_observations": 6,
+    "median_corner_px": 1.3271131135576293,
+    "rms_corner_px": 1.3883736562943942,
+    "max_corner_px": 2.460567436561882
+  },
+  "no_sag_repeat_validation": {
+    "views": 3,
+    "marker_observations": 6,
+    "median_corner_px": 1.3074750066411989,
+    "rms_corner_px": 1.4041109254256563,
+    "max_corner_px": 2.495368804844348
+  },
+  "conclusions": [
+    "Goal and trajectory registers changed as intended; actual positions at first two targets remained equal during captures.",
+    "No PWM saturation observed in these three snapshots; hardware error status zero.",
+    "Behavior is consistent with static friction/load and path dependence; physical cause not uniquely diagnosed.",
+    "Analysis uses measured encoder angles. Repeat-image validation succeeds without refitting.",
+    "Disabling sag alone does not materially change the repeat validation and is not justified by this test.",
+    "No PID or formal calibration changes applied. Next test keeps the rigid setup and varies recorded base frame instead of repeating flex commands."
+  ]
+}

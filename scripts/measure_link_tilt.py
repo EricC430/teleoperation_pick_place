@@ -586,10 +586,14 @@ def capture_stills(csv_path: Path, pose_id: str, approach: str, state: dict[str,
     shot_dir = csv_path.parent / "shots" / csv_path.stem
     shot_dir.mkdir(parents=True, exist_ok=True)
     log = csv_path.with_name(csv_path.stem + "_captures.csv")
+    capture_env = os.environ.copy()
+    capture_env["PYTHONPATH"] = os.pathsep.join(dict.fromkeys(str(Path(p).resolve()) for p in sys.path if p))
+    capture_env["PYTHONIOENCODING"] = "utf-8"
     for cam in cameras:
         img = shot_dir / f"{pose_id}_{approach or 'start'}_{cam}.png"
         r = subprocess.run([sys.executable, os.path.join(_REPO, "sim", "capture_still.py"), "--camera", cam,
-                            "--out", str(img)], capture_output=True, text=True)
+                            "--out", str(img)], capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", env=capture_env)
         if r.returncode != 0 or not img.exists():
             print(f"    ⚠️  {cam} 拍照失敗（姿勢 {pose_id}），這筆照片沒存；量測繼續。\n{(r.stdout + r.stderr)[-400:]}")
             continue

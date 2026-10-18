@@ -22,6 +22,7 @@ repeat" here had no source and was not reproduced.
 Args key=value: ep=<prep dir> cand=<fit|current|provisional> cands=<json> intr=<front-left intrinsics>
 ext=<front-left extrinsics> [render=1 stride=1] [wrist_intr=.. wrist_ext=..] [cup_coll=sdf|asset|cd_hi] [selfcol=1]
 [vel_ff=1] [max_frames=0] [tag=..] [grip_open=<rad>: hold the gripper at this opening, ignoring the action]
+[gripper_source=state|action (default action)] [cup_asset=<USD path>] [wrist_near_m=0.005]
 [cup_dx_mm=500: move the cup out of the arm's way] [finger_coll=sdf] [contacts=1: log what touches the cup]
 
     cd <isaac-sim-standalone> && ./python.bat <repo>/sim/physics_replay.py ep=<prep dir>/cl_ep00 cand=fit cands=<prep dir>/fit_candidate.json ...
@@ -60,6 +61,10 @@ E = json.load(open(EP / "episode.json")); G = json.load(open(EP / "gripper.json"
 C = json.load(open(A["cands"]))[CAND]
 QB = np.array(E["q_body_rad"]) if CAND == "fit" else None   # per-frame link angles from the fit (offsets + sag)
 ST = np.array(E["state"]); N = len(ST)
+GRIP_SOURCE = A.get("gripper_source", "action")
+if GRIP_SOURCE not in ("state", "action"):
+    raise ValueError("gripper_source must be state or action")
+GRIP_TARGET = G["gripper_rad_from_state"] if GRIP_SOURCE == "state" else G["gripper_target_rad_from_action"]
 OUT = EP / (f"sim_{CAND}" + (f"_{A['tag']}" if 'tag' in A else "")); OUT.mkdir(exist_ok=True)
 BODY = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll")
 
@@ -73,7 +78,11 @@ def body_rad(st, k=None):
 ctx = omni.usd.get_context(); ctx.new_stage(); stage = ctx.get_stage()
 UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.z); UsdGeom.SetStageMetersPerUnit(stage, 1.0)
 scene = UsdPhysics.Scene.Define(stage, "/World/PhysicsScene")
-scene.CreateGravityDirectionAttr(Gf.Vec3f(0, 0, -1)); scene.CreateGravityMagnitudeAttr(9.81)
+gravity_direction = np.asarray(C.get("gravity_direction", [0., 0., -1.]), dtype=float)
+if gravity_direction.shape != (3,) or not np.isfinite(gravity_direction).all() or np.linalg.norm(gravity_direction) <= 0:
+    raise ValueError("Invalid candidate gravity_direction")
+gravity_direction /= np.linalg.norm(gravity_direction)
+scene.CreateGravityDirectionAttr(Gf.Vec3f(*gravity_direction.tolist())); scene.CreateGravityMagnitudeAttr(9.81)
 PhysxSchema.PhysxSceneAPI.Apply(scene.GetPrim()).CreateTimeStepsPerSecondAttr(int(A.get("phys_hz", "120")))
 UsdGeom.Xform.Define(stage, "/World")
 tbl = UsdGeom.Cube.Define(stage, "/World/Table"); tbl.CreateSizeAttr(1.0)
@@ -184,7 +193,7 @@ for p in Usd.PrimRange(rp):
         print("mimic", MIMIC_NF, MIMIC_DR, flush=True)
 DX, DY = float(A.get("cup_dx_mm", "0")) / 1000, float(A.get("cup_dy_mm", "0")) / 1000
 cm = UsdGeom.Xform.Define(stage, "/World/CupMount"); cm.AddTranslateOp().Set(Gf.Vec3d(E["cup_xy_m"][0] + DX, E["cup_xy_m"][1] + DY, 0.0005))
-cp = stage.DefinePrim("/World/CupMount/Cup", "Xform"); cp.GetReferences().AddReference(str(REPO / "assets/paper_cup/paper_cup.usd"))
+cp = stage.DefinePrim("/World/CupMount/Cup", "Xform"); cp.GetReferences().AddReference(str(REPO / A.get("cup_asset", "assets/paper_cup/paper_cup.usd")))
 GRIP_K, GRIP_F = A.get("grip_k"), A.get("grip_f")
 for p in Usd.PrimRange(rp):
     if p.GetName() == "gripper_joint_1" and (GRIP_K or GRIP_F):
@@ -232,7 +241,7 @@ if WRIST:
     camw = RtxCamera("/World/CamWrist", positions=[[0, 0, 1.0]], orientations=[[1, 0, 0, 0]])
     ccw = next(UsdGeom.Camera(ch) for ch in Usd.PrimRange(stage.GetPrimAtPath("/World/CamWrist")) if ch.IsA(UsdGeom.Camera))
     ccw.GetFocalLengthAttr().Set(Iw.K[0, 0] * AP / RWw); ccw.GetHorizontalApertureAttr().Set(AP)
-    ccw.GetVerticalApertureAttr().Set(AP * RHw / RWw * Iw.K[0, 0] / Iw.K[1, 1]); ccw.GetClippingRangeAttr().Set(Gf.Vec2f(0.005, 20.0))
+    ccw.GetVerticalApertureAttr().Set(AP * RHw / RWw * Iw.K[0, 0] / Iw.K[1, 1]); ccw.GetClippingRangeAttr().Set(Gf.Vec2f(float(A.get("wrist_near_m", "0.005")), 20.0))
     sensorw = CameraSensor(camw, resolution=(RHw, RWw), annotators=["rgb"])
     Xw = json.load(open(A["wrist_ext"])); qw = Xw["quat_wxyz"]
     X5c = np.eye(4); X5c[:3, :3] = Rr.from_quat([qw[1], qw[2], qw[3], qw[0]]).as_matrix(); X5c[:3, 3] = Xw["pos_m"]
@@ -316,7 +325,7 @@ def grab(k, qsim=None):
 last = N - 1 if not MAXF else min(N - 1, K0 + MAXF * STRIDE)
 for k in range(K0, last):
     qa, qb = body_rad(ST[k], k), body_rad(ST[k + 1], k + 1)
-    ga, gb = G["gripper_target_rad_from_action"][k], G["gripper_target_rad_from_action"][k + 1]
+    ga, gb = GRIP_TARGET[k], GRIP_TARGET[k + 1]
     if "grip_open" in A:
         ga = gb = float(A["grip_open"])
     for s in range(SUB):
@@ -346,7 +355,12 @@ for k in range(K0, last):
             pass
     if CHECK and k > 4:
         break
-json.dump({"cand": C["name"], "dof_names": names, "log": log}, open(OUT / "physics_log.json", "w"))
+json.dump({"cand": C["name"], "dof_names": names, "log": log,
+           "input_pose_source": "recorded observation.state plus selected geometric calibration",
+           "render_pose_source": "simulated articulation; physics tracking residuals are retained",
+           "gripper_target_source": GRIP_SOURCE, "gravity_direction": gravity_direction.tolist(),
+           "wrist_near_m": float(A.get("wrist_near_m", "0.005")), "wrist_ext": A.get("wrist_ext"), "cup_asset": A.get("cup_asset", "assets/paper_cup/paper_cup.usd")},
+          open(OUT / "physics_log.json", "w"))
 z = [r["cup_xyz"][2] for r in log]
 print(f"DONE frames {len(log)} cup z start {z[0]:.4f} max {max(z):.4f} end {z[-1]:.4f} xy end {log[-1]['cup_xyz'][:2]}", flush=True)
 app.close()
