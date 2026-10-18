@@ -11,7 +11,7 @@
 9,plastic_bottle,stand,c10,宿舍大燈+檯燈+窗簾拉上,木質桌面,dropped,,,1,,,,"[Boyu] grasped, bottle slipped out while lifting"
 10,plastic_bottle,stand,c11,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] pushed_away; gripper action never < 54
 11,plastic_bottle,stand,c12,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,stalled;timeout,,1,,,,"[Boyu] stuck in a fixed pose; data: fully still f242-361 (7.9 s), near-still for the last ~13 s"
-12,plastic_bottle,stand,c13,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim,,1,,,,[Boyu] approaches the bottle but never closes; gripper action never < 54
+12,plastic_bottle,stand,c13,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,stalled;timeout,,1,,,,"[Boyu] stuck around a fixed pose, moving back and forth in place (data: never still > 2.3 s)"
 13,plastic_bottle,stand,c14,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] pushed_away; gripper action never < 54
 14,plastic_bottle,stand,c15,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] pushed_away; gripper action never < 54
 15,plastic_bottle,stand,c16,宿舍大燈+檯燈+窗簾拉上,木質桌面,,,,0,key error (verdict key pressed at start; 1 frame),,,"real c16 trial was the 17th run, not saved (session stopped); [Boyu] it failed"
