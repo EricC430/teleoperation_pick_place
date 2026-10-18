@@ -19,11 +19,23 @@ small enough to `git clone` in seconds.
 
 ## Status
 
-🚧 Bring-up in progress (started 2026-08-11). This README is a living document — fill in the `TODO`
-sections below as each step is actually validated, don't front-load commands that haven't been run yet.
+**As of 2026-10-19.** This section is the canonical progress summary — update it at each milestone.
+Numbers below are copied from `docs/worklog/` (the source of truth); details and caveats live there.
 
-Phase A 管線驗證進行中（已完成 8 筆 Pilot 軌跡錄製 `omx_pick_place_pilot`，包含紙杯抓取與自我修正）。
-本階段核心目標為打通「資料集驗證 → 容器化 ACT 訓練 → 隔離 Open-Loop 評估」之全管線。
+| Stage | State |
+|---|---|
+| Phase A — pipeline | ✅ Done 2026-09-01 (record → verify → train ACT → open-loop eval). On-robot rollout via `lerobot-rollout` since 09-03 (`docs/field_manual.md` §8). |
+| Phase B — indoor ACT | 🟡 In progress. 60 demos each of paper cup (`uvc_60`), plastic bottle and aluminium can recorded 09-13 – 09-18. First closed loops: can 40k 6/36 (D032), bottle 100k 4/35 (09-21). |
+| ↳ paper cup (main line since 10-05) | ✅ **34/36** closed loop on 10-16 (`augfl-fldrop30` 100k): 60 base + 69 targeted demos (near 13, recovery 10, far wrist-rotation 46), plus front-left translate/rotate augmentation and front-left dropout before the first grasp. Same recipe on the 60 base demos alone: 20/36 (10-17). Which of the 69 matter is not separated. |
+| ↳ plastic bottle | 🔴 0/15 on 10-18 (60 demos + the same augmentation/dropout; stopped at c16, mostly `bad_aim`). Next (decided 10-19): supplementary far and near demos with one consistent grasp style, plus recovery demos, recorded 10-21 – 22; train 10-22. |
+| Simulation (Isaac Sim replay) | 🟡 Joint zeros, base pose and link sag calibrated; replaying the 10-14 closed loop (36 ep) in sim agrees with the real outcome in 33/36 (cup ≥ 5 cm up for ≥ 10 frames; commit 211c7cf) — an agreement rate, not a sim success rate. FK fingertip vs a camera-free touch test (16 points, 10–28 cm): 0.40–0.42 cm held-out rms (0588c51). Wrist-camera extrinsics still open. Next: sim environment variation, comparing ACT trained with / without variation data. |
+| Phase C — on the mobile base ("上車") | ⚪ Planned end of November 2026 (bottle + cup models; can if time allows). Chassis undecided (D020). Environment-variation tests after mounting. |
+| Phase D — tactile | ⚪ Descoped to "if time allows" (D008, 2026-08-18). |
+
+Current decisions and open questions: `docs/meeting/2026-10-18_team_meeting.md`. Plan vs. reality per
+phase: top of `docs/phase_plan.md`.
+
+The Quickstart below is the Phase A pilot recipe (8 episodes) and is kept as the minimal smoke test.
 
 ## Quickstart: Phase A 訓練與開環評估
 
@@ -158,7 +170,8 @@ before. See [Where the data lives](#where-the-data-lives).
 | `docs/hardware.md` | ★ Equipment inventory: models, firmware, USB ports, **plus current status, ETAs, and rejected options with reasons**. Check here first when debugging "did something change". |
 | `docs/setup_env.md` | Site baseline: desk layout, lighting, camera placement (with photos). |
 | `docs/field_manual.md` | On-site operating manual — the checklist to run through at the lab. Fill in once hardware is actually available. |
-| `docs/meeting/` | Meeting notes **and on-site lab-session records** (see `_template.md`). Lab sessions are labelled as such in their title — e.g. `2026-08-24.md` is a field record, not a meeting. |
+| `docs/meeting/` | Meeting notes only (team / advisor / Physical AI sub-project), see `_template.md` and the index in `docs/meeting/README.md`. |
+| `docs/worklog/` | ★ On-site, experiment and analysis records — the source of truth for numbers. Moved out of `docs/meeting/` on 2026-10-19 with filenames unchanged; index in `docs/worklog/README.md`. |
 | `notebooks/` | Exploratory analysis. |
 
 `calibration/` and `eval/` are the two folders that matter most here — last year's failure mode was

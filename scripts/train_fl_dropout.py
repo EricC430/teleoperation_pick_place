@@ -21,7 +21,7 @@ docs/handoff/2026-10-13_fl_dropout.md.
   has no per-camera option. With this flag the config's image_transforms are taken off the reader and applied to
   front-left only, before the mask; the wrist image is left as recorded. train_config.json still shows them enabled
   -- fl_dropout.json's image_transforms_cameras says where they ran. Why: the 2026-10-14 to-do in
-  docs/meeting/2026-10-14_fldrop_open_loop.md §4.
+  docs/worklog/2026-10-14_fldrop_open_loop.md §4.
 """
 
 from __future__ import annotations

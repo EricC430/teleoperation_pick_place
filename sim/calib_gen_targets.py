@@ -10,7 +10,7 @@ Two targets, one script:
                 no factory intrinsics an API can read, so this stands in for that.
 
 🔴 Printer "100% / actual size" is not trustworthy -- same lesson already paid for on the
-placement mat (docs/meeting/2026-09-03.md §4-3: "交代店家 100% 原尺寸...取件後用尺量一格 5 cm 驗
+placement mat (docs/worklog/2026-09-03.md §4-3: "交代店家 100% 原尺寸...取件後用尺量一格 5 cm 驗
 證"). After printing, MEASURE the printed target with a ruler or calipers and feed the MEASURED
 value (not the one you asked for) into calib_extrinsics_aruco.py / calib_intrinsics_checkerboard.py
 via --marker-side-m / --square-mm. The DPI tag on the saved PNG is a best-effort hint to the

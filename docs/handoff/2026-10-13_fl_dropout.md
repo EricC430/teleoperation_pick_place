@@ -16,7 +16,7 @@
 
 ## 為什麼
 
-- 10-13 兩場 aug 閉環都是 25/36，失敗裡有 `bad_aim` 的佔 10/11、9/11；`chunk_gap_rush` 最多只能救回約 2 集（`docs/meeting/2026-10-13_closed_loop.md`）。
+- 10-13 兩場 aug 閉環都是 25/36，失敗裡有 `bad_aim` 的佔 10/11、9/11；`chunk_gap_rush` 最多只能救回約 2 集（`docs/worklog/2026-10-13_closed_loop.md`）。
 - 「抓哪裡」主要看 front-left，手腕只帶來需要修正量的一小部分（10-07 §3-3；ntcfA1aug 的數字見下面的「驗收」）。
 - 想要的分工 `[柏宇說]`：大方向的定位由 front-left 負責，細部定位由手腕負責。所以只在接近段遮 front-left，逼模型在那一段用手腕。
 - 整集隨機 dropout 不行：在 HOME 時，手腕畫面裡只有收納盒，沒有杯子（5 集都是 `[已查證]`）。

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Rim aim from the wrist image: the labeler clicks the graspable point, the program measures the jaw gap's offset.
 
-Why (2026-10-18, docs/meeting/2026-10-16_closed_loop.md §4-2 step 3):
+Why (2026-10-18, docs/worklog/2026-10-16_closed_loop.md §4-2 step 3):
   - fully automatic rim detection was right on too few episodes (dark / low-saturation table, wood grain);
   - measuring at "the rim nearest the jaw line" scores a rim parallel to the jaws as well as any other, although
     there is nothing to grasp there (Boyu, 10-18). So the target is the graspable point instead.
@@ -13,7 +13,7 @@ parallel to the rim, that point is far to the side of the cup and p is large -- 
 Per episode, one frame (Boyu 10-18, "only that frame"): last_visible = the last frame before the first close in
 which the rim is still visible. The window opens at TIP@RIM (export_episode_clips.tip_at_rim) and the labeler steps
 forward to it; it cannot go past CLOSE. (Until 10-18 the TIP@RIM frame was labelled as well; dropped because the tip
-still moves 0.6-4.9 cm after it -- docs/meeting/2026-10-16_closed_loop.md §4-2.)
+still moves 0.6-4.9 cm after it -- docs/worklog/2026-10-16_closed_loop.md §4-2.)
 Per frame, one click on the graspable point P. Offset P - G, with G = jaw-gap centre (322, 292) and the jaw line
 direction U = (1, 0.28) (step 1, closed-loop 10-16 sessions only):
   t_px  along the jaw line, + = towards the right jaw

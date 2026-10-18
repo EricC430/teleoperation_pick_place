@@ -4,7 +4,7 @@
 A recovery demo is "drive off on purpose -> close on nothing -> notice -> release -> redo".
 The first part teaches the policy to aim wrong, so this keeps each episode from the onset of its
 FIRST gripper close (the empty one) onwards. The empty-close state itself is kept: that is the
-state recovery is supposed to start from (docs/meeting/2026-10-07.md §118, 2026-10-09 discussion).
+state recovery is supposed to start from (docs/worklog/2026-10-07.md §118, 2026-10-09 discussion).
 
 The source dataset is not touched. The copy shares the source's video bytes exactly: the mp4 files
 are copied unchanged and only the per-episode `from_timestamp` moves forward, so no frame is

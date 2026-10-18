@@ -1,6 +1,6 @@
 """H7: at the occluded placements c17 / c36, which camera turns the arm toward the cup? (2026-10-16)
 
-10-16 closed loop (docs/meeting/2026-10-16_closed_loop.md section 3-1): at c17 / c36 the cup is hidden from the
+10-16 closed loop (docs/worklog/2026-10-16_closed_loop.md section 3-1): at c17 / c36 the cup is hidden from the
 front-left view at frame 0. The three earlier runs turn shoulder_pan to c16's side (~ +34, the wrong side); only
 fldrop30-augfl turns to the cup's side (c17 ~ -33, c36 ~ -16). Counterfactual on those recorded episodes:
 at each replanning frame (0, 30, 60, ... = where N=30 closed loop planned a new chunk), re-predict the chunk with
@@ -21,7 +21,7 @@ decision in the state, so the early frames (before the pan splits) are the infor
                wrist c16 +16.8 +25.8 +28.1 +23.4 -4.9 | FL black -3.8 -0.9 +3.0 -9.1 -16.2 | FL c16 +9.5 +7.4 +8.7 +0.8 -6.0
   fldrop50: wrist gray slows its wrong-side (positive) turn at both c17 and c36; FL black barely changes it.
   orig vs recorded differ by up to ~10 (c36 augfl f60 / f120), from video decoding: smaller changes are noise.
-  CAVEAT (same day, docs/meeting/2026-10-16_closed_loop.md section 3-3): step 29 alone misses that the frame-0 chunk
+  CAVEAT (same day, docs/worklog/2026-10-16_closed_loop.md section 3-3): step 29 alone misses that the frame-0 chunk
   already heads to the cup side (step 99 -21.4), and at c17 frames 0-36 a neutral perturbation (front-left + 0.02
   noise, or fldrop50's front-left at the same placement) flips the plan too -- "FL black flips it" there is a
   knife-edge, not evidence that front-left carries the cup position.

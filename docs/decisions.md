@@ -512,7 +512,7 @@ Eric's own wording is not on record here; the definitions below were drafted by 
 - **Why not existing labels:** neither has a home today — an off-target reach ends up as `pushed_away`
   (which describes the contact, not the aim) or `other`; a boundary jump is neither `drift` nor
   `collision`. D032 already measured an azimuth bias (median 4.58° vs human 1.88°) on the alcan run, and
-  the 2026-10-05 E3 test (`docs/meeting/2026-10-05.md` §2-c) showed image shifts move pan / lift
+  the 2026-10-05 E3 test (`docs/worklog/2026-10-05.md` §2-c) showed image shifts move pan / lift
   predictions — both point at aim errors worth counting separately. `chunk_gap_rush` is the behaviour the
   N=30 vs N=100 comparison (E6) has to see.
 - **Implemented in:** `configs/episode_meta_schema.yaml` (v5, `strict`), `docs/experiment_spec.md` §1-3 ②
@@ -528,7 +528,7 @@ Proposed by 柏宇, agreed by Eric (relayed by 柏宇 on 2026-10-16).
   shift counts; if it pushes the object away, also tag `pushed_away`). A rush that leaves the object
   untouched is not labelled. Still valid alongside `outcome=success`.
 - **Why:** rushes happen in many episodes, so labelling every one says little; 柏宇 had in practice been
-  labelling only the ones that affected the grasp, i.e. moved the cup (`docs/meeting/2026-10-13_closed_loop.md` §3).
+  labelling only the ones that affected the grasp, i.e. moved the cup (`docs/worklog/2026-10-13_closed_loop.md` §3).
   The 2026-10-06 wording did not match what was being recorded.
 - **Consequence:** the label count is not a rush count. Comparing rush frequency across N (E6) has to use
   action jumps at frames k·N in the data, not this label.
@@ -803,7 +803,7 @@ Proposed by 柏宇, agreed by Eric (relayed by 柏宇 on 2026-10-16).
   recording starts, *and* SO-ARM has arrived. **Once Phase B recording begins, effectively
   irreversible** — same reason D002 gave.
 - **Cross-reference:** D002, D022, D023, `docs/hardware.md`, `docs/phase_plan.md`,
-  `docs/meeting/2026-08-24.md`, `calibration/2026-08-24_omx_follower_arm.json`,
+  `docs/worklog/2026-08-24.md`, `calibration/2026-08-24_omx_follower_arm.json`,
   `configs/teleoperate_omx.yaml`.
 
 ---
@@ -1458,8 +1458,8 @@ chassis front) ≈ 5 cm is measured once and S2 keeps sampling in pan-axis polar
 
 - **Cross-reference:** D024, `docs/specs/S3_placement_mat.md`, `eval/README.md` (ArUco note).
 
-- **Cross-reference:** D021, D026, `docs/phase_plan.md` A6/A7, `docs/meeting/2026-08-24.md`,
-  `docs/meeting/2026-08-31.md` §6, `docs/hardware.md` (Cable).
+- **Cross-reference:** D021, D026, `docs/phase_plan.md` A6/A7, `docs/worklog/2026-08-24.md`,
+  `docs/worklog/2026-08-31.md` §6, `docs/hardware.md` (Cable).
 
 ---
 
@@ -2288,7 +2288,7 @@ config 已備妥：`configs/rollout_omx_alcan_fixed_40k_eval.yaml`。
 
 ### §7 追加（2026-10-08）：§3 的「人類示範下限」依定義而變，7.51 無法重現
 
-起因：紙杯新模型的開環比較（`docs/meeting/2026-10-08_open_loop.md`）時，AI 把鋁罐的 7.5 直接套到紙杯，
+起因：紙杯新模型的開環比較（`docs/worklog/2026-10-08_open_loop.md`）時，AI 把鋁罐的 7.5 直接套到紙杯，
 被柏宇追問來源。於是把 §3 的基線寫成 `scripts/open_loop_floor.py`（§3 當時沒留程式，見 Accepted costs），重算。
 
 1. **freeze 重現了，但 §3 與 §6 用了不同的平均方式** `[已查證]`：§3 的 10.13（12 集）是全部幀合併平均；

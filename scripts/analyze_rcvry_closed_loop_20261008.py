@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Analysis behind docs/meeting/2026-10-08.md: recovery-model closed loop vs 10-06, and gripper retries vs demos.
+"""Analysis behind docs/worklog/2026-10-08.md: recovery-model closed loop vs 10-06, and gripper retries vs demos.
 
 Part 1: success by run / paired placements / position band / distance to nearest training placement.
 Part 2: gripper close events (retries) per episode in closed-loop runs and in the demos.

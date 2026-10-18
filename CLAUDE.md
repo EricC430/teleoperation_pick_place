@@ -12,6 +12,8 @@
 
 指導教授：**張嘉惠**（主要往來）、陳弘軒（計畫書掛名協同，非實質參與）
 
+**現在在哪（2026-10-19）：** 紙杯閉環 34/36（10/16）→ 寶特瓶（只有原 60 集＋同樣增強與 dropout）0/15（10/18）→ 寶特瓶補示範 10/21–22、上車 11 月底；平行線是 Isaac Sim 重播校正 → 模擬環境變異。正本：`README.md` §Status（每次有里程碑就改那裡，不改這裡）。
+
 ---
 
 ## 正本在哪（需要時才開，不要預先全讀）
@@ -20,8 +22,8 @@
 
 | 檔案 | 內容 |
 |---|---|
-| `docs/decisions.md` | ★★ 決策日誌 **D001–D024 ＋ 頂部 Status index**，含「什麼證據會推翻它」。 |
-| `docs/phase_plan.md` | ★ v3 階段規劃 Phase A–D |
+| `docs/decisions.md` | ★★ 決策日誌 **D001–D032 ＋ 頂部 Status index**，含「什麼證據會推翻它」。⚠️ Status index 停在 2026-08-26／09-13，D031 之後要看本文 |
+| `docs/phase_plan.md` | ★ v3 階段規劃 Phase A–D；頂部「現況對照」寫各 Phase 實際走到哪 |
 | `docs/experiment_spec.md` | ★ 實驗規格凍結（任務定義、物體分級、評估協定） |
 | `docs/execution_plan.md` | 執行計畫與應變 |
 | `docs/act_evidence.md` | ACT 相關文獻與數據佐證 |
@@ -33,8 +35,9 @@
 | `docs/conventions.md` | commit / branch / tag 慣例 |
 | `docs/pipeline_validation.md` | 管線驗證資料的處理原則 |
 | `docs/exp_a3_recovery_ablation.md` | A3 recovery 消融實驗設計 |
-| `docs/meeting/` | 會議與現場工作紀錄（最新：`2026-10-18.md` 寶特瓶 augfl-fldrop30 100k 閉環停在 c16、0/15（10 bad_aim、3 stalled、2 dropped）＋手腕相機離線標定（沒啟用候選；5 個 README 中文壞成 `?`；`aruco_points.csv` 換成 10/18 版）；`2026-10-17_uvc60_augfl_closed_loop.md` u60augfl 100k 紙杯閉環 20/36（遠區 3/12），沒過 ≥ 29/36，柏宇判讀是資料問題、寶特瓶閉環後再補示範；並更正 10/16 §1-1：兩場錄製時相機其實在 far_wrist ±2 px、亮度 160–162；`2026-10-17_uvc60_augfl_open_loop.md` 只用 uvc_60＋fldrop30-augfl（u60augfl）上 Hub、開環：100k 在 N=100／50 比 b1／augfl 差（shoulder_lift／elbow_flex），20k 反而比 augfl 好，方向隨 step 不一致；開環不當判準，閉環待跑；`2026-10-16_closed_loop.md` fldrop50 28/36、fldrop30-augfl（只平移第三視角）34/36，同日同相機（比前幾場水平轉約 4°、亮度 168）；augfl 對 fldrop50 配對 p 0.07、對 fldrop30 p 0.22；離線 h1／開環都沒預測到 augfl 最好；fldrop50 中途馬達全斷線、用 `--resume=true --dataset.root=…` 續錄；下一步記在 §4（只用 uvc_60＋augfl-fldrop30 訓練、手腕瞄準杯壁的準確度）；`2026-10-15_fldrop50_open_loop.md` fldrop50（p 0.5）訓練完、上 Hub；開環 100k 跟 fldrop30 三個 N 都分不出、對基底只有 N=20 較差（同 p30）；手腕不平移的 fldrop30-augfl 開環在 N=100／50 一致變差（伸多遠的兩個關節），原因未查；`2026-10-14_fldrop_open_loop.md` ntcfA1aug＋接近段 front-left dropout（p 0.3、30 幀）：開環與基底大致分不出、h6 轉腕不變；h1 中位數過、逐幀沒過；閉環 30/36 vs 基底 25/36（配對 p 0.18），下一步 p 0.5（`docs/handoff/2026-10-14_fl_dropout_p50.md`）；`2026-10-13_closed_loop.md` ntfA1aug／ntcfA1aug 100k 閉環都是 25/36（C 場 ntA1 19/36，配對 p 0.18–0.24），遠區 8/8 轉腕，失敗多為 bad_aim；ntcfA1aug＋temporal ensemble −0.01 c1–c13 11/13（N=30 9/13），結論先做手腕定位精度；開環評估集上轉腕沒被觸發；`2026-10-13_open_loop.md` ntfA1／ntcfA1 加隨機平移增強（ntfA1aug／ntcfA1aug）：h6 平移後近處 3/13 → 0/13 轉腕；開環 ntfA1aug 只在 N=20 較低、ntcfA1aug 九格都較低；`2026-10-10_open_loop.md` ＋far-wrist（ntfA1）與 tight 剪前段（ntcfA1）開環，100k 兩者分不出、20k 剪前段明顯較差；`2026-10-08_open_loop.md` 紙杯＋normal/tight A1 開環，100k 只在 N=20 顯著變差、人類下限依定義而變；`2026-10-07.md` ACT 夾哪裡由 front-left 決定、抓取前不用手腕修正，但遮手腕後搬運 0 成功；`2026-10-06.md` 紙杯 100k 閉環 N=30 17/32 與依位置分組的開環 MAE；`2026-10-05.md` 閉環 N=30 起始姿勢偏移與 `--goto-home`；`2026-10-04.md` 寶特瓶 100k 開環 N=30；`2026-09-29.md` open-loop × 推論間隔；最近一次老師會議 `2026-10-15.md`（Physical AI 子計畫一：遠距抓取／手腕視角、模擬校正及跨組報告；依完整字幕補寫，錄影後段無法核對）；**2026-10-13 補寫三場閉環**：`2026-09-21_bottle_closed_loop.md` 寶特瓶 100k 4/35、`2026-10-07_temporal_ensemble.md` 19/32、`2026-10-08_C_n30_home.md` recovery 模型 N=30 從 HOME 出發 19/34，比對腳本 `scripts/compare_closed_loop.py`） |
-| `docs/weekly/` | 週報（只整理、不當正本，數字以 `docs/meeting/` 為準）。一份＝一週（週一–週日），檔名＝該週週一：`<YYYY-MM-DD>.md`。最新：`2026-10-05.md`（10/5–10/11：轉到紙杯、`bad_aim` 診斷、補錄近場／recovery／遠區轉腕、ntA1／ntfA1／ntcfA1）；10/12 週待寫 |
+| `docs/meeting/` | **只放會議**（組內／指導教授／Physical AI 子計畫），索引在 `docs/meeting/README.md`。最新：組內 `2026-10-18_team_meeting.md`；子計畫一 `2026-10-15.md` |
+| `docs/worklog/` | ★ 現場／實驗／分析工作紀錄（非會議），**數字的正本**。2026-10-19 從 `docs/meeting/` 搬來、檔名不變。索引（一檔一行，新→舊）在 `docs/worklog/README.md`；最新：`2026-10-18.md` 寶特瓶 augfl-fldrop30 閉環 0/15＋手腕相機離線標定 |
+| `docs/weekly/` | 週報（只整理、不當正本，數字以 `docs/worklog/` 為準）。一份＝一週（週一–週日），檔名＝該週週一：`<YYYY-MM-DD>.md`。最新：`2026-10-05.md`（10/5–10/11：轉到紙杯、`bad_aim` 診斷、補錄近場／recovery／遠區轉腕、ntA1／ntfA1／ntcfA1）；10/12 週待寫 |
 | `eval/README.md` | 評估記錄規格（outcome/mechanism 兩軸） |
 | `docs/models.md` | 模型對照表：權重 hash ↔ 本機 run/step ↔ Hub repo ↔ 物品 ↔ 閉環用過哪次 |
 
@@ -101,3 +104,9 @@ Eric 會查證你的說法，而且經常是對的。**被他推翻不是問題�
 ## ⚠️ 目前未解（會影響決策）
 
 **A 線**
+
+以 `docs/meeting/2026-10-18_team_meeting.md` §三 為準，這裡只列會改變下一步的：
+
+- **精準度**：紙杯有容錯，成功不代表瞄得準；決議改看「要很準才夾得起來」的物體的成功率（A1），還沒做。
+- **有沒有在用手腕相機**：34/36 只證明有效，分不出是手腕、示範量還是擺位誤差；目前只有推論（`docs/worklog/2026-10-16_closed_loop.md` §3）。
+- **上車**：車體未定（`decisions.md` D020 仍 open）；待問老師：先用推車模擬。

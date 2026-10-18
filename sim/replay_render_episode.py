@@ -38,7 +38,7 @@ the flag, not to quietly pick something plausible:
    episodes drops it). Residual scatter (p50 9 cm after removing a constant +10 cm offset) is
    attributable to the crude grasp-frame pick and to `end_effector_link` not being the grasp
    centre -- not to the mapping. Without the flag, `--place` is a choice, not a reconstruction.
-   🔴 [已查證 2026-09-29] EXCEPT the back third: docs/meeting/2026-09-13.md item 4, "t41 重錄後排在
+   🔴 [已查證 2026-09-29] EXCEPT the back third: docs/worklog/2026-09-13.md item 4, "t41 重錄後排在
    最後一集" -- ep0-39 = t1-t40, ep40-58 = t42-t60, ep59 = t41. The plain `t{i+1}` rule put ep40-58
    one placement off and ep59 at t60 (23-52 cm grasp "errors"); `uvc60_short_id()` below has the fix.
 3. **`geometry_aligned`** -- false until BOTH cameras have a measured lens and pose.
@@ -225,7 +225,7 @@ def front_left_pose_from_json(path: str):
 
     The T2 solve's world is the coordinate paper's frame with z measured from the floor at its own
     --table-top-z; this scene's table is at scene_constants.TABLE_TOP_Z, so only z is re-based.
-    x/y are used as-is: docs/meeting/2026-10-08_paper_to_pan.md found the paper frame and the arm's
+    x/y are used as-is: docs/worklog/2026-10-08_paper_to_pan.md found the paper frame and the arm's
     FK (pan-axis) frame agree to ~1 cm on 10/07, with no detectable constant offset."""
     d = json.load(open(path))
     if d.get("frame") != "world":

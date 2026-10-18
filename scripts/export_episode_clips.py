@@ -10,7 +10,7 @@ Drawn on each frame:
   bottom  : frame / seconds, gripper and wrist_roll readings, and two events from the joint data:
             TIP@RIM = jaw-midline fingertip drops through the cup rim height (9.3 cm) on its last descent before
                       the first close (touch-pinned arm model, calibration/2026-10-14_link_marker_fit.json; height
-                      accuracy at 9 cm not verified -- prototype, docs/meeting/2026-10-16_closed_loop.md)
+                      accuracy at 9 cm not verified -- prototype, docs/worklog/2026-10-16_closed_loop.md)
             CLOSE   = first sustained gripper close (fit_paper_to_pan.grasp_frame, same as rim_distance.py)
             The banner turns orange from TIP@RIM to CLOSE.
 

@@ -123,7 +123,7 @@ debugging remotely.
 >
 > 🔴 **S1/S2/S3 模組已全數實作完成**（`scripts/reach_logger.py`、`scripts/sample_placements.py`、`scripts/make_placement_mat.py`）。
 > 現場執行 S1 量測後即可即時產出 S2 抽樣清單並以極座標紙對位。
-> 逐項對照與當天任務序見 `docs/meeting/2026-08-31.md`。
+> 逐項對照與當天任務序見 `docs/worklog/2026-08-31.md`。
 
 **建立理由：** `docs/phase_plan.md` §T0 —— lab day 是最稀缺資源，**到現場才發現沒帶＝整天報銷**。
 

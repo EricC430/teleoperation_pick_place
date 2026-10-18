@@ -14,7 +14,7 @@
   2026-10-12：三個 run 的 100k 上 Hub（皆 private）的 hash 用 Hub API 的 LFS oid 對過，一致；20k／40k 沒上傳。
   repo 名的數字是排除後的集數（uvc_60 60－normal 13－recovery 10－far 46）。
   `tight_far_A1`／`tightcut_far_A1` 六列「閉環用過」記為 — `[推論]`：`config_records/` 沒有對應的 rollout record、
-  Hub 上 10/6 之後沒有新的 rollout dataset、`docs/meeting/2026-10-10_open_loop.md` 的「閉環評估（ntfA1／ntcfA1）」待辦仍未勾。
+  Hub 上 10/6 之後沒有新的 rollout dataset、`docs/worklog/2026-10-10_open_loop.md` 的「閉環評估（ntfA1／ntcfA1）」待辦仍未勾。
   這是「沒有紀錄」，不等於確定沒跑過；之後如果跑了閉環，用 record digest 取代 —。
   10-13：ntfA1 100k（`e97526c13766`）試跑一場、作廢，見該列。
   2026-10-13 加的 `cup_uvc60_normal_tight_far_A1_aug`／`cup_uvc60_normal_tightcut_far_A1_aug` 六列：hash 是直接 `sha256sum` 本機檔案算的，也和開環的 log 對過；同日上 Hub（private），Hub API 的 LFS oid 對過，一致。

@@ -1,11 +1,11 @@
 """Compare closed-loop runs recorded in episode_meta/ (success by radius zone, mechanisms, paired McNemar).
 
 Written 2026-10-13 to back-fill three closed-loop runs that had a CSV but no record:
-docs/meeting/2026-09-21_bottle_closed_loop.md, 2026-10-07_temporal_ensemble.md, 2026-10-08_C_n30_home.md.
+docs/worklog/2026-09-21_bottle_closed_loop.md, 2026-10-07_temporal_ensemble.md, 2026-10-08_C_n30_home.md.
 
 - valid: a row counts unless valid == "0" (schema default is "1", configs/episode_meta_schema.yaml).
 - Zones use r = hypot(x_pan_cm, y_pan_cm) from docs/assets/placement_label_map_campA_136sym_20260908.csv,
-  cut at 22 / 33 cm, the same cut as docs/meeting/2026-10-08.md section 2.
+  cut at 22 / 33 cm, the same cut as docs/worklog/2026-10-08.md section 2.
 - Paired comparison uses only placements valid in BOTH runs; McNemar is exact two-sided on the discordant pairs.
 
 Usage:
