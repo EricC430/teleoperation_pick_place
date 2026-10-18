@@ -10,9 +10,10 @@ cross the rim if it went through the cup centre. Of the two such points, the one
 frame (Boyu 10-18: which wall the model "meant" cannot be told from one image, so no guessing). When the jaw line is
 parallel to the rim, that point is far to the side of the cup and p is large -- which is the measurement.
 
-Per episode, two frames (Boyu 10-17, "both"):
-  tip_rim       the TIP@RIM frame (export_episode_clips.tip_at_rim), fixed
-  last_visible  the last frame before the first close in which the rim is still visible; the labeler steps to it
+Per episode, one frame (Boyu 10-18, "only that frame"): last_visible = the last frame before the first close in
+which the rim is still visible. The window opens at TIP@RIM (export_episode_clips.tip_at_rim) and the labeler steps
+forward to it; it cannot go past CLOSE. (Until 10-18 the TIP@RIM frame was labelled as well; dropped because the tip
+still moves 0.6-4.9 cm after it -- docs/meeting/2026-10-16_closed_loop.md §4-2.)
 Per frame, one click on the graspable point P. Offset P - G, with G = jaw-gap centre (322, 292) and the jaw line
 direction U = (1, 0.28) (step 1, closed-loop 10-16 sessions only):
   t_px  along the jaw line, + = towards the right jaw
@@ -29,7 +30,7 @@ Keys:
   x               unsure (Boyu, c5 10-18)
 A magenta line through the cursor, perpendicular to the jaw line, follows the mouse: where it lies along the rim is
 the graspable point. (Boyu's third pass clicked the jaw-line / rim crossing instead -- the help text was cut off.)
-  a / d           previous / next frame      A / D   5 frames   (last_visible only; tip_rim is fixed)
+  a / d           previous / next frame      A / D   5 frames
   s               skip this episode           q / Esc   quit (rows already accepted are saved)
 
     uv run python scripts/label_rim_aim.py <rollout dataset name>                  # all episodes
@@ -60,6 +61,7 @@ G = np.array([322.0, 292.0])
 U = np.array([1.0, 0.28]) / np.hypot(1.0, 0.28)
 N = np.array([-U[1], U[0]])  # perpendicular, pointing down in the image
 SCALE = 1.5
+STEPS = ("last_visible",)  # "tip_rim" dropped 10-18
 COLS = ["placement_id", "episode_index", "outcome", "step", "frame", "tip_rim_frame", "close_frame", "wrist_roll",
         "source", "x", "y", "t_px", "p_px"]
 
@@ -164,7 +166,7 @@ def run_gui(jobs, writer: Writer, load) -> None:
                   "n　這幀看不到可以夾的地方\n"
                   "m　杯子已經被推動（不量）\n"
                   "x　不確定\n"
-                  "a / d　前 / 後一幀；A / D　5 幀（只限步驟 2）\n"
+                  "a / d　前 / 後一幀；A / D　5 幀\n"
                   "s　跳過這集　　q / Esc　結束（已接受的都存了）").pack(fill="x", anchor="w", pady=(10, 0))
     S = {"job": -1, "steps": [], "k": 0, "click": None}
 
@@ -175,7 +177,7 @@ def run_gui(jobs, writer: Writer, load) -> None:
                 win.destroy()
                 return
             e = jobs[S["job"]][0]
-            S["steps"] = [s for s in ("tip_rim", "last_visible") if (e, s) not in writer.done]
+            S["steps"] = [s for s in STEPS if (e, s) not in writer.done]
             if S["steps"]:
                 win.title(f"ep{e} 讀取中…")
                 win.update()
@@ -196,7 +198,7 @@ def run_gui(jobs, writer: Writer, load) -> None:
         canvas.create_image(0, 0, anchor="nw", image=S["img"])
         step = S["steps"][0]
         what = ("1/2  TIP@RIM 那一幀（固定，不能移幀）" if step == "tip_rim"
-                else "2/2  閉合前最後一幀還看得到杯緣（用 a/d 移到那一幀）")
+                else "閉合前最後一幀還看得到杯緣：從 TIP@RIM 開始，用 d 往後移到那一幀（最多到 CLOSE）")
         ms = "t {:+.0f} px（沿白線）  p {:+.0f} px（垂直白線）".format(*measure(S["click"])) if S["click"] is not None else "（還沒點）"
         win.title(f"{meta.get('placement_id', '')} ep{e}  {meta.get('outcome', '')}  —  {step}")
         status.config(text=f"第 {S['job'] + 1}/{len(jobs)} 集  {meta.get('placement_id', '')} ep{e}  "
@@ -287,7 +289,7 @@ def main() -> int:
     def load(e):
         return load_episode(root, epm, e, states[e], fit, fps)
 
-    jobs = [(e, meta.get(e, {})) for e in eps if not all((e, s) in writer.done for s in ("tip_rim", "last_visible"))]
+    jobs = [(e, meta.get(e, {})) for e in eps if not all((e, s) in writer.done for s in STEPS)]
     if jobs:
         run_gui(jobs, writer, load)
     print(f"\n{writer.path}: {len(writer.done)} rows")
