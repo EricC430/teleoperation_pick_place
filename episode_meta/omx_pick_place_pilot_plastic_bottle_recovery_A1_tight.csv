@@ -1,0 +1,13 @@
+﻿episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
+0,plastic_bottle,stand,t60,,,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向前（伸過頭）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+1,plastic_bottle,stand,t54,,,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向右（θ 負側）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+2,plastic_bottle,stand,t55,,,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向前（伸過頭）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+3,plastic_bottle,stand,t53,,,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向左（θ 正側）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+4,plastic_bottle,stand,t52,,,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向後（伸不夠）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+5,plastic_bottle,stand,t57,,,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向前（伸過頭）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+6,plastic_bottle,stand,t34,,,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向後（伸不夠）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+7,plastic_bottle,stand,t12,,,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向右（θ 負側）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+8,plastic_bottle,stand,t17,,,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向左（θ 正側）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+9,plastic_bottle,stand,t36,,,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向後（伸不夠）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+10,plastic_bottle,stand,t9,,,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向左（θ 正側）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+11,plastic_bottle,stand,t35,,,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向右（θ 負側）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
