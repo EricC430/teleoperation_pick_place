@@ -17,13 +17,17 @@
 - `fl_dropout.json` 跟交接檔的預期全部一致：episodes 135、`episodes_without_close` 空、frames 57380、`frames_in_window` 3759、`expected_masked_fraction` 0.0197、`image_transforms_cameras` 只有 front-left。
 - 100k loss 0.056，55.8 epoch（b60augfl 是 0.044、127.6 epoch：資料多一倍多，同樣 100k 步，epoch 數不到一半）。
 - 速度 3.19 step/s，跟紙杯 129 集的 8 h 48 m 差不多。
-- hash：20k `4ade453d7024`、40k `02a3bd75ebbd`、100k `fe5e98957d38`（`sha256sum` 本機檔案，也和開環 `metrics.json` 對過）。**還沒上 Hub。**
+- hash：20k `4ade453d7024`、40k `02a3bd75ebbd`、100k `fe5e98957d38`（`sha256sum` 本機檔案，也和開環 `metrics.json` 對過）。
+- Hub：`ericc430/act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_{20k,40k,100k}`，private，LFS hash 與本機一致，各 repo 附 `fl_dropout.json`（`data/logs/hf_upload_bottle136augfl.sh`，log `…/hf_upload_bottle136augfl.log`）。
 
 ## 2. 開環 `[已查證]`
 
 - 寶特瓶 eval-open `omx_pick_place_pilot_plastic_bottle_open_loop`（12 集，5581 幀），N = 100／50／20，在 4090 上跑（`data/logs/openloop_bottle136augfl.sh`，9 組都 `exit=0`）。
 - 輸出 `outputs/open_loop_plastic_bottle/b136augfl_{step}_nas{N}/`。比較檔是 `cmp_b60augfl_vs_b136augfl_*`、`cmp_b4a_vs_b136augfl_*`。
 - b4a／b60augfl 沿用 10/18 同一台機器的輸出，沒有重跑（`2026-10-17_uvc60_augfl_open_loop.md` §5；b4a 跨機器可重現）。
+
+MAE＝每一幀「模型預測的 action」和「示範實際的 action」差的絕對值，對所有幀、6 個關節取平均，單位是 LeRobot `.pos`（不是度數）（定義見 `2026-09-29.md` §1）。
+N 是推論間隔，第 t 幀的預測來自 ⌊t/N⌋·N 那一幀，所以 N 越大要往未來猜越遠，MAE 也越大，不同 N 不能互相比。
 
 逐集配對 b136augfl − 對照（MAE，越低越好；95% bootstrap CI；sign-flip p；括號內是 b136augfl 贏的集數）：
 
@@ -62,7 +66,8 @@
   - 評估集 ep 6 找不到分界線
 - 影像：`outputs/open_loop_plastic_bottle/eval_view_vs_A2_A1.jpg`（上排 A2／A1，下排評估集 ep 0／6）。評估集的相機比較低，牆面露得比較多，看得到路由器，手臂底下的擺設也不同。
 - 所以三個模型在這份評估集上看到的，都是訓練沒出現過的第三視角。三者之間的相對比較條件相同，但 MAE 的絕對值、增強有沒有幫上忙，都會混進這個視角差。
-- 9/18 錄這份評估集時，相機為什麼在那個位置 `[未確認]`（`2026-09-18.md` 沒寫）。
+- 原因 `[柏宇說 2026-10-22]`：實驗場地在宿舍，從 9/18 到現在，佈置時難免會動到相機和周邊。
+  要讓開環評估集跟現在的閉環視角一致，就得在現在的位置重錄一份。
 
 ## 4. 讀法
 
@@ -75,5 +80,5 @@
 
 ## 待辦
 
-- [ ] 上 Hub：`ericc430/act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_{20k,40k,100k}`（private，附 `fl_dropout.json`；`docs/handoff/2026-10-21_bottle_136.md`）
+- [x] 上 Hub（§1）
 - [ ] 閉環 100k：條件與判準照 `docs/handoff/2026-10-21_bottle_136.md`「怎麼比」（> 80%；c12／c6／c26 人夾不到就從分母拿掉；瓶子倒成橫的怎麼算 `[未定]`）
