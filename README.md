@@ -1,199 +1,51 @@
 # teleoperation_pick_place
 
-Imitation-learning pick-and-place on a real robot arm using
-[LeRobot](https://github.com/huggingface/lerobot) + ACT.
+以模仿學習（[LeRobot](https://github.com/huggingface/lerobot) + ACT）讓機器手臂撿拾垃圾。
 
-> 🔴 **Platform, as of 2026-08-24: OMX-AI, not SO-ARM.** SO-ARM's ETA slipped to 2026-09-15, which
-> falls on the first day of the team's zero-capacity window (書審/報名, see `docs/phase_plan.md`).
-> **D002's pre-registered reversal condition fired and D021 supersedes it.** SO-ARM's role after it
-> arrives was **settled on 2026-08-27**: OMX to the end, SO-ARM is hardware redundancy only — no
-> comparison demos, because cross-arm demos cannot be pooled (D021, option 甲). Older text in this repo that
-> says "SO-ARM" as the platform predates 2026-08-24. Successor to the audio-only /
-sim2real direction (see `../legacy_audio_grasp_detection/`), which was shelved because it couldn't be
-validated on real hardware within the project timeline.
+## 目標
 
-**Principle: this repo holds everything needed to *reproduce* an experiment. It does not hold large
-files.** Datasets, model checkpoints, and raw video live in Hugging Face Hub (private repos) and/or the
-lab NAS — see [Where the data lives](#where-the-data-lives) below. Anything checked in here should be
-small enough to `git clone` in seconds.
+將 ROBOTIS OMX 手臂裝上移動平台，在**室外**定點撿拾散落的垃圾並丟入車上的垃圾桶，並且在光線、陰影、背景等環境變化下仍維持成功率。
 
-## Status
+目前的範圍是剛體、不透明的空容器（紙杯、寶特瓶、鋁罐）。透明與可變形物體（例如壓扁的寶特瓶、塑膠袋）暫不納入。
 
-**As of 2026-10-19.** This section is the canonical progress summary — update it at each milestone.
-Numbers below are copied from `docs/worklog/` (the source of truth); details and caveats live there.
+<a id="status"></a>
 
-| Stage | State |
+## 目前進度（2026-10-21）
+
+| 階段 | 狀態 |
 |---|---|
-| Phase A — pipeline | ✅ Done 2026-09-01 (record → verify → train ACT → open-loop eval). On-robot rollout via `lerobot-rollout` since 09-03 (`docs/field_manual.md` §8). |
-| Phase B — indoor ACT | 🟡 In progress. 60 demos each of paper cup (`uvc_60`), plastic bottle and aluminium can recorded 09-13 – 09-18. First closed loops: can 40k 6/36 (D032), bottle 100k 4/35 (09-21). |
-| ↳ paper cup (main line since 10-05) | ✅ **34/36** closed loop on 10-16 (`augfl-fldrop30` 100k): 60 base + 69 targeted demos (near 13, recovery 10, far wrist-rotation 46), plus front-left translate/rotate augmentation and front-left dropout before the first grasp. Same recipe on the 60 base demos alone: 20/36 (10-17). Which of the 69 matter is not separated. |
-| ↳ plastic bottle | 🔴 0/15 on 10-18 (60 demos + the same augmentation/dropout; stopped at c16, mostly `bad_aim`). Next (decided 10-19): supplementary far and near demos with one consistent grasp style, plus recovery demos, recorded 10-21 – 22; train 10-22. |
-| Simulation (Isaac Sim replay) | 🟡 Joint zeros, base pose and link sag calibrated; replaying the 10-14 closed loop (36 ep) in sim agrees with the real outcome in 33/36 (cup ≥ 5 cm up for ≥ 10 frames; commit 211c7cf) — an agreement rate, not a sim success rate. FK fingertip vs a camera-free touch test (16 points, 10–28 cm): 0.40–0.42 cm held-out rms (0588c51). Wrist-camera extrinsics still open. Next: sim environment variation, comparing ACT trained with / without variation data. |
-| Phase C — on the mobile base ("上車") | ⚪ Planned end of November 2026 (bottle + cup models; can if time allows). Chassis undecided (D020). Environment-variation tests after mounting. |
-| Phase D — tactile | ⚪ Descoped to "if time allows" (D008, 2026-08-18). |
+| 室內桌面：紙杯 | ✅ 實機閉環 34/36 |
+| 室內桌面：寶特瓶 | 🟡 補錄示範後重新訓練中 |
+| 模擬（Isaac Sim） | 🟡 實機軌跡可在模擬中重現；下一步用模擬產生環境變異資料 |
+| 上車（移動平台） | ⚪ 預計 2026 年 11 月底 |
+| 室外定點撿拾 | ⚪ 上車之後 |
 
-Current decisions and open questions: `docs/meeting/2026-10-18_team_meeting.md`. Plan vs. reality per
-phase: top of `docs/phase_plan.md`.
+## 方法
 
-The Quickstart below is the Phase A pilot recipe (8 episodes) and is kept as the minimal smoke test.
+1. **示範資料**：以 leader–follower 遙操作錄製示範，觀測包含手腕相機、第三視角相機與關節角度。除一般示範外，也針對近處、遠處與失手後恢復補錄示範。
+2. **訓練**：ACT（Action Chunking Transformer），搭配第三視角影像的隨機平移／旋轉增強與隨機遮蔽，降低模型對相機位置與單一視角的依賴。
+3. **評估**：在固定的擺放點上做實機閉環測試，逐集記錄成功與失敗原因。
+4. **模擬**：校正手臂模型後，在 Isaac Sim 重播實機軌跡，用來擴充光線、背景等環境變異。
 
-## Quickstart: Phase A 訓練與開環評估
+## 使用
 
-```bash
-# 1. 確保資料集已載入至主機路徑：
-#    data/huggingface/lerobot/EricC430/omx_pick_place_pilot
-ls data/huggingface/lerobot/EricC430/omx_pick_place_pilot/meta/info.json
-
-# 2. 實際幀數與資料一致性驗證（退出碼必須為 0）
-./scripts/run_container.sh python scripts/verify_dataset.py /workspace/data/huggingface/lerobot/EricC430/omx_pick_place_pilot
-
-# 3. 登入 Weights & Biases（首次執行，輸入 API Key 後持久化於 data/.netrc）：
-./scripts/run_container.sh wandb login
-# 或於主機環境變數設定：export WANDB_API_KEY="your_api_key"
-
-# 4. 執行 ACT 模型訓練（8 筆資料：前 7 筆訓練、保留第 7 筆作為隔離評估，批次 16，500 步）
-./scripts/run_container.sh lerobot-train --config_path configs/train_omx_pilot.yaml
-
-# 5. 執行 Open-Loop 開環評估（以 Checkpoint 評估隔離之 Episode 7）
-./scripts/run_container.sh python scripts/eval_open_loop.py \
-  --checkpoint=/workspace/data/train/phase_a_pilot/checkpoints/last/pretrained_model \
-  --dataset.root=/workspace/data/huggingface/lerobot/EricC430/omx_pick_place_pilot \
-  --episodes 7
-```
-
-### Using `run_container.sh`
-
-It has two modes, which is why it appears twice above:
-
-| Invocation | What happens |
+| 步驟 | 指令 |
 |---|---|
-| `./scripts/run_container.sh` | You get an interactive shell **inside** the container, in `/workspace` (this repo). |
-| `./scripts/run_container.sh <command...>` | `<command...>` runs inside the container, then the container exits. Step 4 is this form. |
+| 錄製 | `lerobot-record --config_path configs/record_omx*.yaml` |
+| 訓練 | `scripts/train_fl_dropout.py`（完整參數見 `configs/train_omx_*.yaml` 檔頭） |
+| 閉環評估 | `scripts/rollout_labeled.py --config_path configs/rollout_omx_*_eval.yaml` |
+| 模擬重播 | 見 `sim/README.md` |
 
-Anything works in the second form — `lerobot-info`, `python --version`, `ls /workspace/data`.
+<a id="where-the-data-lives"></a>
 
-**Always run it from the host.** There is no `docker` inside the container, so running it from a
-container shell fails with `exec: docker: not found`. Check the prompt if unsure:
+資料集與模型權重放在 Hugging Face Hub（private），不在本 repo。
 
-```
-boyuchen@widm:~/teleoperation_pick_place$    <- host, run it here
-boyuchen@06b0b64be1ff:/workspace$            <- already inside the container
-```
+## 目錄
 
-Note also that `~` inside the container is **not** your host home directory, so `cd ~/teleoperation_pick_place`
-will not work there — the repo is at `/workspace`.
-
-**重要參數說明：**
-
-- `--policy.push_to_hub=false` — 預設為 true。若未指定且未給予 hub repo 會中斷，本設定已納入 yaml。
-- `wandb.enable: true` — 已於 `configs/train_omx_pilot.yaml` 啟用，訓練即時指標與 `eval_loss` 將上傳至 Weights & Biases（專案：`teleoperation_pick_place`）。若欲離線訓練可覆蓋 `--wandb.enable=false`。
-
-`--output_dir` **must start with `/workspace/`**. That is the container's name for this repo — the
-only host directory mounted into it — so anything written there lands on the real disk.
-
-> 🔴 **A path outside `/workspace/` loses the run, silently.** `/tmp/...`, `/root/...` and friends
-> are the container's own throwaway filesystem; `--rm` deletes them on exit. Training completes,
-> reports success, writes checkpoints — and they are gone the moment the container stops. There is
-> no warning, so a multi-hour run can vanish with nothing to show for it.
-
-It also refuses to reuse an existing directory, so give each run its own — that is deliberate, it
-stops a rerun from quietly overwriting an earlier result.
-
-**Never pipe a training run into `tail`/`grep` and trust the exit code** — the status you get back
-is `tail`'s, so a crashed run looks like success. Redirect to a file and read the file.
-
-Phase A Pilot 訓練使用 8 筆實機軌跡（`omx_pick_place_pilot`），批次 16、500 步預計於 2–3 分鐘內完成。
-相關資源佔用與管線驗證基準記錄於 **[`docs/pipeline_validation.md`](docs/pipeline_validation.md)**。
-
-## Container image
-
-The goal is an environment defined by a **Dockerfile in this repo**, not by instructions a human
-follows by hand — same principle as everything else here. We're not there yet: right now we run
-LeRobot's official image as-is and carry the run flags in this README.
-
-**Verified on the lab GPU box (2026-08-12):**
-
-| Component | State |
+| 路徑 | 內容 |
 |---|---|
-| GPU / driver | RTX 4090, driver `550.54.14` → **CUDA 12.4 ceiling** |
-| `nvidia-container-toolkit` | `1.17.8-1`, installed |
-| Docker `nvidia` runtime | registered in `/etc/docker/daemon.json` |
-| Docker permissions | user is in the `docker` group — **no `sudo` needed, and none available** |
-| Docker `data-root` | `/ssd/docker` (images/containers live on the SSD, not `$HOME`) |
-| Image contents | LeRobot `0.6.2`, torch `2.11.0+cu128`, Python 3.12.3 |
-
-⚠️ **A plain `--gpus all` does not work with this image.** The image wants CUDA 12.8, the driver caps
-at 12.4, and the forward-compat libraries it bundles to bridge that gap are unsupported on GeForce
-cards. The two extra flags in the Quickstart are the workaround, and it is a workaround —
-**[`docs/environment.md`](docs/environment.md) explains why, and what the real fixes are.** Read it
-before trusting a long training run to this setup.
-
-**Still TODO:**
-
-- [ ] Write the `Dockerfile` — derive from the upstream image and purge `cuda-compat`, which removes
-      both run-time flags. Verified to work; the five lines are in `docs/environment.md`. Note a
-      cu124 build is *not* an option (LeRobot needs torch ≥ 2.7, cu124 stops at 2.6).
-- [ ] Pin LeRobot **by digest** in the Dockerfile (`latest` is not a pin — see `docs/environment.md`).
-- [ ] Add the remaining `docker run` flags once hardware is back:
-  - serial bus servo boards → `--device /dev/ttyACM*` (see `scripts/setup_device_bindings.sh`)
-  - cameras → `--device /dev/video*`
-  - HF Hub cache → mount a host volume, or every run re-downloads the dataset
-- [ ] Decide whether the laptop (data collection + inference) also runs the container, or stays on uv.
-      This blocks the cross-machine verification in `docs/environment.md`.
-
-Datasets and checkpoints are **not** baked into the image; they come from HF Hub at runtime, same as
-before. See [Where the data lives](#where-the-data-lives).
-
-## Repo layout
-
-| Path | Contents |
-|---|---|
-| **`docs/experiment_spec.md`** | ★★ **Read this before collecting any data.** Frozen task/success definitions, failure codes, object list, scene constants, dataset schema, evaluation protocol, decision rules, environment gotchas. |
-| **`docs/decisions.md`** | ★ Decision log. Each entry records the alternatives, the reasoning, the accepted costs, and — crucially — **what evidence would reverse it**. |
-| **`docs/phase_plan.md`** | ★ Phase A→D plan (v3), the cut-list for when time runs short, and **§T0 與實驗室可及性** — lab visits are the scarce resource, plan around them. |
-| `docs/execution_plan.md` | Execution plan, reasoning, and contingencies behind `phase_plan.md`. |
-| `docs/act_evidence.md` | Literature and measured evidence backing the ACT choice and the recovery-data hypothesis. |
-| `docs/camera_mount.md` | Camera position vs. mount hardware, the mast-vs-oblique question, and the pixel-displacement measurement protocol. |
-| `docs/exp_a3_recovery_ablation.md` | Design of the A3 recovery-data ablation. |
-| `docs/conventions.md` | Commit message and branch conventions. |
-| `Dockerfile` | ★ Defines the training/inference environment. **Not yet written** — see [Container image](#container-image). |
-| **`docs/environment.md`** | ★ Version pinning across machines, the cross-machine consistency check, and the **driver-ceiling / forward-compat gotcha on the GPU box** — read it before debugging any `--gpus all` failure. |
-| `docs/pipeline_validation.md` | Training runs done to validate the pipeline (public data only): timings, resource use, bottlenecks, and the pitfalls each run exposed. Not experiment results — those go in `eval/`. |
-| `configs/` | Training and evaluation config files. |
-| `calibration/` | ★ One file per calibration run, filename dated (`YYYY-MM-DD_<leader\|follower>.json`). Never overwrite — always add a new dated file. This is how we detect "did the calibration drift?" when results suddenly get worse. |
-| **`config_records/`** | ★ Written automatically (plugin `lerobot_robot_config_record`): every lerobot-record / -teleoperate / -calibrate / -replay / -rollout run copies its `--config_path` YAML to `config_records/<robot id>/<stem>__<digest>.yaml`, with time, CLI overrides and git state. Like `calibration/`: never edit, never delete. **This is where per-session camera exposure etc. is recorded** — LeRobot datasets don't store it. |
-| `scripts/` | Thin wrappers around data collection / training / evaluation / deployment commands. `setup_device_bindings.sh` is **optional** — see the escalation conditions at the top of that file. |
-| `plugins/` | Project LeRobot plugins, installed editable (see `docs/environment.md`): `lerobot_camera_uvc` (camera types `opencv_uvc` and `intelrealsense_pinned`: exposure / gain / white balance set on every connect, `null` = AUTO; D022) and `lerobot_robot_config_record` (writes `config_records/`). |
-| `analysis/` | Plotting and stats code over `eval/` records. |
-| **`episode_meta/`** | ★ Per-episode metadata LeRobot does not record — object, start cell, lighting, outcome, failure mechanism, quality, operator. One CSV per dataset, keyed by `episode_index`, filled by `scripts/annotate_episodes.py`; the fields live in `configs/episode_meta_schema.yaml`, not in code. See `episode_meta/README.md`. |
-| `eval/` | ★ Evaluation run logs (CSV) and failure-mode classification tables. See `eval/README.md` for the required columns and run metadata; copy `_template.csv` per run. |
-| `docs/hardware.md` | ★ Equipment inventory: models, firmware, USB ports, **plus current status, ETAs, and rejected options with reasons**. Check here first when debugging "did something change". |
-| `docs/setup_env.md` | Site baseline: desk layout, lighting, camera placement (with photos). |
-| `docs/field_manual.md` | On-site operating manual — the checklist to run through at the lab. Fill in once hardware is actually available. |
-| `docs/meeting/` | Meeting notes only (team / advisor / Physical AI sub-project), see `_template.md` and the index in `docs/meeting/README.md`. |
-| `docs/worklog/` | ★ On-site, experiment and analysis records — the source of truth for numbers. Moved out of `docs/meeting/` on 2026-10-19 with filenames unchanged; index in `docs/worklog/README.md`. |
-| `notebooks/` | Exploratory analysis. |
-
-`calibration/` and `eval/` are the two folders that matter most here — last year's failure mode was
-"no calibration records" + "no way to tell what broke." Every calibration run and every eval run gets a
-dated record, no exceptions.
-
-## Where the data lives
-
-| What | Where | Why not in this repo |
-|---|---|---|
-| Raw datasets (demos, recovery demos) | Hugging Face Hub, private repo — Phase A pilot: `ericc430/omx_pick_place_pilot` (lowercase — the Hub namespace; `EricC430/...` 403s on create. Config `repo_id`s are lowercase since 2026-09-13; only the 4090's local directories still read `.../lerobot/EricC430/...`). 2026-09-13 pilot t1–t60: `ericc430/omx_pick_place_pilot_uvc_60`. Real campaigns get a fresh `repo_id`, see `configs/record_omx.yaml` | Large, binary, versioned better by HF Hub / LeRobot tooling than git |
-| Model checkpoints | Hugging Face Hub, private repo — Phase A pilot: `ericc430/act_omx_pick_place_pilot` | Same as above |
-| Raw video | Lab NAS — `TODO: path` | Large binary, no need to version in git |
-
-If you're missing access to any of the above, ask in `docs/meeting/` notes or the shared doc referenced
-there — don't recreate a local-only copy of something that should be centrally stored.
-
-**Setting up push/pull yourself (HF_TOKEN, `hf upload`/`download`, and pulling a checkpoint onto the
-laptop to actually drive the arm with `lerobot-rollout`):** see **`docs/field_manual.md` §8** (雲端同步與跨機部署).
-
-## Related
-
-- [huggingface/lerobot](https://github.com/huggingface/lerobot)
-- [LeRobot AGENT_GUIDE](https://github.com/huggingface/lerobot/blob/main/AGENT_GUIDE.md)
-- [Seeed Studio: SO-10x arm with LeRobot](https://wiki.seeedstudio.com/lerobot_so100m/)
+| `configs/` | 錄製、訓練、評估設定 |
+| `scripts/` | 資料處理、訓練、評估、校正工具 |
+| `plugins/` | LeRobot 擴充（相機參數固定、執行設定紀錄） |
+| `sim/` | Isaac Sim 資產、校正與重播 |
+| `docs/` | 實驗規格、決策紀錄與工作紀錄 |

@@ -149,7 +149,29 @@ Two clean fixes, in order of preference:
 | Fix | Blocker |
 |---|---|
 | Update the host driver to ≥570 | **No `sudo` on the GPU box** — needs the lab admin |
-| Derive our own image from theirs, purging `cuda-compat` | `Dockerfile` isn't written yet (see README) |
+| Derive our own image from theirs, purging `cuda-compat` | `Dockerfile` isn't written yet (see [Container TODO](#container-todo)) |
+
+<a id="container-todo"></a>
+
+### Container TODO (moved from README, 2026-10-21)
+
+- [ ] Write the `Dockerfile` — derive from the upstream image and purge `cuda-compat` (five lines below).
+      A cu124 build is *not* an option (LeRobot needs torch ≥ 2.7, cu124 stops at 2.6).
+- [ ] Pin LeRobot **by digest** in the Dockerfile (`latest` is not a pin).
+- [ ] Add the remaining `docker run` flags: servo boards `--device /dev/ttyACM*`
+      (see `scripts/setup_device_bindings.sh`), cameras `--device /dev/video*`, a host volume for the HF Hub cache.
+- [ ] Decide whether the laptop (data collection + inference) also runs the container or stays on uv.
+      This blocks the cross-machine verification in this file.
+
+### Three ways a training run disappears silently (moved from README, 2026-10-21)
+
+- **`--output_dir` must start with `/workspace/`** (the only host directory mounted). `/tmp/...`, `/root/...`
+  live in the container's throwaway filesystem and `--rm` deletes them on exit — the run reports success,
+  the checkpoints are gone.
+- **Each run needs its own output directory** — LeRobot refuses to reuse one. Deliberate: a rerun can't
+  overwrite an earlier result.
+- **Never pipe a training run into `tail`/`grep` and trust the exit code** — you get `tail`'s status, so a
+  crash looks like success. Redirect to a file and read the file.
 
 ### The derived-image fix (verified 2026-08-12)
 
