@@ -13,6 +13,7 @@
 
 | 檔案 | 內容 |
 |---|---|
+| `2026-10-21.md` | 寶特瓶補錄 4 組 76 集（有效 75）：normal 16、recovery tight 12、中遠區精準 37（不轉腕、r_max ≈ 38.3 cm）、倒瓶 11；上 Hub；訓練 config＋`docs/handoff/2026-10-21_bottle_136.md`；④ 跟組內決議 A5 的條件不一致（§4） |
 | `2026-10-18.md` | 寶特瓶 augfl-fldrop30 100k 閉環停在 c16，0/15（10 bad_aim、3 stalled、2 dropped）；手腕相機離線標定，沒啟用候選；5 個 README 中文壞成 `?`；`aruco_points.csv` 換成 10/18 版 |
 | `2026-10-17_uvc60_augfl_closed_loop.md` | u60augfl（只用 uvc_60 60 集）100k 紙杯閉環 20/36（遠區 3/12），沒過 ≥ 29/36；柏宇判讀是資料問題；更正 10/16 §1-1 相機位置與亮度 |
 | `2026-10-17_uvc60_augfl_open_loop.md` | u60augfl 上 Hub、開環：100k 在 N=100／50 比 b1／augfl 差，20k 反而比 augfl 好，方向隨 step 不一致；開環不當判準 |
