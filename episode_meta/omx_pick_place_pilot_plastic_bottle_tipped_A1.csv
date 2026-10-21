@@ -1,12 +1,12 @@
 ﻿episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
-0,plastic_bottle,lying,t57,,,success,,,1,,Eric,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
-1,plastic_bottle,lying,t42,,,success,,,1,,Eric,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
-2,plastic_bottle,lying,t26,,,success,,,1,,Eric,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
-3,plastic_bottle,lying,t33,,,success,,,1,,Eric,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）；t48 倒著夾不到已跳過，本集起往前一格
-4,plastic_bottle,lying,t12,,,success,,,1,,Boyu,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
-5,plastic_bottle,lying,t21,,,success,,,1,,Boyu,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
-6,plastic_bottle,lying,t25,,,success,,,1,,Boyu,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
-7,plastic_bottle,lying,t10,,,success,,,1,,Boyu,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
-8,plastic_bottle,lying,t37,,,success,,,1,,Boyu,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
-9,plastic_bottle,lying,,,,,,,0,other,Boyu,2026/10/21,[柏宇說] 錯的；只有 5 幀；訓練時排除
-10,plastic_bottle,lying,t28,,,success,,,1,,Boyu,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）；t28 補在 VOID 之後
+0,plastic_bottle,lying,t57,宿舍大燈+檯燈+窗簾拉上+亮度170,木質桌面,success,,,1,,Eric,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
+1,plastic_bottle,lying,t42,宿舍大燈+檯燈+窗簾拉上+亮度169,木質桌面,success,,,1,,Eric,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
+2,plastic_bottle,lying,t26,宿舍大燈+檯燈+窗簾拉上+亮度169,木質桌面,success,,,1,,Eric,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
+3,plastic_bottle,lying,t33,宿舍大燈+檯燈+窗簾拉上+亮度161,木質桌面,success,,,1,,Eric,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）；t48 倒著夾不到已跳過，本集起往前一格
+4,plastic_bottle,lying,t12,宿舍大燈+檯燈+窗簾拉上+亮度162,木質桌面,success,,,1,,Boyu,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
+5,plastic_bottle,lying,t21,宿舍大燈+檯燈+窗簾拉上+亮度167,木質桌面,success,,,1,,Boyu,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
+6,plastic_bottle,lying,t25,宿舍大燈+檯燈+窗簾拉上+亮度166,木質桌面,success,,,1,,Boyu,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
+7,plastic_bottle,lying,t10,宿舍大燈+檯燈+窗簾拉上+亮度169,木質桌面,success,,,1,,Boyu,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
+8,plastic_bottle,lying,t37,宿舍大燈+檯燈+窗簾拉上+亮度167,木質桌面,success,,,1,,Boyu,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）
+9,plastic_bottle,lying,,宿舍大燈+檯燈+窗簾拉上+亮度171,木質桌面,,,,0,other,Boyu,2026/10/21,[柏宇說] 錯的；只有 5 幀；訓練時排除
+10,plastic_bottle,lying,t28,宿舍大燈+檯燈+窗簾拉上+亮度162,木質桌面,success,,,1,,Boyu,2026/10/21,倒放：瓶身沿半徑方向（瓶蓋朝牆壁或朝手臂，每集朝哪邊沒記）；t28 補在 VOID 之後
