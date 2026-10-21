@@ -16,7 +16,7 @@
 | `2026-10-21.md` | 寶特瓶補錄 4 組 76 集（有效 75）：normal 16、recovery tight 12、中遠區精準 37（不轉腕、r_max ≈ 38.3 cm）、倒瓶 11；上 Hub；訓練 config＋`docs/handoff/2026-10-21_bottle_136.md`；④ 跟組內決議 A5 的條件不一致（§4） |
 | `2026-10-18.md` | 寶特瓶 augfl-fldrop30 100k 閉環停在 c16，0/15（10 bad_aim、3 stalled、2 dropped）；手腕相機離線標定，沒啟用候選；5 個 README 中文壞成 `?`；`aruco_points.csv` 換成 10/18 版 |
 | `2026-10-17_uvc60_augfl_closed_loop.md` | u60augfl（只用 uvc_60 60 集）100k 紙杯閉環 20/36（遠區 3/12），沒過 ≥ 29/36；柏宇判讀是資料問題；更正 10/16 §1-1 相機位置與亮度 |
-| `2026-10-17_uvc60_augfl_open_loop.md` | u60augfl 上 Hub、開環：100k 在 N=100／50 比 b1／augfl 差，20k 反而比 augfl 好，方向隨 step 不一致；開環不當判準；§4–5 寶特瓶 60 集＋同方法（b60augfl）訓練、上 Hub、開環：對舊寶特瓶模型 b4a 九格都分不出 |
+| `2026-10-17_uvc60_augfl_open_loop.md` | u60augfl 上 Hub、開環：100k 在 N=100／50 比 b1／augfl 差，20k 反而比 augfl 好，方向隨 step 不一致；開環不當判準。§4–5 寶特瓶 60 集用同方法重訓（b60augfl）、上 Hub；開環跟舊寶特瓶模型 b4a 逐集配對比：3 個 step（20k／40k／100k）× 3 個 N（100／50／20）都沒有顯著差異（CI 都跨 0，最小 p 0.12）；閉環見 `2026-10-18.md`（100k 0/15） |
 | `2026-10-16_closed_loop.md` | fldrop50 28/36、**fldrop30-augfl 34/36**（129 集）；augfl 對 fldrop50 配對 p 0.07、對 fldrop30 p 0.22；c17／c36 轉向分析；§4 下一步 |
 | `2026-10-15_fldrop50_open_loop.md` | fldrop50（p 0.5）訓練、上 Hub、開環；手腕不平移的 fldrop30-augfl 開環在 N=100／50 變差，原因未查 |
 | `2026-10-14_fldrop_open_loop.md` | ntcfA1aug＋接近段 front-left dropout（p 0.3、30 幀）：開環與基底分不出；閉環 30/36 vs 基底 25/36（配對 p 0.18） |
