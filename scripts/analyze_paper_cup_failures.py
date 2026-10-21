@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Join frozen placements, annotations and recorded-data predictions for diagnosis.
 
-Run after the inference bundles documented in docs/meeting/2026-10-06_diagnosis.md
+Run after the inference bundles documented in docs/worklog/2026-10-06_diagnosis.md
 are available. Requires numpy, matplotlib and pyarrow; no robot, GPU or network.
 Raw annotations are never rewritten. All MAEs are in LeRobot .pos units.
 """

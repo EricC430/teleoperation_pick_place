@@ -1,0 +1,5 @@
+pose_id,approach,camera,image,state_shoulder_pan,state_shoulder_lift,state_elbow_flex,state_wrist_flex,state_wrist_roll,state_gripper
+S00_F0050_r+0_f-4,scan,wrist,calibration\2026-10-18_wrist_validation_batch\shots\baseline_end\S00_F0050_r+0_f-4_scan_wrist.png,-0.171,-10.085,7.057,-20.874,0.659,59.341
+S00_F0050_r+0_f-4,scan,front-left,calibration\2026-10-18_wrist_validation_batch\shots\baseline_end\S00_F0050_r+0_f-4_scan_front-left.png,-0.171,-10.085,7.057,-20.874,0.659,59.341
+S08_F0050_r+0_f-4,scan,wrist,calibration\2026-10-18_wrist_validation_batch\shots\baseline_end\S08_F0050_r+0_f-4_scan_wrist.png,24.347,-5.504,0.366,-21.758,0.904,59.365
+S08_F0050_r+0_f-4,scan,front-left,calibration\2026-10-18_wrist_validation_batch\shots\baseline_end\S08_F0050_r+0_f-4_scan_front-left.png,24.347,-5.504,0.366,-21.758,0.904,59.365

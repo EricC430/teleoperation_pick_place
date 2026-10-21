@@ -1,6 +1,6 @@
 # Which input decides where ACT grasps (2026-10-07)
 
-Offline tests behind `docs/meeting/2026-10-07.md`. Run from the repo root with `uv run python scripts/input_reliance/<file>`.
+Offline tests behind `docs/worklog/2026-10-07.md`. Run from the repo root with `uv run python scripts/input_reliance/<file>`.
 Checkpoint and dataset paths are hard-coded at the top of `h1_swap.py` (cup 100k, uvc_60, eval-open).
 
 | file | what it does | notes §|

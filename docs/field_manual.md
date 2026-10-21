@@ -743,7 +743,7 @@ already exists」）——如果不小心先建成 public，要自己到 Hub 網
 uv run lerobot-rollout --config_path configs/rollout_omx_pilot.yaml
 ```
 
-#### 🔴 每次閉環 rollout 開跑前（2026-10-05 起，`docs/meeting/2026-10-05.md` §2、§2-b）
+#### 🔴 每次閉環 rollout 開跑前（2026-10-05 起，`docs/worklog/2026-10-05.md` §2、§2-b）
 
 `reset_to_initial_position` 回到的是**連線那一刻**的姿勢，程式結束時又會關扭力——起始姿勢等於「手臂上次被放在哪」。
 10-05 曾因此從訓練範圍外起步（wrist_flex +1.5、gripper 50.6），第一步 0.13 s 內轉約 38°。照順序做：

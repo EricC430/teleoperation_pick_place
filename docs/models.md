@@ -14,7 +14,7 @@
   2026-10-12：三個 run 的 100k 上 Hub（皆 private）的 hash 用 Hub API 的 LFS oid 對過，一致；20k／40k 沒上傳。
   repo 名的數字是排除後的集數（uvc_60 60－normal 13－recovery 10－far 46）。
   `tight_far_A1`／`tightcut_far_A1` 六列「閉環用過」記為 — `[推論]`：`config_records/` 沒有對應的 rollout record、
-  Hub 上 10/6 之後沒有新的 rollout dataset、`docs/meeting/2026-10-10_open_loop.md` 的「閉環評估（ntfA1／ntcfA1）」待辦仍未勾。
+  Hub 上 10/6 之後沒有新的 rollout dataset、`docs/worklog/2026-10-10_open_loop.md` 的「閉環評估（ntfA1／ntcfA1）」待辦仍未勾。
   這是「沒有紀錄」，不等於確定沒跑過；之後如果跑了閉環，用 record digest 取代 —。
   10-13：ntfA1 100k（`e97526c13766`）試跑一場、作廢，見該列。
   2026-10-13 加的 `cup_uvc60_normal_tight_far_A1_aug`／`cup_uvc60_normal_tightcut_far_A1_aug` 六列：hash 是直接 `sha256sum` 本機檔案算的，也和開環的 log 對過；同日上 Hub（private），Hub API 的 LFS oid 對過，一致。
@@ -22,6 +22,7 @@
   Windows 另外從 Hub 下載到 `D:\hf\hub` 後 `sha256sum`，三個也都一致（2026-10-14）。
   2026-10-15 加的 `…_aug_fldrop_p50_w30` 三列：同樣 `sha256sum` 本機檔案，上 Hub（private）後以 LFS oid 對過，一致；dropout 設定看同 repo 的 `fl_dropout.json`。
   同日加的 `…_augfl_fldrop_p30_w30` 三列：`sha256sum` 本機檔案，也和開環 `metrics.json` 對過；上 Hub（private）後以 LFS oid 對過，一致。`fl_dropout.json` 的 `image_transforms_cameras` 只有 front-left（Hub 的 `train_config.json` 看不出手腕沒平移）。
+  2026-10-18 加的 `bottle60_augfl_fldrop_p30_w30` 三列：Windows 從 Hub 下載到 `D:\hf\hub` 後 `sha256sum`，和 Hub API 的 LFS oid 對過，一致；本機訓練檔沒對（不在這台）。`fl_dropout.json` 的 `image_transforms_cameras` 只有 front-left。
 
 ## ACT／Diffusion 模型
 
@@ -67,7 +68,7 @@
 | `aebc8680b965` | `cup_uvc60_normal_tightcut_far_A1_augfl_fldrop_p30_w30` / 100k | `act_omx_b1_paper-cup_60-13-10rcvrycut-46far-augfl-fldrop30_100k` | 紙杯 | 同上 | 10/16 `__b9d19490`（`2026-10-16_closed_loop.md`：34/36） |
 | `c7c9dfceb900` | `uvc60_augfl_fldrop_p30_w30` / 20k | `act_omx_b1_paper-cup_60-augfl-fldrop30_20k` | 紙杯 | `omx_pick_place_pilot_uvc_60`（全 60 集）；增強與 dropout 同 `…_augfl_fldrop_p30_w30`（`configs/train_omx_uvc60_augfl_fldrop.yaml`；理由見 `2026-10-16_closed_loop.md` §4-1） | — |
 | `27c5ba98b2c4` | `uvc60_augfl_fldrop_p30_w30` / 40k | `act_omx_b1_paper-cup_60-augfl-fldrop30_40k` | 紙杯 | 同上 | — |
-| `f55b0fa71b50` | `uvc60_augfl_fldrop_p30_w30` / 100k | `act_omx_b1_paper-cup_60-augfl-fldrop30_100k` | 紙杯 | 同上 | — |
+| `f55b0fa71b50` | `uvc60_augfl_fldrop_p30_w30` / 100k | `act_omx_b1_paper-cup_60-augfl-fldrop30_100k` | 紙杯 | 同上 | 10/17 `__40c363cb`（`2026-10-17_uvc60_augfl_closed_loop.md`，20/36） |
 | `0dd8b31a90a0` | `bottle60_augfl_fldrop_p30_w30` / 20k | `act_omx_b4a_plastic-bottle_60-augfl-fldrop30_20k` | 寶特瓶 | `omx_pick_place_pilot_60_plastic_bottle`（全 60 集，同 `phase_b4a_plastic_bottle`）；增強與 dropout 同 `uvc60_augfl_fldrop_p30_w30`（`configs/train_omx_bottle60_augfl_fldrop.yaml`；理由見 `2026-10-17_uvc60_augfl_open_loop.md` §4） | — |
 | `0eea003c1abb` | `bottle60_augfl_fldrop_p30_w30` / 40k | `act_omx_b4a_plastic-bottle_60-augfl-fldrop30_40k` | 寶特瓶 | 同上 | — |
 | `35ffc9043713` | `bottle60_augfl_fldrop_p30_w30` / 100k | `act_omx_b4a_plastic-bottle_60-augfl-fldrop30_100k` | 寶特瓶 | 同上 | — |

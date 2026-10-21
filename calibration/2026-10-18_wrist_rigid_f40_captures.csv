@@ -1,0 +1,9 @@
+pose_id,approach,camera,image,state_shoulder_pan,state_shoulder_lift,state_elbow_flex,state_wrist_flex,state_wrist_roll,state_gripper
+S00_F0040_r+0_f-4,scan,wrist,calibration\shots\2026-10-18_wrist_rigid_f40\S00_F0040_r+0_f-4_scan_wrist.png,3.101,-20.464,12.918,-17.167,-0.513,59.341
+S00_F0040_r+0_f-4,scan,front-left,calibration\shots\2026-10-18_wrist_rigid_f40\S00_F0040_r+0_f-4_scan_front-left.png,3.101,-20.464,12.918,-17.167,-0.513,59.341
+S00_F0040_r+8_f-4,scan,wrist,calibration\shots\2026-10-18_wrist_rigid_f40\S00_F0040_r+8_f-4_scan_wrist.png,3.101,-20.44,12.918,-17.167,7.448,59.341
+S00_F0040_r+8_f-4,scan,front-left,calibration\shots\2026-10-18_wrist_rigid_f40\S00_F0040_r+8_f-4_scan_front-left.png,3.101,-20.44,12.918,-17.167,7.448,59.341
+S08_F0040_r+0_f-4,scan,wrist,calibration\shots\2026-10-18_wrist_rigid_f40\S08_F0040_r+0_f-4_scan_wrist.png,21.06,-17.099,6.276,-17.372,0.22,59.365
+S08_F0040_r+0_f-4,scan,front-left,calibration\shots\2026-10-18_wrist_rigid_f40\S08_F0040_r+0_f-4_scan_front-left.png,21.06,-17.099,6.276,-17.372,0.22,59.365
+S08_F0040_r+8_f-4,scan,wrist,calibration\shots\2026-10-18_wrist_rigid_f40\S08_F0040_r+8_f-4_scan_wrist.png,21.07,-17.07,6.276,-17.368,8.181,59.365
+S08_F0040_r+8_f-4,scan,front-left,calibration\shots\2026-10-18_wrist_rigid_f40\S08_F0040_r+8_f-4_scan_front-left.png,21.07,-17.07,6.276,-17.368,8.181,59.365

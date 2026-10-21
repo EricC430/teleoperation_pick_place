@@ -1,0 +1,13 @@
+﻿episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
+0,plastic_bottle,stand,t60,宿舍大燈+檯燈+窗簾拉上+亮度163,木質桌面,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向前（伸過頭）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+1,plastic_bottle,stand,t54,宿舍大燈+檯燈+窗簾拉上+亮度158,木質桌面,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向右（θ 負側）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+2,plastic_bottle,stand,t55,宿舍大燈+檯燈+窗簾拉上+亮度160,木質桌面,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向前（伸過頭）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+3,plastic_bottle,stand,t53,宿舍大燈+檯燈+窗簾拉上+亮度159,木質桌面,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向左（θ 正側）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+4,plastic_bottle,stand,t52,宿舍大燈+檯燈+窗簾拉上+亮度161,木質桌面,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向後（伸不夠）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+5,plastic_bottle,stand,t57,宿舍大燈+檯燈+窗簾拉上+亮度158,木質桌面,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向前（伸過頭）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+6,plastic_bottle,stand,t34,宿舍大燈+檯燈+窗簾拉上+亮度163,木質桌面,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向後（伸不夠）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+7,plastic_bottle,stand,t12,宿舍大燈+檯燈+窗簾拉上+亮度160,木質桌面,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向右（θ 負側）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+8,plastic_bottle,stand,t17,宿舍大燈+檯燈+窗簾拉上+亮度156,木質桌面,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向左（θ 正側）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+9,plastic_bottle,stand,t36,宿舍大燈+檯燈+窗簾拉上+亮度165,木質桌面,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向後（伸不夠）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+10,plastic_bottle,stand,t9,宿舍大燈+檯燈+窗簾拉上+亮度159,木質桌面,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向左（θ 正側）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取
+11,plastic_bottle,stand,t35,宿舍大燈+檯燈+窗簾拉上+亮度174,木質桌面,success,self_recovered,,1,,Eric,2026/10/21,recovery tight：先歪向右（θ 負側）、空夾抬起、看到瓶子留在桌上才鬆開，再修正夾取

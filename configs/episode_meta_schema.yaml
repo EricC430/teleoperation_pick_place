@@ -33,7 +33,9 @@
 #   default   fixed default when there is no previous answer
 #   auto      "now" = prefilled with the current timestamp (still editable)
 
-version: 5   # 2026-10-06: mechanism gains bad_aim, chunk_gap_rush (D015 amendment 2026-10-06, proposed by Eric)
+version: 6   # 2026-10-16: chunk_gap_rush narrowed - only when the rush displaces the object (D015 amendment
+             #             2026-10-16). Value list unchanged; meaning changed.
+             # 2026-10-06: mechanism gains bad_aim, chunk_gap_rush (D015 amendment 2026-10-06, proposed by Eric)
              # 2026-09-18: valid prompt/help realigned with docs/experiment_spec.md §1-3 ③ — it read
              #             「納入訓練?」, but the spec defines valid as "not disturbed from outside the
              #             task" (0 = drop from the success-rate denominator). Meaning, not field set, changed.

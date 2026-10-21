@@ -68,7 +68,7 @@ metric that tells you what to change next.**
 | `timeout` | Hit the time limit |
 | **`self_recovered`** | ⭐ **Went off course and corrected itself.** Valid alongside `outcome=success` |
 | `bad_aim` | The gripper descends / closes at a spot **visibly off the object** (more than about half the object's width) — misses it or only catches an edge. Judged from what the video shows, not from a guess about the policy. May co-occur with `pushed_away` (off-target contact pushes the object). Added 2026-10-06 |
-| `chunk_gap_rush` | The arm **suddenly speeds up / jumps** mid-motion at a chunk boundary (every `n_action_steps` frames; N=30 ≈ every 2 s at 15 fps). Valid alongside `outcome=success`, like `self_recovered`. Can be cross-checked in the data as an action jump at frames k·N. Added 2026-10-06 |
+| `chunk_gap_rush` | The arm **suddenly speeds up / jumps** mid-motion at a chunk boundary (every `n_action_steps` frames; N=30 ≈ every 2 s at 15 fps) **and this displaces the object** (a slight shift counts; if it pushes the object away, also tag `pushed_away`). **A rush that leaves the object untouched is not labelled**, so the label count is not the rush count — count rushes in the data as action jumps at frames k·N. Valid alongside `outcome=success`, like `self_recovered`. Added 2026-10-06; narrowed 2026-10-16 (D015 amendment) |
 | `other` | Detail it in `notes` |
 
 > ⭐ **`self_recovered` is deliberately a positive label.** This column records *notable behaviour*,

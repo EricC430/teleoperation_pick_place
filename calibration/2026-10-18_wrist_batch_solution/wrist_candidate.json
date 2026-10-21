@@ -1,0 +1,20 @@
+{
+  "status": "candidate_only_not_activated",
+  "camera": "wrist",
+  "frame": "link5",
+  "pos_m": [
+    0.022343024486289734,
+    -0.004868796196018269,
+    0.03302665404491847
+  ],
+  "quat_wxyz": [
+    0.33104102136655955,
+    -0.6333617500605524,
+    0.6132236102067439,
+    -0.3364840852370688
+  ],
+  "model": "no_sag",
+  "model_fit": "calibration/2026-10-14_link_marker_fit.json",
+  "state_source": "measured capture CSV state_*; no commanded angles",
+  "warning": "Marker world poses fitted freely; pose accuracy in physical paper coordinates not independently established"
+}

@@ -1,0 +1,87 @@
+# config record - written automatically by lerobot_robot_config_record; do not edit
+# source:        configs/rollout_omx_b4a_plastic_bottle_augfl_fldrop30_100k_eval.yaml
+# saved_at:      2026-10-18T16:09:42
+# entrypoint:    lerobot-rollout-labeled
+# cli overrides: --policy.path=ericc430/act_omx_b4a_plastic-bottle_60-augfl-fldrop30_100k --policy.n_action_steps=30
+# ids:           robot=2026-10-08_omx_follower
+# git:           2d97ed2 (config file committed)
+# digest:        d8c46d68  (sha256[:8] of the YAML below + the CLI overrides)
+# RECORDED closed-loop evaluation of ericc430/act_omx_b4a_plastic-bottle_60-augfl-fldrop30_100k (plastic bottle).
+# Model: ACT 100k steps, sha256 35ffc9043713 (D:\hf\hub download 2026-10-18 matches the Hub LFS oid).
+# Training: configs/train_omx_bottle60_augfl_fldrop.yaml - omx_pick_place_pilot_60_plastic_bottle, all 60 eps
+# (exclude_episodes null; not annotated, failed demos unknown); front-left shift only, fl dropout p 0.3, window 30
+# (fl_dropout.json in the Hub repo).
+# Expectation (Boyu 10-17): >= 50% closed loop = >= 18/36.
+# Baseline: act_omx_b4a_plastic_bottle_100k (b6ccbd37e23f) 4/35 on 2026-09-21, same c1..c36 placements,
+# n_action_steps 100 (docs/meeting/2026-09-21_bottle_closed_loop.md). This run uses nas30 like the paper-cup runs,
+# so nas differs from the baseline.
+#
+#   uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_b4a_plastic_bottle_augfl_fldrop30_100k_eval.yaml --policy.path=ericc430/act_omx_b4a_plastic-bottle_60-augfl-fldrop30_100k --policy.n_action_steps=30 --meta-template plastic_bottle_A1
+#
+# KEEP THIS FILE ASCII-ONLY (lerobot opens it as cp950 when policy.path is set).
+# Copied from rollout_omx_b1_papercup_uvc60augfl_100k_eval.yaml; policy.path, dataset.repo_id and comments differ.
+# Model input_features (config.json): state [6], wrist [3,480,640], front-left [3,480,848] - same as the robot block.
+# Calibration 2026-10-08_omx_follower.json is byte-identical to 2026-09-13 (the bottle recording day).
+# Check the wrist OpenCV index before the session (lerobot-find-cameras): it was 3 on 2026-09-13, 2 since.
+# Scene: no placement mat in frame; same lighting as the training scene.
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-10-08_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: opencv_uvc
+      index_or_path: 2
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 15
+      fourcc: YUY2
+      exposure: -5
+      gain: 0
+      white_balance: null
+    front-left:
+      type: intelrealsense_pinned
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+      exposure: 400
+      gain: 70
+      white_balance: null
+
+policy:
+  path: ericc430/act_omx_b4a_plastic-bottle_60-augfl-fldrop30_100k  # private; cached in D:\hf\hub (2026-10-18)
+
+strategy:
+  type: episodic
+  reset_to_initial_position: true   # no teleop: arm goes back to its startup pose between trials
+
+inference:
+  type: sync
+
+dataset:
+  repo_id: ericc430/rollout_omx_b4a_plastic_bottle_60_augfl_fldrop30_100k_nas30   # must start with rollout_; timestamp appended; nas30 = n_action_steps (keep in sync with the CLI)
+  single_task: "Pick up the object and place it into the box"   # same string as training
+  fps: 15                  # must match camera fps
+  num_episodes: 36         # eval-close c1..c36 (template plastic_bottle_A1), same as the 09-21 baseline
+  episode_time_s: 30       # same as the 09-21 baseline; bottle demos mean 27.9 s, p90 36.1
+  reset_time_s: 120        # time to re-place the bottle; Right/Up ends it early
+  video: true
+  push_to_hub: false       # upload later by hand once the session looks right
+  private: true
+  streaming_encoding: false
+  encoder_threads: 2
+  rgb_encoder:
+    vcodec: h264
+    preset: veryfast
+    crf: 23
+    pix_fmt: yuv420p
+
+fps: 15
+task: "Pick up the object and place it into the box"
+display_data: true
+return_to_initial_position: true

@@ -3,7 +3,7 @@
 turn = max observation.state wrist_roll over the episode (> 15 = turned; threshold from h6_turn_cue.py).
 r = hypot(x_pan, y_pan) of the placement (docs/assets/placement_label_map_campA_136sym_20260908.csv); far = r >= 35.5.
 Paired test: exact two-sided sign test on the placements where the two runs disagree.
-Results and reading: docs/meeting/2026-10-13_closed_loop.md
+Results and reading: docs/worklog/2026-10-13_closed_loop.md
 
     uv run python scripts/analyze_aug_closed_loop_20261013.py
 """

@@ -1,0 +1,17 @@
+﻿episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
+0,plastic_bottle,stand,c1,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] pushed_away; gripper action never < 54
+1,plastic_bottle,stand,c2,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] pushed_away; gripper closed (action < 54) but nothing grasped
+2,plastic_bottle,stand,c3,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] pushed_away; gripper action never < 54
+3,plastic_bottle,stand,c4,宿舍大燈+檯燈+窗簾拉上,木質桌面,dropped,,,1,,,,"[Boyu] grasped, bottle slipped out while lifting"
+4,plastic_bottle,stand,c5,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] pushed_away; gripper action never < 54
+5,plastic_bottle,stand,c6,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,stalled;timeout,,1,,,,[Boyu] stuck in a fixed pose; data: joints move < 3 within every 2 s for the last ~15 s
+6,plastic_bottle,stand,c7,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] pushed_away; gripper closed (action < 54) but nothing grasped
+7,plastic_bottle,stand,c8,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] pushed_away; gripper action never < 54
+8,plastic_bottle,stand,c9,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] bottle escaped while the gripper was closing
+9,plastic_bottle,stand,c10,宿舍大燈+檯燈+窗簾拉上,木質桌面,dropped,,,1,,,,"[Boyu] grasped, bottle slipped out while lifting"
+10,plastic_bottle,stand,c11,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] pushed_away; gripper action never < 54
+11,plastic_bottle,stand,c12,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,stalled;timeout,,1,,,,"[Boyu] stuck in a fixed pose; data: fully still f242-361 (7.9 s), near-still for the last ~13 s"
+12,plastic_bottle,stand,c13,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,stalled;timeout,,1,,,,"[Boyu] stuck around a fixed pose, moving back and forth in place (data: never still > 2.3 s)"
+13,plastic_bottle,stand,c14,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] pushed_away; gripper action never < 54
+14,plastic_bottle,stand,c15,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[Boyu] pushed_away; gripper action never < 54
+15,plastic_bottle,stand,c16,宿舍大燈+檯燈+窗簾拉上,木質桌面,,,,0,key error (verdict key pressed at start; 1 frame),,,"real c16 trial was the 17th run, not saved (session stopped); [Boyu] it failed"

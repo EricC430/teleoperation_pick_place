@@ -52,9 +52,9 @@ uv run huggingface-cli upload ericc430/<dataset> D:\hf\lerobot\ericc430\<dataset
 
 - [ ] 夾取時算「有轉腕」的門檻：rim_distance 交代建議用抓取幀的 `wrist_roll` 狀態 > 15 `[未確認]`。
 - [ ] 10/07 那兩場（temporal ensemble、遮手腕）要不要也算進去。
-- [ ] 10/13 場地被動到的時間：記得的話補進 `docs/meeting/2026-10-13_closed_loop.md`。
+- [ ] 10/13 場地被動到的時間：記得的話補進 `docs/worklog/2026-10-13_closed_loop.md`。
 
 ## 4. 做完
 
 `git add calibration/shots/2026-10-15_rollout_f0` → commit → push，再告訴 4090 那台。
-第 1、2 步的結果由 4090 寫進 `docs/meeting/<日期>_rim_distance.md`。這份待辦不寫結果。
+第 1、2 步的結果由 4090 寫進 `docs/worklog/<日期>_rim_distance.md`。這份待辦不寫結果。

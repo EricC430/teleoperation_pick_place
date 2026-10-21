@@ -67,7 +67,7 @@ from reach_logger import fk  # noqa: E402
 TOUCH_CSV = _REPO / "calibration/2026-09-22_touch_calibration.csv"
 UVC60 = sorted((_REPO / "data/huggingface/lerobot/ericc430/omx_pick_place_pilot_uvc_60/data").glob("chunk-*/file-*.parquet"))
 # [Eric說 2026-09-21] uvc_60 walked campA_136sym's t1..t60 in order, BUT [已查證 2026-09-29]
-# docs/meeting/2026-09-13.md item 4: "t41 重錄後排在最後一集" -> ep0-39 = t1-t40, ep40-58 = t42-t60,
+# docs/worklog/2026-09-13.md item 4: "t41 重錄後排在最後一集" -> ep0-39 = t1-t40, ep40-58 = t42-t60,
 # ep59 = t41. Reading it as plain i -> t{i+1} put ep40-58 one placement off (23-52 cm "errors").
 PLACEMENTS = _REPO / "configs/placements/campA_136sym_20260908_20260908_train.csv"
 TUNED_EPISODES = {0, 1}

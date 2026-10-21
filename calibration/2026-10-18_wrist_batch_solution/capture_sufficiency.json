@@ -1,0 +1,13 @@
+{
+  "capture_sufficient_for_current_offline_model_analysis": true,
+  "markers_may_be_removed": true,
+  "additional_capture_planned": false,
+  "calibration_accuracy_accepted": false,
+  "formal_calibration_changed": false,
+  "pid_changed": false,
+  "batch_photos": 92,
+  "batch_wrist_photos": 46,
+  "motion_excluded_views": 2,
+  "stationary_f60_holdout_views": 11,
+  "reason": "All planned coverage and files present. Residual model inconsistencies remain measurable and require offline work, not repetition of current captures."
+}

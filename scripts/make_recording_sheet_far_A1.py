@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 REPO = Path(__file__).resolve().parents[1]
 LABEL_MAP = REPO / "docs/assets/placement_label_map_campA_136sym_20260908.csv"
 OUT = REPO / "docs/assets/recording_sheet_cup_far_wrist_A1.png"
-BOUNDARY, RIM_LIMIT, WRIST_LIMIT = 35.5, 36.1, 42.1  # cm from the pan axis (docs/meeting/2026-10-08.md §8)
+BOUNDARY, RIM_LIMIT, WRIST_LIMIT = 35.5, 36.1, 42.1  # cm from the pan axis (docs/worklog/2026-10-08.md §8)
 OLD_C, NEW_C, INK, MUTED, TEST = "#2a78d6", "#eb6834", "#21211f", "#a3a29a", "#e8b4b0"  # dataviz palette slots 1/2
 
 pts = {r["short_id"]: r for r in csv.DictReader(LABEL_MAP.open(encoding="utf-8"))}

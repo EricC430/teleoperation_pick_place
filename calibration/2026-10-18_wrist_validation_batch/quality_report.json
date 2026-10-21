@@ -1,0 +1,393 @@
+{
+  "status": "data_quality_passed",
+  "stages": [
+    {
+      "name": "baseline_start",
+      "frame": 50,
+      "quality": [
+        {
+          "episode": 0,
+          "target_id": 5,
+          "passed": true,
+          "valid_views": 1,
+          "actual_roll_span_units": 0.0,
+          "valid": [
+            {
+              "pose": "S00_F0050_r+0_f-4",
+              "actual_wrist_roll": 0.562,
+              "actual_wrist_flex": -20.635
+            }
+          ],
+          "rejected": [],
+          "missing_files": []
+        },
+        {
+          "episode": 8,
+          "target_id": 6,
+          "passed": true,
+          "valid_views": 1,
+          "actual_roll_span_units": 0.0,
+          "valid": [
+            {
+              "pose": "S08_F0050_r+0_f-4",
+              "actual_wrist_roll": 0.762,
+              "actual_wrist_flex": -21.319
+            }
+          ],
+          "rejected": [],
+          "missing_files": []
+        }
+      ],
+      "recovery": null,
+      "passed": true
+    },
+    {
+      "name": "f30",
+      "frame": 30,
+      "quality": [
+        {
+          "episode": 0,
+          "target_id": 5,
+          "passed": false,
+          "valid_views": 0,
+          "actual_roll_span_units": 0.0,
+          "valid": [],
+          "rejected": [
+            {
+              "pose": "S00_F0030_r+0_f-2",
+              "reason": "target not decoded"
+            },
+            {
+              "pose": "S00_F0030_r+0_f-6",
+              "reason": "target not decoded"
+            },
+            {
+              "pose": "S00_F0030_r+16_f-2",
+              "reason": "target not decoded"
+            },
+            {
+              "pose": "S00_F0030_r+16_f-6",
+              "reason": "target not decoded"
+            },
+            {
+              "pose": "S00_F0030_r+8_f-2",
+              "reason": "target not decoded"
+            },
+            {
+              "pose": "S00_F0030_r+8_f-6",
+              "reason": "target not decoded"
+            }
+          ],
+          "missing_files": [],
+          "combined_passed": true
+        },
+        {
+          "episode": 8,
+          "target_id": 6,
+          "passed": true,
+          "valid_views": 4,
+          "actual_roll_span_units": 7.961,
+          "valid": [
+            {
+              "pose": "S08_F0030_r+16_f-2",
+              "actual_wrist_roll": 15.214,
+              "actual_wrist_flex": -14.53
+            },
+            {
+              "pose": "S08_F0030_r+16_f-6",
+              "actual_wrist_roll": 15.214,
+              "actual_wrist_flex": -15.941
+            },
+            {
+              "pose": "S08_F0030_r+8_f-2",
+              "actual_wrist_roll": 7.448,
+              "actual_wrist_flex": -14.53
+            },
+            {
+              "pose": "S08_F0030_r+8_f-6",
+              "actual_wrist_roll": 7.253,
+              "actual_wrist_flex": -15.946
+            }
+          ],
+          "rejected": [
+            {
+              "pose": "S08_F0030_r+0_f-2",
+              "reason": "target not decoded"
+            },
+            {
+              "pose": "S08_F0030_r+0_f-6",
+              "reason": "target not decoded"
+            }
+          ],
+          "missing_files": []
+        }
+      ],
+      "recovery": [
+        {
+          "episode": 0,
+          "target_id": 5,
+          "passed": true,
+          "valid_views": 4,
+          "actual_roll_span_units": 8.352,
+          "valid": [
+            {
+              "pose": "S00_F0030_r+0_f-10",
+              "actual_wrist_roll": -1.392,
+              "actual_wrist_flex": -19.902
+            },
+            {
+              "pose": "S00_F0030_r+0_f-8",
+              "actual_wrist_roll": -0.904,
+              "actual_wrist_flex": -19.902
+            },
+            {
+              "pose": "S00_F0030_r+8_f-10",
+              "actual_wrist_roll": 6.667,
+              "actual_wrist_flex": -19.902
+            },
+            {
+              "pose": "S00_F0030_r+8_f-8",
+              "actual_wrist_roll": 6.96,
+              "actual_wrist_flex": -19.902
+            }
+          ],
+          "rejected": [
+            {
+              "pose": "S00_F0030_r+16_f-10",
+              "reason": "target too close to image edge"
+            },
+            {
+              "pose": "S00_F0030_r+16_f-8",
+              "reason": "target too close to image edge"
+            }
+          ],
+          "missing_files": []
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "f60",
+      "frame": 60,
+      "quality": [
+        {
+          "episode": 0,
+          "target_id": 5,
+          "passed": true,
+          "valid_views": 6,
+          "actual_roll_span_units": 15.677999999999999,
+          "valid": [
+            {
+              "pose": "S00_F0060_r+0_f-2",
+              "actual_wrist_roll": 2.134,
+              "actual_wrist_flex": -23.858
+            },
+            {
+              "pose": "S00_F0060_r+0_f-6",
+              "actual_wrist_roll": 1.929,
+              "actual_wrist_flex": -25.617
+            },
+            {
+              "pose": "S00_F0060_r+16_f-2",
+              "actual_wrist_roll": 17.607,
+              "actual_wrist_flex": -23.907
+            },
+            {
+              "pose": "S00_F0060_r+16_f-6",
+              "actual_wrist_roll": 17.607,
+              "actual_wrist_flex": -25.617
+            },
+            {
+              "pose": "S00_F0060_r+8_f-2",
+              "actual_wrist_roll": 9.939,
+              "actual_wrist_flex": -23.907
+            },
+            {
+              "pose": "S00_F0060_r+8_f-6",
+              "actual_wrist_roll": 9.792,
+              "actual_wrist_flex": -25.617
+            }
+          ],
+          "rejected": [],
+          "missing_files": []
+        },
+        {
+          "episode": 8,
+          "target_id": 6,
+          "passed": true,
+          "valid_views": 6,
+          "actual_roll_span_units": 15.774999999999999,
+          "valid": [
+            {
+              "pose": "S08_F0060_r+0_f-2",
+              "actual_wrist_roll": 1.245,
+              "actual_wrist_flex": -25.568
+            },
+            {
+              "pose": "S08_F0060_r+0_f-6",
+              "actual_wrist_roll": 0.904,
+              "actual_wrist_flex": -26.789
+            },
+            {
+              "pose": "S08_F0060_r+16_f-2",
+              "actual_wrist_roll": 16.679,
+              "actual_wrist_flex": -25.597
+            },
+            {
+              "pose": "S08_F0060_r+16_f-6",
+              "actual_wrist_roll": 16.679,
+              "actual_wrist_flex": -26.789
+            },
+            {
+              "pose": "S08_F0060_r+8_f-2",
+              "actual_wrist_roll": 9.055,
+              "actual_wrist_flex": -25.568
+            },
+            {
+              "pose": "S08_F0060_r+8_f-6",
+              "actual_wrist_roll": 8.718,
+              "actual_wrist_flex": -26.789
+            }
+          ],
+          "rejected": [],
+          "missing_files": []
+        }
+      ],
+      "recovery": null,
+      "passed": true
+    },
+    {
+      "name": "f70",
+      "frame": 70,
+      "quality": [
+        {
+          "episode": 0,
+          "target_id": 5,
+          "passed": true,
+          "valid_views": 3,
+          "actual_roll_span_units": 7.829,
+          "valid": [
+            {
+              "pose": "S00_F0070_r+0_f-2",
+              "actual_wrist_roll": 2.808,
+              "actual_wrist_flex": -28.107
+            },
+            {
+              "pose": "S00_F0070_r+0_f-6",
+              "actual_wrist_roll": 2.418,
+              "actual_wrist_flex": -30.012
+            },
+            {
+              "pose": "S00_F0070_r+8_f-6",
+              "actual_wrist_roll": 10.247,
+              "actual_wrist_flex": -30.012
+            }
+          ],
+          "rejected": [
+            {
+              "pose": "S00_F0070_r+16_f-2",
+              "reason": "target not decoded"
+            },
+            {
+              "pose": "S00_F0070_r+16_f-6",
+              "reason": "target not decoded"
+            },
+            {
+              "pose": "S00_F0070_r+8_f-2",
+              "reason": "target not decoded"
+            }
+          ],
+          "missing_files": []
+        },
+        {
+          "episode": 8,
+          "target_id": 6,
+          "passed": true,
+          "valid_views": 4,
+          "actual_roll_span_units": 7.9609999999999985,
+          "valid": [
+            {
+              "pose": "S08_F0070_r+16_f-2",
+              "actual_wrist_roll": 16.923,
+              "actual_wrist_flex": -27.619
+            },
+            {
+              "pose": "S08_F0070_r+16_f-6",
+              "actual_wrist_roll": 16.923,
+              "actual_wrist_flex": -29.817
+            },
+            {
+              "pose": "S08_F0070_r+8_f-2",
+              "actual_wrist_roll": 9.255,
+              "actual_wrist_flex": -27.619
+            },
+            {
+              "pose": "S08_F0070_r+8_f-6",
+              "actual_wrist_roll": 8.962,
+              "actual_wrist_flex": -29.817
+            }
+          ],
+          "rejected": [
+            {
+              "pose": "S08_F0070_r+0_f-2",
+              "reason": "target not decoded"
+            },
+            {
+              "pose": "S08_F0070_r+0_f-6",
+              "reason": "target not decoded"
+            }
+          ],
+          "missing_files": []
+        }
+      ],
+      "recovery": null,
+      "passed": true
+    },
+    {
+      "name": "baseline_end",
+      "frame": 50,
+      "quality": [
+        {
+          "episode": 0,
+          "target_id": 5,
+          "passed": true,
+          "valid_views": 1,
+          "actual_roll_span_units": 0.0,
+          "valid": [
+            {
+              "pose": "S00_F0050_r+0_f-4",
+              "actual_wrist_roll": 0.659,
+              "actual_wrist_flex": -20.874
+            }
+          ],
+          "rejected": [],
+          "missing_files": []
+        },
+        {
+          "episode": 8,
+          "target_id": 6,
+          "passed": true,
+          "valid_views": 1,
+          "actual_roll_span_units": 0.0,
+          "valid": [
+            {
+              "pose": "S08_F0050_r+0_f-4",
+              "actual_wrist_roll": 0.904,
+              "actual_wrist_flex": -21.758
+            }
+          ],
+          "rejected": [],
+          "missing_files": []
+        }
+      ],
+      "recovery": null,
+      "passed": true
+    }
+  ],
+  "notes": [
+    "Do not move cameras or markers during the batch.",
+    "All analysis states come from measured Present_Position averages.",
+    "Quality pass permits data analysis, not deployment of a calibration.",
+    "Ctrl+C stops the batch; the arm may remain at an intermediate pose with torque on."
+  ]
+}
