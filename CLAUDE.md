@@ -36,7 +36,7 @@
 | `docs/pipeline_validation.md` | 管線驗證資料的處理原則 |
 | `docs/exp_a3_recovery_ablation.md` | A3 recovery 消融實驗設計 |
 | `docs/meeting/` | **只放會議**（組內／指導教授／Physical AI 子計畫），索引在 `docs/meeting/README.md`。最新：組內 `2026-10-18_team_meeting.md`；子計畫一 `2026-10-15.md` |
-| `docs/worklog/` | ★ 現場／實驗／分析工作紀錄（非會議），**數字的正本**。2026-10-19 從 `docs/meeting/` 搬來、檔名不變。索引（一檔一行，新→舊）在 `docs/worklog/README.md`；最新：`2026-10-21.md` 寶特瓶補錄 4 組 76 集＋訓練交接 `docs/handoff/2026-10-21_bottle_136.md` |
+| `docs/worklog/` | ★ 現場／實驗／分析工作紀錄（非會議），**數字的正本**。2026-10-19 從 `docs/meeting/` 搬來、檔名不變。索引（一檔一行，新→舊）在 `docs/worklog/README.md`；最新：`2026-10-22_bottle136_open_loop.md` 寶特瓶 135 集訓練＋開環（對 b60augfl／b4a 18 格全部較低；未上 Hub、閉環待跑） |
 | `docs/weekly/` | 週報（只整理、不當正本，數字以 `docs/worklog/` 為準）。一份＝一週（週一–週日），檔名＝該週週一：`<YYYY-MM-DD>.md`。最新：`2026-10-05.md`（10/5–10/11：轉到紙杯、`bad_aim` 診斷、補錄近場／recovery／遠區轉腕、ntA1／ntfA1／ntcfA1）；10/12 週待寫 |
 | `eval/README.md` | 評估記錄規格（outcome/mechanism 兩軸） |
 | `docs/models.md` | 模型對照表：權重 hash ↔ 本機 run/step ↔ Hub repo ↔ 物品 ↔ 閉環用過哪次 |
