@@ -1,0 +1,72 @@
+# 2026-10-21 plastic bottle 60 + the 10-21 demos (all four groups) + fldrop30-augfl.
+# Why: bottle60 augfl-fldrop30 100k went 0/15 closed loop on 10-18 (docs/meeting/2026-10-18.md); for the paper cup the
+# same recipe went 20/36 on 60 eps and 34/36 on 129 eps, so add demos the paper-cup way (docs/meeting/2026-10-21.md).
+# [柏宇決定 2026-10-21] use all four 10-21 groups; keep the augmentation / dropout recipe unchanged.
+#
+# Same as train_omx_bottle60_augfl_fldrop.yaml except the dataset, exclude_episodes, output_dir and job_name.
+# recovery_A1_tight is used in its _cut form, like the 34/36 paper-cup model (train_omx_cup_uvc60_normal_tightcut_far_A1.yaml):
+# scripts/trim_recovery_prefix.py drops each episode's deliberate-miss approach before the first (empty) close.
+# --close_below 54 is required here: bottle demos open the gripper to ~85 before grasping, so the default percentile
+# midpoint (~67) sits above the resting ~59 and every episode "closes" at frame 0 (nothing cut). With 54, tested on
+# Windows 2026-10-21: cut 2-12 frames before the first close, 6983 -> 4945 frames (paper cup: 5712 -> 4080).
+# Every kept episode's gripper action goes below close_below 54 (min 47.3-47.6), so the dropout window is defined
+# for all of them; only tipped ep 9 (5 frames, VOID) never closes and it is excluded.
+#
+# Steps on the 4090 (bash, repo root):
+#   for g in normal_A1 recovery_A1_tight precise_A1 tipped_A1; do
+#     ./scripts/run_container.sh hf download ericc430/omx_pick_place_pilot_plastic_bottle_$g --repo-type dataset --revision v3.0 \
+#         --local-dir data/huggingface/lerobot/ericc430/omx_pick_place_pilot_plastic_bottle_$g
+#   done
+#   ./scripts/run_container.sh python scripts/trim_recovery_prefix.py \
+#       --src data/huggingface/lerobot/ericc430/omx_pick_place_pilot_plastic_bottle_recovery_A1_tight \
+#       --dst data/huggingface/lerobot/ericc430/omx_pick_place_pilot_plastic_bottle_recovery_A1_tight_cut --close_below 54
+#   ./scripts/run_container.sh lerobot-edit-dataset \
+#       --new_repo_id ericc430/omx_pick_place_pilot_plastic_bottle_60_normalA1_tightA1cut_preciseA1_tippedA1 \
+#       --new_root /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_plastic_bottle_60_normalA1_tightA1cut_preciseA1_tippedA1 \
+#       --operation.type merge \
+#       --operation.repo_ids "['ericc430/omx_pick_place_pilot_60_plastic_bottle', 'ericc430/omx_pick_place_pilot_plastic_bottle_normal_A1', 'ericc430/omx_pick_place_pilot_plastic_bottle_recovery_A1_tight_cut', 'ericc430/omx_pick_place_pilot_plastic_bottle_precise_A1', 'ericc430/omx_pick_place_pilot_plastic_bottle_tipped_A1']" \
+#       --operation.roots "['/workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_60_plastic_bottle', '/workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_plastic_bottle_normal_A1', '/workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_plastic_bottle_recovery_A1_tight_cut', '/workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_plastic_bottle_precise_A1', '/workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_plastic_bottle_tipped_A1']"
+#   ./scripts/run_container.sh python scripts/train_fl_dropout.py --fl-p 0.3 --fl-window 30 --transforms-fl-only \
+#       --config_path configs/train_omx_bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop.yaml
+#
+# Merge order -> merged episode index (check meta/info.json: 136 episodes before exclusion):
+#   merged ep   0-59  <- ericc430/omx_pick_place_pilot_60_plastic_bottle                    ep 0-59  (camera A2)
+#   merged ep  60-75  <- ericc430/omx_pick_place_pilot_plastic_bottle_normal_A1             ep 0-15
+#   merged ep  76-87  <- ericc430/omx_pick_place_pilot_plastic_bottle_recovery_A1_tight_cut ep 0-11
+#   merged ep  88-124 <- ericc430/omx_pick_place_pilot_plastic_bottle_precise_A1            ep 0-36
+#   merged ep 125-135 <- ericc430/omx_pick_place_pilot_plastic_bottle_tipped_A1             ep 0-10  (lying bottle)
+#   exclude 134 = tipped ep 9 (VOID, 5 frames; episode_meta valid=0)
+#
+dataset:
+  repo_id: ericc430/omx_pick_place_pilot_plastic_bottle_60_normalA1_tightA1cut_preciseA1_tippedA1   # local only
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_plastic_bottle_60_normalA1_tightA1cut_preciseA1_tippedA1
+  exclude_episodes: [134]   # -> 135 of 136 remain
+  eval_split: 0.0
+  image_transforms:          # copied from the aug config; with --transforms-fl-only they run on front-left only
+    enable: true
+    max_num_transforms: 1
+    random_order: false
+    tfs:
+      brightness: {weight: 0.0, type: ColorJitter, kwargs: {brightness: [0.8, 1.2]}}
+      contrast: {weight: 0.0, type: ColorJitter, kwargs: {contrast: [0.8, 1.2]}}
+      saturation: {weight: 0.0, type: ColorJitter, kwargs: {saturation: [0.5, 1.5]}}
+      hue: {weight: 0.0, type: ColorJitter, kwargs: {hue: [-0.05, 0.05]}}
+      sharpness: {weight: 0.0, type: SharpnessJitter, kwargs: {sharpness: [0.5, 1.5]}}
+      affine: {weight: 1.0, type: RandomAffine, kwargs: {degrees: [-2.0, 2.0], translate: [0.05, 0.05]}}
+policy:
+  type: act
+  chunk_size: 100
+  n_action_steps: 100
+  push_to_hub: false
+output_dir: /workspace/data/train/bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30
+job_name: act_omx_bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30
+steps: 100000
+batch_size: 32
+save_freq: 20000
+eval_steps: 0
+log_freq: 50
+seed: 1000
+num_workers: 12
+wandb:
+  enable: true
+  project: teleoperation_pick_place

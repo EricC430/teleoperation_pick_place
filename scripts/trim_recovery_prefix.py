@@ -46,10 +46,12 @@ from lerobot.datasets.video_utils import decode_video_frames
 GRIPPER = 5
 
 
-def close_events(g, fps):
-    """Copied from scripts/analyze_rcvry_closed_loop_20261008.py (that file runs its analysis on import)."""
+def close_events(g, fps, close_below=None):
+    """Copied from scripts/analyze_rcvry_closed_loop_20261008.py (that file runs its analysis on import).
+    close_below: fixed threshold instead of the percentile midpoint (bottle demos open to ~85 before grasping,
+    so the midpoint lands above the resting ~59 and frame 0 counts as closed; 2026-10-21)."""
     lo, hi = np.percentile(g, 2), np.percentile(g, 98)
-    closed = g < (lo + hi) / 2
+    closed = g < ((lo + hi) / 2 if close_below is None else close_below)
     k = max(1, int(0.2 * fps))
     runs, cur, n = [], closed[0], 0
     for c in closed:
@@ -72,8 +74,8 @@ def close_events(g, fps):
     return out
 
 
-def cut_frame(g, fps, open_tol):
-    ev = close_events(g, fps)
+def cut_frame(g, fps, open_tol, close_below=None):
+    ev = close_events(g, fps, close_below)
     if not ev:
         return None, None
     first = ev[0][0]
@@ -89,6 +91,8 @@ def main():
     ap.add_argument("--dst", required=True)
     ap.add_argument("--open_tol", type=float, default=1.0, help="gripper drop below frame 0 that counts as closing")
     ap.add_argument("--keep_whole", type=int, nargs="*", default=[], help="episodes to copy uncut")
+    ap.add_argument("--close_below", type=float, default=None,
+                    help="fixed gripper threshold for a close (default: midpoint of the 2nd..98th percentile)")
     args = ap.parse_args()
     src, dst = Path(args.src), Path(args.dst)
     if dst.exists():
@@ -108,7 +112,7 @@ def main():
         for ep in sorted(df.episode_index.unique()):
             x = df[df.episode_index == ep].sort_values("frame_index")
             g = np.stack(x["action"].values)[:, GRIPPER]
-            c, first = (None, None) if ep in args.keep_whole else cut_frame(g, fps, args.open_tol)
+            c, first = (None, None) if ep in args.keep_whole else cut_frame(g, fps, args.open_tol, args.close_below)
             cuts[int(ep)] = dict(cut=int(c or 0), first_close=None if first is None else int(first),
                                  orig_len=len(x), new_len=len(x) - int(c or 0))
     next_index = 0
@@ -169,7 +173,8 @@ def main():
     (dst / "meta/info.json").write_text(json.dumps(info, indent=4))
     write_stats(aggregate_stats(all_stats), dst)
     (dst / "meta/trim_recovery_prefix.json").write_text(json.dumps(
-        dict(src=str(src), open_tol=args.open_tol, keep_whole=args.keep_whole, fps=fps, episodes=cuts), indent=1))
+        dict(src=str(src), open_tol=args.open_tol, close_below=args.close_below, keep_whole=args.keep_whole, fps=fps,
+             episodes=cuts), indent=1))
     for ep, c in cuts.items():
         print(f"ep{ep:3d} cut@{c['cut']:4d} ({c['cut'] / fps:5.1f}s)  first_close@{c['first_close']}  "
               f"{c['orig_len']} -> {c['new_len']}")
