@@ -24,6 +24,7 @@
   同日加的 `…_augfl_fldrop_p30_w30` 三列：`sha256sum` 本機檔案，也和開環 `metrics.json` 對過；上 Hub（private）後以 LFS oid 對過，一致。`fl_dropout.json` 的 `image_transforms_cameras` 只有 front-left（Hub 的 `train_config.json` 看不出手腕沒平移）。
   2026-10-18 加的 `bottle60_augfl_fldrop_p30_w30` 三列：Windows 從 Hub 下載到 `D:\hf\hub` 後 `sha256sum`，和 Hub API 的 LFS oid 對過，一致；本機訓練檔沒對（不在這台）。`fl_dropout.json` 的 `image_transforms_cameras` 只有 front-left。
   2026-10-22 加的 `bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30` 三列：4090 上 `sha256sum` 本機檔案，也和開環 `metrics.json` 對過；同日上 Hub（private），Hub API 的 LFS oid 對過，一致。同日補上 `35ffc9043713` 漏記的 10/18 閉環。
+  同三列 2026-10-23 在 Windows 另外對過：hash 是 Hub API 的 LFS oid（2026-10-22 讀）；100k 另外下載到 `D:\hf\hub` 後 `sha256sum`，一致；20k／40k 本機沒下載、本機訓練檔沒對（在 4090）。`fl_dropout.json`：135 集、57380 幀、`expected_masked_fraction` 0.0197、`close_below` 54，和交接預期相同。
   2026-10-23 加的 `cup129_bottle135_augfl_fldrop_p30_w30` 四列（M-full，紙杯＋寶特瓶一個模型）：4090 上 `sha256sum` 本機檔案；還沒上 Hub。
 
 ## ACT／Diffusion 模型
@@ -73,10 +74,10 @@
 | `f55b0fa71b50` | `uvc60_augfl_fldrop_p30_w30` / 100k | `act_omx_b1_paper-cup_60-augfl-fldrop30_100k` | 紙杯 | 同上 | 10/17 `__40c363cb`（`2026-10-17_uvc60_augfl_closed_loop.md`，20/36） |
 | `0dd8b31a90a0` | `bottle60_augfl_fldrop_p30_w30` / 20k | `act_omx_b4a_plastic-bottle_60-augfl-fldrop30_20k` | 寶特瓶 | `omx_pick_place_pilot_60_plastic_bottle`（全 60 集，同 `phase_b4a_plastic_bottle`）；增強與 dropout 同 `uvc60_augfl_fldrop_p30_w30`（`configs/train_omx_bottle60_augfl_fldrop.yaml`；理由見 `2026-10-17_uvc60_augfl_open_loop.md` §4） | — |
 | `0eea003c1abb` | `bottle60_augfl_fldrop_p30_w30` / 40k | `act_omx_b4a_plastic-bottle_60-augfl-fldrop30_40k` | 寶特瓶 | 同上 | — |
-| `35ffc9043713` | `bottle60_augfl_fldrop_p30_w30` / 100k | `act_omx_b4a_plastic-bottle_60-augfl-fldrop30_100k` | 寶特瓶 | 同上 | 10/18 `__d8c46d68`（`docs/worklog/2026-10-18.md`，停在 c16，0/15） |
-| `4ade453d7024` | `bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30` / 20k | `act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_20k` | 寶特瓶 | `omx_pick_place_pilot_plastic_bottle_60_normalA1_tightA1cut_preciseA1_tippedA1`（本機 merge，136 集排除 134 → 135 集）；增強與 dropout 同 `bottle60_augfl_fldrop_p30_w30`（`configs/train_omx_bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop.yaml`；理由見 `docs/worklog/2026-10-21.md` §5） | — |
+| `35ffc9043713` | `bottle60_augfl_fldrop_p30_w30` / 100k | `act_omx_b4a_plastic-bottle_60-augfl-fldrop30_100k` | 寶特瓶 | 同上 | 10/18 `__d8c46d68`（`2026-10-18.md`，停在 c16，0/15） |
+| `4ade453d7024` | `bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30` / 20k | `act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_20k` | 寶特瓶 | `omx_pick_place_pilot_60_plastic_bottle` 60 集＋10/21 補錄 normal_A1 16、recovery_A1_tight 12（剪前段，`--close_below 54`）、precise_A1 37、tipped_A1 11（排除 ep 134）＝ 135 集；增強與 dropout 同 `bottle60_augfl_fldrop_p30_w30`（`configs/train_omx_bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop.yaml`；`docs/handoff/2026-10-21_bottle_136.md`） | — |
 | `02a3bd75ebbd` | `bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30` / 40k | `act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_40k` | 寶特瓶 | 同上 | — |
-| `fe5e98957d38` | `bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30` / 100k | `act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_100k` | 寶特瓶 | 同上 | — |
+| `fe5e98957d38` | `bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30` / 100k | `act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_100k` | 寶特瓶 | 同上 | 10/22 `__8247bde0`（temporal ensembling −0.01，`2026-10-22.md`：23/36）；同日 nas30 `__b14112f4`（沒存到任何一集）、`__bb85bee1`（作廢） |
 | `a72d73e652ba` | `cup129_bottle135_augfl_fldrop_p30_w30` / 20k | — | 紙杯＋寶特瓶 | `omx_pick_place_pilot_cup129_bottle135`（本機 merge，從 9 個原始資料集；273 集排除 9 集 → 264 集＝紙杯 129＋寶特瓶 135）；增強與 dropout 同 `…_augfl_fldrop_p30_w30`，200k 步（`configs/train_omx_cup129_bottle135_augfl_fldrop.yaml`） | — |
 | `a21624dd7255` | `cup129_bottle135_augfl_fldrop_p30_w30` / 40k | — | 紙杯＋寶特瓶 | 同上 | — |
 | `decdc7fa02a7` | `cup129_bottle135_augfl_fldrop_p30_w30` / 100k | — | 紙杯＋寶特瓶 | 同上 | — |

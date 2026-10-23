@@ -1,0 +1,37 @@
+﻿episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
+0,plastic_bottle,stand,c1,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+1,plastic_bottle,stand,c2,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+2,plastic_bottle,stand,c3,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,pushed_away,,1,,,,接近時一直推寶特瓶最終推倒
+3,plastic_bottle,stand,c4,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,pushed_away,,1,,,,[AI初標待確認，看截圖不是影片] 推倒滾走：沒閉合，18.9 s 時第三視角原位已經沒有瓶子
+4,plastic_bottle,stand,c5,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;timeout,,1,,,,沒瞄準
+5,plastic_bottle,stand,c6,宿舍大燈+檯燈+窗簾拉上,木質桌面,dropped,bad_aim;other;timeout,,1,,,,夾太前面
+6,plastic_bottle,stand,c7,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+7,plastic_bottle,stand,c8,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+8,plastic_bottle,stand,c9,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+9,plastic_bottle,stand,c10,宿舍大燈+檯燈+窗簾拉上,木質桌面,dropped,other,,1,,,,夾太高滑掉
+10,plastic_bottle,stand,c11,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+11,plastic_bottle,stand,c12,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,other;timeout,,1,,,,夾太高滑掉，位置太遠手臂伸直也差一點
+12,plastic_bottle,stand,c13,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+13,plastic_bottle,stand,c14,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,輕推寶特瓶至微傾
+14,plastic_bottle,stand,c15,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,輕推寶特瓶至微傾
+15,plastic_bottle,stand,c16,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,stalled;timeout,,0,other,,,第三視角 frame0：瓶子在鏡頭外完全看不到（擺位問題）；手腕畫面一直是桌子，手臂幾乎沒離開起始位置，沒閉合
+16,plastic_bottle,stand,c17,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+17,plastic_bottle,stand,c18,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,輕推寶特瓶至微傾
+18,plastic_bottle,stand,c19,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+19,plastic_bottle,stand,c20,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,輕推寶特瓶
+20,plastic_bottle,stand,c21,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,輕推寶特瓶至微傾
+21,plastic_bottle,stand,c22,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+22,plastic_bottle,stand,c23,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,pushed_away;bad_aim,,1,,,,夾太前面滑掉
+23,plastic_bottle,stand,c24,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,pushed_away,,1,,,,推倒滾走：17.9 s 閉合前瓶子已經橫躺，之後去夾橫躺的瓶子沒夾到
+24,plastic_bottle,stand,c25,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,輕推寶特瓶
+25,plastic_bottle,stand,c26,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,other,,1,,,,夾太高滑掉(夾到斜面)
+26,plastic_bottle,stand,c27,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+27,plastic_bottle,stand,c28,宿舍大燈+檯燈+窗簾拉上,木質桌面,dropped,other,,1,,,,夾太高滑掉(夾到斜面)
+28,plastic_bottle,stand,c29,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+29,plastic_bottle,stand,c30,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
+30,plastic_bottle,stand,c31,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,輕推寶特瓶
+31,plastic_bottle,stand,c32,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,輕推寶特瓶
+32,plastic_bottle,stand,c33,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,夾瓶蓋
+33,plastic_bottle,stand,c34,宿舍大燈+檯燈+窗簾拉上,木質桌面,dropped,other;timeout,,1,,,,夾太高滑掉
+34,plastic_bottle,stand,c35,宿舍大燈+檯燈+窗簾拉上,木質桌面,dropped,other,,1,,,,夾瓶蓋滑掉，如果夾瓶蓋的話會需要夾爪保持一定的角度以避免鬆脫
+35,plastic_bottle,stand,c36,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,夾瓶蓋

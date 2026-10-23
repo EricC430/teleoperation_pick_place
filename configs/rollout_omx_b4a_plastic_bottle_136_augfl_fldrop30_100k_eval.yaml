@@ -1,0 +1,84 @@
+# RECORDED closed-loop evaluation of ericc430/act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_100k
+# (plastic bottle, 60 + 10-21 demos, "bottle 136").
+# Model: ACT 100k steps, sha256 fe5e98957d38 (D:\hf\hub download 2026-10-22 matches the Hub LFS oid).
+# 20k (4ade453d7024) and 40k (02a3bd75ebbd) are on the Hub as ..-augfl-fldrop30_20k / ..-augfl-fldrop30_40k.
+# Training: configs/train_omx_bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop.yaml - 136 eps, exclude 134;
+# front-left shift only, fl dropout p 0.3, window 30. fl_dropout.json on the Hub: 135 eps, episodes_without_close [],
+# frames 57380, frames_in_window 3759, expected_masked_fraction 0.0197, close_below 54 - matches the handoff
+# (docs/handoff/2026-10-21_bottle_136.md).
+# Criterion (Boyu 10-21): > 80% closed loop, i.e. >= 29/36; if c12/c6/c26 are dropped (a human can't reach them by
+# teleop), use the remaining count and write down which and why.
+# Comparison target: bottle60 augfl-fldrop30 100k (35ffc9043713), 0/15 on c1..c15 on 2026-10-18 (docs/worklog/2026-10-18.md);
+# only the data differs.
+#
+#   uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_b4a_plastic_bottle_136_augfl_fldrop30_100k_eval.yaml --policy.path=ericc430/act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_100k --policy.n_action_steps=30 --meta-template plastic_bottle_A1
+#
+# KEEP THIS FILE ASCII-ONLY (lerobot opens it as cp950 when policy.path is set).
+# policy.n_action_steps must be given on the command line together with --policy.path (2026-10-05 note).
+# Copied from rollout_omx_b4a_plastic_bottle_augfl_fldrop30_100k_eval.yaml; policy.path, dataset.repo_id and comments differ.
+# Model input_features (config.json): state [6], wrist [3,480,640], front-left [3,480,848] - same as the robot block.
+# Before running, in this order: read_joint_pose.py --goto-home --home-episode 10, lerobot-find-cameras opencv (wrist index),
+# align_camera.py --dataset-root .cache/lerobot/omx_pick_place_pilot_paper_cup_far_wrist_A1 --episodes 1 4 8
+# Tipped (lying) bottle: no such demos; whether it counts as a model failure is undecided - note it in the CSV.
+
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-10-08_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: opencv_uvc
+      index_or_path: 2
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 15
+      fourcc: YUY2
+      exposure: -5
+      gain: 0
+      white_balance: null
+    front-left:
+      type: intelrealsense_pinned
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+      exposure: 400
+      gain: 70
+      white_balance: null
+
+policy:
+  path: ericc430/act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_100k  # private; cached in D:\hf\hub (2026-10-22)
+
+strategy:
+  type: episodic
+  reset_to_initial_position: true   # no teleop: arm goes back to its startup pose between trials
+
+inference:
+  type: sync
+
+dataset:
+  repo_id: ericc430/rollout_omx_b4a_plastic_bottle_136_augfl_fldrop30_100k_nas30   # must start with rollout_; timestamp appended; nas30 = n_action_steps (keep in sync with the CLI)
+  single_task: "Pick up the object and place it into the box"   # same string as training
+  fps: 15                  # must match camera fps
+  num_episodes: 36         # eval-close c1..c36 (template plastic_bottle_A1), same as 09-21 and 10-18
+  episode_time_s: 45       # Boyu 10-22: from the demo lengths - bottle demos max 43-45 s (60: p90 36.1; 10-21 sets p90 27.9-43.1),
+                           # half of them over 30 s. 09-21 and 10-18 used 30 s; re-score "success within 30 s" to compare.
+  reset_time_s: 120        # time to re-place the bottle; Right/Up ends it early
+  video: true
+  push_to_hub: false       # upload later by hand once the session looks right
+  private: true
+  streaming_encoding: false
+  encoder_threads: 2
+  rgb_encoder:
+    vcodec: h264
+    preset: veryfast
+    crf: 23
+    pix_fmt: yuv420p
+
+fps: 15
+task: "Pick up the object and place it into the box"
+display_data: true
+return_to_initial_position: true

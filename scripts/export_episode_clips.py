@@ -43,10 +43,12 @@ H = 360  # output height of each camera tile
 CAMS = ("wrist", "front-left")  # left, right
 
 
-def tip_at_rim(fit: TT.FitModel, st: np.ndarray, close: int | None) -> int | None:
+def tip_at_rim(fit: TT.FitModel, st: np.ndarray, close: int | None, rim_cm: float = RIM_Z_CM) -> int | None:
+    if rim_cm <= 0:
+        return None
     end = close if close is not None else len(st) - 1
     z = np.array([(fit.link5(s) @ TIP)[2] * 100 for s in st[:end + 1]])
-    down = [k for k in range(1, len(z)) if z[k - 1] > RIM_Z_CM >= z[k]]
+    down = [k for k in range(1, len(z)) if z[k - 1] > rim_cm >= z[k]]
     return down[-1] if down else None
 
 
@@ -74,6 +76,8 @@ def main() -> int:
     ap.add_argument("--pid", nargs="*", default=[], help="placement ids, e.g. c3 c12")
     ap.add_argument("--episodes", nargs="*", type=int, default=[])
     ap.add_argument("--slow", type=float, default=1.0, help="2 = half speed")
+    ap.add_argument("--rim-cm", type=float, default=RIM_Z_CM,
+                    help="TIP@RIM height (paper-cup rim by default); 0 = no TIP@RIM, e.g. for the bottle")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
 
@@ -95,7 +99,7 @@ def main() -> int:
         r, st = meta.get(e, {}), states[e]
         pid = (r.get("placement_id") or f"ep{e}").strip()
         close = F.grasp_frame(st, "first")
-        rim = tip_at_rim(fit, st, close)
+        rim = tip_at_rim(fit, st, close, a.rim_cm)
         head = f"{pid}  ep{e}  {r.get('outcome', '')}  [{r.get('mechanism', '')}]"
         dst = out_dir / f"{pid}_ep{e}.mp4"
         with av.open(str(dst), "w") as oc:
