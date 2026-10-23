@@ -1,0 +1,65 @@
+# 2026-10-22 M-full: paper cup 129 + plastic bottle 135 (264 eps) + fldrop30-augfl, one model for both objects.
+# Why: meeting 10-18 A7 (go on the cart end of Nov with a combined cup + bottle model); this is the "keep each
+# object's data, add the other object" version. The equal-total version (M-half, ~132 eps) comes after.
+# [柏宇決定 2026-10-22] train both; M-full first; closed loop with temporal ensembling, same settings for both objects.
+#
+# Same as train_omx_bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop.yaml except the dataset,
+# exclude_episodes, steps, output_dir and job_name. close_below stays at train_fl_dropout.py's default 54: every kept
+# cup (129) and bottle (135) episode closes below it (fl_dropout.json of the two single-object runs).
+#
+# Merged from the 9 SOURCE datasets, not from the two merged ones: those carry stale meta/episodes/file_index values
+# (up to 2-4 while only file-000.parquet exists) and lerobot-edit-dataset merge fails on them (FileNotFoundError).
+# Steps on the 4090 (bash, repo root; all sources already local, the two _cut ones made by trim_recovery_prefix.py):
+#   R=/workspace/data/huggingface/lerobot/ericc430
+#   ./scripts/run_container.sh lerobot-edit-dataset \
+#       --new_repo_id ericc430/omx_pick_place_pilot_cup129_bottle135 --new_root $R/omx_pick_place_pilot_cup129_bottle135 \
+#       --operation.type merge \
+#       --operation.repo_ids "['ericc430/omx_pick_place_pilot_uvc_60', 'ericc430/omx_pick_place_pilot_paper_cup_normal_A1', 'ericc430/omx_pick_place_pilot_paper_cup_recovery_A1_tight_cut', 'ericc430/omx_pick_place_pilot_paper_cup_far_wrist_A1', 'ericc430/omx_pick_place_pilot_60_plastic_bottle', 'ericc430/omx_pick_place_pilot_plastic_bottle_normal_A1', 'ericc430/omx_pick_place_pilot_plastic_bottle_recovery_A1_tight_cut', 'ericc430/omx_pick_place_pilot_plastic_bottle_precise_A1', 'ericc430/omx_pick_place_pilot_plastic_bottle_tipped_A1']" \
+#       --operation.roots "['$R/omx_pick_place_pilot_uvc_60', '$R/omx_pick_place_pilot_paper_cup_normal_A1', '$R/omx_pick_place_pilot_paper_cup_recovery_A1_tight_cut', '$R/omx_pick_place_pilot_paper_cup_far_wrist_A1', '$R/omx_pick_place_pilot_60_plastic_bottle', '$R/omx_pick_place_pilot_plastic_bottle_normal_A1', '$R/omx_pick_place_pilot_plastic_bottle_recovery_A1_tight_cut', '$R/omx_pick_place_pilot_plastic_bottle_precise_A1', '$R/omx_pick_place_pilot_plastic_bottle_tipped_A1']"
+#   ./scripts/run_container.sh python scripts/train_fl_dropout.py --fl-p 0.3 --fl-window 30 --transforms-fl-only \
+#       --config_path configs/train_omx_cup129_bottle135_augfl_fldrop.yaml
+#
+# Merge order -> merged episode index (log data/merge_cup129_bottle135.log: 273 eps / 98959 frames = 41574 + 57385).
+# Checked 2026-10-22: per-episode length and frame-0 action equal to the two single-object merged datasets in order.
+#   merged ep   0-136 <- same order as the paper-cup 129 config (train_omx_cup_uvc60_normal_tightcut_far_A1_aug_fldrop.yaml)
+#   merged ep 137-272 <- same order as the bottle 135 config, shifted by 137
+#   exclude: cup [73, 74, 75, 85, 86, 87, 98, 135] unchanged; bottle 134 -> 271 (tipped ep 9, VOID, 5 frames)
+# Expected fl_dropout.json: episodes 264, episodes_without_close [], frames 95809, frames_in_window 7372
+# (cup 3613 + bottle 3759), expected_masked_fraction ~0.0231. Stop if it differs.
+#
+# steps 200000: the optimizer has no scheduler (constant lr 1e-5, train_config.json of the 34/36 cup run), so the
+# 100k checkpoint here should match a 100k-only run [推論: same seed]. 100k = ~33 epochs (cup run ~83, bottle ~56).
+#
+dataset:
+  repo_id: ericc430/omx_pick_place_pilot_cup129_bottle135   # local only
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_cup129_bottle135
+  exclude_episodes: [73, 74, 75, 85, 86, 87, 98, 135, 271]   # -> 264 of 273 remain
+  eval_split: 0.0
+  image_transforms:          # copied from the aug config; with --transforms-fl-only they run on front-left only
+    enable: true
+    max_num_transforms: 1
+    random_order: false
+    tfs:
+      brightness: {weight: 0.0, type: ColorJitter, kwargs: {brightness: [0.8, 1.2]}}
+      contrast: {weight: 0.0, type: ColorJitter, kwargs: {contrast: [0.8, 1.2]}}
+      saturation: {weight: 0.0, type: ColorJitter, kwargs: {saturation: [0.5, 1.5]}}
+      hue: {weight: 0.0, type: ColorJitter, kwargs: {hue: [-0.05, 0.05]}}
+      sharpness: {weight: 0.0, type: SharpnessJitter, kwargs: {sharpness: [0.5, 1.5]}}
+      affine: {weight: 1.0, type: RandomAffine, kwargs: {degrees: [-2.0, 2.0], translate: [0.05, 0.05]}}
+policy:
+  type: act
+  chunk_size: 100
+  n_action_steps: 100
+  push_to_hub: false
+output_dir: /workspace/data/train/cup129_bottle135_augfl_fldrop_p30_w30
+job_name: act_omx_cup129_bottle135_augfl_fldrop_p30_w30
+steps: 200000
+batch_size: 32
+save_freq: 20000
+eval_steps: 0
+log_freq: 50
+seed: 1000
+num_workers: 12
+wandb:
+  enable: true
+  project: teleoperation_pick_place
