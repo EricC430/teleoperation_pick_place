@@ -1,0 +1,110 @@
+{
+ "what": "scripts/fit_camera_from_cad.py",
+ "args": {
+  "arm_from": "calibration/2026-10-29_fl_markerless/arm_fit_H2.json",
+  "compare": "calibration/2026-10-29_fl_markerless/camera_only_H1.json",
+  "captures": "calibration/2026-10-14_link_markers_captures.csv",
+  "excluded": "calibration/2026-10-14_link_markers_excluded.csv",
+  "plan": "configs/link_marker_plan_farwrist.json",
+  "points": "calibration/2026-10-14_aruco_points.csv",
+  "intrinsics": "calibration/2026-10-07_camera_intrinsics_front-left.json",
+  "holdout": "23,4,39,43,38,17,5,15,12",
+  "max_elbow_reading": 51.0,
+  "max_stills": 0,
+  "perturb_camera_init": "",
+  "perturb_seed": 0,
+  "rounds": 12,
+  "gate_start": 12.0,
+  "gate_end": 4.0,
+  "gate_eval": 6.0,
+  "min_grad": 6.0,
+  "blur": 1.0,
+  "f_scale": 1.5,
+  "max_pts": 400,
+  "card_scale": 1.9,
+  "paper_scale": 1.7,
+  "split_check": true,
+  "overlays": "/tmp/claude-1020/-home-boyuchen-teleoperation-pick-place/36fbcc05-4940-4589-8485-ea3ccbf40558/scratchpad/cad/ov_none",
+  "out": "/tmp/claude-1020/-home-boyuchen-teleoperation-pick-place/36fbcc05-4940-4589-8485-ea3ccbf40558/scratchpad/cad/none.json"
+ },
+ "world_from_camera": [
+  [
+   -0.844249378695166,
+   -0.2053223180699089,
+   0.49506134193170953,
+   -0.056157297996890565
+  ],
+  [
+   -0.5334856919741355,
+   0.23345631330337022,
+   -0.8129521303481997,
+   0.3886412855379796
+  ],
+  [
+   0.05134202013656697,
+   -0.9504424735254615,
+   -0.3066318663920931,
+   0.2611200051744136
+  ],
+  [
+   0.0,
+   0.0,
+   0.0,
+   1.0
+  ]
+ ],
+ "perturbation_from_arm_from": [
+  0.2883320959777171,
+  0.2647438091978411,
+  -0.13071177306641846,
+  -1.6091079498225636,
+  0.9423690726136918,
+  0.6894523592946536
+ ],
+ "report": {
+  "overlay_px": {
+   "median": 1.25,
+   "p90": 3.25,
+   "n": 38787
+  },
+  "paper_px": {
+   "median": 2.139810324383415,
+   "p90": 2.531379703314659,
+   "max": 2.985871908164275,
+   "n": 512
+  },
+  "vs_arm_from": {
+   "mm": 1.9881228379901088,
+   "deg": 0.41268662408376416
+  },
+  "vs:calibration/2026-10-29_fl_markerless/camera_only_H1.json": {
+   "mm": 2.7779768068229407,
+   "deg": 0.41677816452884664
+  },
+  "half0": {
+   "episodes": [
+    1,
+    13,
+    18,
+    30,
+    44
+   ],
+   "held_out_overlay_median": 1.5,
+   "held_out_overlay_p90": 3.25
+  },
+  "half1": {
+   "episodes": [
+    7,
+    14,
+    24,
+    36
+   ],
+   "held_out_overlay_median": 1.25,
+   "held_out_overlay_p90": 3.25
+  },
+  "halves": {
+   "mm": 4.103211627554521,
+   "deg": 0.4813693051093123
+  }
+ }
+}
