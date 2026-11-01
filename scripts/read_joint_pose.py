@@ -26,6 +26,7 @@ import argparse
 import time
 from pathlib import Path
 
+from follower_port import DEFAULT_CONFIG, follower_port
 from lerobot.robots.omx_follower import OmxFollower, OmxFollowerConfig
 
 JOINTS = ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper"]
@@ -41,7 +42,8 @@ HOMES = {
 MAX_JUMP = 30.0  # refuse --goto-home if any joint is further than this from HOME (a wrong pose, not drift)
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--port", default="COM8")
+ap.add_argument("--config", default=DEFAULT_CONFIG, help="robot yaml whose robot.port is the follower port")
+ap.add_argument("--port", default=None, help="overrides the port from --config")
 ap.add_argument("--id", default="2026-09-18_omx_follower")
 ap.add_argument("--goto-home", action="store_true", help="move to HOME and leave torque on")
 ap.add_argument("--goto", type=float, nargs=6, default=None, metavar=tuple(JOINTS),
@@ -57,6 +59,7 @@ ap.add_argument("--dataset-root", type=Path, default=Path(".cache/lerobot/omx_pi
 ap.add_argument("--seconds", type=float, default=3.0, help="duration of the move to HOME")
 ap.add_argument("--dry-run", action="store_true", help="build the robot and print its calibration; no serial port")
 args = ap.parse_args()
+args.port = args.port or follower_port(args.config)
 if args.hold + args.release + (args.goto is not None) + args.goto_home > 1:
     ap.error("--hold, --release, --goto and --goto-home are mutually exclusive")
 if args.goto is not None and args.home_episode is not None:

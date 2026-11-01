@@ -1,0 +1,126 @@
+=== none
+116 stills (episodes held out here: [4, 5, 12, 15, 17, 23, 38, 39, 43]); arm from calibration/2026-10-29_fl_markerless/arm_fit_H2.json
+start:  overlay |offset| median 1.25 p90 3.50 px (38698 matches); paper 0.29 px
+  round  1 gate  12.0 px:  39900 matches, |r| median 1.50 -> 1.44 px; step 0.277 deg 1.32 mm
+  round  2 gate  10.9 px:  39330 matches, |r| median 1.39 -> 1.41 px; step 0.072 deg 0.10 mm
+  round  3 gate   9.8 px:  41055 matches, |r| median 1.42 -> 1.33 px; step 0.066 deg 0.40 mm
+  round  4 gate   8.9 px:  40000 matches, |r| median 1.36 -> 1.32 px; step 0.050 deg 0.54 mm
+  round  5 gate   8.0 px:  41097 matches, |r| median 1.30 -> 1.40 px; step 0.041 deg 0.41 mm
+  round  6 gate   7.3 px:  39054 matches, |r| median 1.28 -> 1.29 px; step 0.039 deg 0.12 mm
+  round  7 gate   6.6 px:  39596 matches, |r| median 1.16 -> 1.22 px; step 0.021 deg 0.23 mm
+  round  8 gate   6.0 px:  40269 matches, |r| median 1.21 -> 1.28 px; step 0.046 deg 0.37 mm
+  round  9 gate   5.4 px:  39683 matches, |r| median 1.15 -> 1.19 px; step 0.020 deg 0.15 mm
+  round 10 gate   4.9 px:  40162 matches, |r| median 1.13 -> 1.14 px; step 0.012 deg 0.06 mm
+  round 11 gate   4.4 px:  38962 matches, |r| median 1.08 -> 1.11 px; step 0.025 deg 0.22 mm
+  round 12 gate   4.0 px:  39401 matches, |r| median 1.00 -> 1.01 px; step 0.030 deg 0.29 mm
+fitted: overlay |offset| median 1.25 p90 3.25 px (38787 matches)
+paper-marker centres, INDEPENDENT: median 2.14 px, p90 2.53, max 2.99 over 512 detections
+camera vs the --arm-from camera (paper-fitted on its episodes): 2.0 mm, 0.41 deg
+camera vs calibration/2026-10-29_fl_markerless/camera_only_H1.json: 2.8 mm, 0.42 deg
+half 0 (episodes [1, 13, 18, 30, 44], 34 stills): held-out overlay median 1.50 p90 3.25 px; paper 1.92 px
+half 1 (episodes [7, 14, 24, 36], 82 stills): held-out overlay median 1.25 p90 3.25 px; paper 1.77 px
+half 0 vs half 1 camera: 4.1 mm, 0.48 deg
+=== p2_0
+116 stills (episodes held out here: [4, 5, 12, 15, 17, 23, 38, 39, 43]); arm from calibration/2026-10-29_fl_markerless/arm_fit_H2.json
+camera start perturbed by 2.0 deg, 1.0 cm (seed 0)
+start:  overlay |offset| median 3.25 p90 5.50 px (31151 matches); paper 12.93 px
+  round  1 gate  12.0 px:  37956 matches, |r| median 4.25 -> 2.17 px; step 0.802 deg 3.19 mm
+  round  2 gate  10.9 px:  40858 matches, |r| median 2.36 -> 1.75 px; step 0.716 deg 2.90 mm
+  round  3 gate   9.8 px:  41281 matches, |r| median 1.58 -> 1.52 px; step 0.308 deg 1.94 mm
+  round  4 gate   8.9 px:  40442 matches, |r| median 1.64 -> 1.52 px; step 0.313 deg 2.63 mm
+  round  5 gate   8.0 px:  39804 matches, |r| median 1.45 -> 1.38 px; step 0.180 deg 1.61 mm
+  round  6 gate   7.3 px:  40124 matches, |r| median 1.28 -> 1.33 px; step 0.048 deg 0.27 mm
+  round  7 gate   6.6 px:  41478 matches, |r| median 1.16 -> 1.20 px; step 0.063 deg 0.66 mm
+  round  8 gate   6.0 px:  38866 matches, |r| median 1.21 -> 1.24 px; step 0.059 deg 0.49 mm
+  round  9 gate   5.4 px:  40126 matches, |r| median 1.15 -> 1.17 px; step 0.016 deg 0.10 mm
+  round 10 gate   4.9 px:  39609 matches, |r| median 1.13 -> 1.13 px; step 0.012 deg 0.13 mm
+  round 11 gate   4.4 px:  39082 matches, |r| median 1.08 -> 1.11 px; step 0.027 deg 0.29 mm
+  round 12 gate   4.0 px:  39099 matches, |r| median 1.00 -> 1.03 px; step 0.028 deg 0.37 mm
+fitted: overlay |offset| median 1.25 p90 3.25 px (39705 matches)
+paper-marker centres, INDEPENDENT: median 2.19 px, p90 2.61, max 3.08 over 512 detections
+camera vs the --arm-from camera (paper-fitted on its episodes): 2.1 mm, 0.42 deg
+camera vs calibration/2026-10-29_fl_markerless/camera_only_H1.json: 2.8 mm, 0.41 deg
+=== p2_1
+116 stills (episodes held out here: [4, 5, 12, 15, 17, 23, 38, 39, 43]); arm from calibration/2026-10-29_fl_markerless/arm_fit_H2.json
+camera start perturbed by 2.0 deg, 1.0 cm (seed 1)
+start:  overlay |offset| median 3.50 p90 6.00 px (32136 matches); paper 9.28 px
+  round  1 gate  12.0 px:  38878 matches, |r| median 5.50 -> 1.90 px; step 1.718 deg 7.79 mm
+  round  2 gate  10.9 px:  40738 matches, |r| median 1.61 -> 1.40 px; step 0.259 deg 1.06 mm
+  round  3 gate   9.8 px:  40497 matches, |r| median 1.58 -> 1.29 px; step 0.247 deg 1.02 mm
+  round  4 gate   8.9 px:  40737 matches, |r| median 1.39 -> 1.41 px; step 0.079 deg 0.73 mm
+  round  5 gate   8.0 px:  40576 matches, |r| median 1.30 -> 1.37 px; step 0.058 deg 0.14 mm
+  round  6 gate   7.3 px:  40621 matches, |r| median 1.28 -> 1.21 px; step 0.159 deg 0.33 mm
+  round  7 gate   6.6 px:  40017 matches, |r| median 1.16 -> 1.18 px; step 0.136 deg 0.67 mm
+  round  8 gate   6.0 px:  40879 matches, |r| median 1.21 -> 1.20 px; step 0.088 deg 0.57 mm
+  round  9 gate   5.4 px:  39321 matches, |r| median 1.10 -> 1.13 px; step 0.012 deg 0.21 mm
+  round 10 gate   4.9 px:  39856 matches, |r| median 1.12 -> 1.12 px; step 0.027 deg 0.26 mm
+  round 11 gate   4.4 px:  39118 matches, |r| median 1.08 -> 1.11 px; step 0.031 deg 0.34 mm
+  round 12 gate   4.0 px:  39881 matches, |r| median 1.00 -> 1.01 px; step 0.017 deg 0.22 mm
+fitted: overlay |offset| median 1.25 p90 3.18 px (39594 matches)
+paper-marker centres, INDEPENDENT: median 2.19 px, p90 2.55, max 2.98 over 512 detections
+camera vs the --arm-from camera (paper-fitted on its episodes): 2.0 mm, 0.42 deg
+camera vs calibration/2026-10-29_fl_markerless/camera_only_H1.json: 2.4 mm, 0.35 deg
+=== p5_0
+116 stills (episodes held out here: [4, 5, 12, 15, 17, 23, 38, 39, 43]); arm from calibration/2026-10-29_fl_markerless/arm_fit_H2.json
+camera start perturbed by 5.0 deg, 3.0 cm (seed 0)
+start:  overlay |offset| median 2.50 p90 5.75 px (13098 matches); paper 36.14 px
+  round  1 gate  12.0 px:  21174 matches, |r| median 5.75 -> 5.24 px; step 0.444 deg 4.64 mm
+  round  2 gate  10.9 px:  19315 matches, |r| median 4.64 -> 3.92 px; step 0.294 deg 1.64 mm
+  round  3 gate   9.8 px:  19660 matches, |r| median 4.83 -> 3.73 px; step 0.496 deg 5.92 mm
+  round  4 gate   8.9 px:  22612 matches, |r| median 3.89 -> 2.43 px; step 0.599 deg 3.89 mm
+  round  5 gate   8.0 px:  22280 matches, |r| median 2.05 -> 2.04 px; step 0.442 deg 2.27 mm
+  round  6 gate   7.3 px:  21189 matches, |r| median 2.03 -> 2.14 px; step 0.256 deg 1.77 mm
+  round  7 gate   6.6 px:  23268 matches, |r| median 1.66 -> 1.70 px; step 0.378 deg 2.04 mm
+  round  8 gate   6.0 px:  22366 matches, |r| median 1.71 -> 1.64 px; step 0.294 deg 1.46 mm
+  round  9 gate   5.4 px:  22268 matches, |r| median 1.60 -> 1.48 px; step 0.333 deg 1.61 mm
+  round 10 gate   4.9 px:  22403 matches, |r| median 1.38 -> 1.44 px; step 0.367 deg 1.87 mm
+  round 11 gate   4.4 px:  23313 matches, |r| median 1.08 -> 1.05 px; step 0.230 deg 1.10 mm
+  round 12 gate   4.0 px:  22853 matches, |r| median 1.00 -> 1.04 px; step 0.296 deg 1.51 mm
+fitted: overlay |offset| median 1.75 p90 5.00 px (25981 matches)
+paper-marker centres, INDEPENDENT: median 13.63 px, p90 32.37, max 32.90 over 512 detections
+camera vs the --arm-from camera (paper-fitted on its episodes): 39.7 mm, 5.09 deg
+camera vs calibration/2026-10-29_fl_markerless/camera_only_H1.json: 43.6 mm, 5.48 deg
+=== p5_0w
+116 stills (episodes held out here: [4, 5, 12, 15, 17, 23, 38, 39, 43]); arm from calibration/2026-10-29_fl_markerless/arm_fit_H2.json
+camera start perturbed by 5.0 deg, 3.0 cm (seed 0)
+start:  overlay |offset| median 2.50 p90 5.75 px (13098 matches); paper 36.14 px
+  round  1 gate  30.0 px:  32498 matches, |r| median 10.50 -> 7.68 px; step 2.125 deg 12.38 mm
+  round  2 gate  25.7 px:  32810 matches, |r| median 5.94 -> 4.68 px; step 2.072 deg 10.54 mm
+  round  3 gate  22.0 px:  31077 matches, |r| median 5.50 -> 4.60 px; step 1.282 deg 6.04 mm
+  round  4 gate  18.8 px:  31409 matches, |r| median 4.16 -> 3.52 px; step 0.611 deg 2.05 mm
+  round  5 gate  16.1 px:  31137 matches, |r| median 3.36 -> 3.14 px; step 0.550 deg 2.98 mm
+  round  6 gate  13.8 px:  32070 matches, |r| median 2.68 -> 2.69 px; step 0.443 deg 1.77 mm
+  round  7 gate  11.8 px:  30056 matches, |r| median 2.91 -> 3.02 px; step 0.441 deg 3.88 mm
+  round  8 gate  10.1 px:  32404 matches, |r| median 2.61 -> 2.36 px; step 0.453 deg 3.01 mm
+  round  9 gate   8.7 px:  31965 matches, |r| median 2.43 -> 2.21 px; step 0.566 deg 5.16 mm
+  round 10 gate   7.4 px:  31175 matches, |r| median 1.94 -> 1.90 px; step 0.366 deg 3.55 mm
+  round 11 gate   6.4 px:  31999 matches, |r| median 1.63 -> 1.65 px; step 0.286 deg 2.59 mm
+  round 12 gate   5.5 px:  30643 matches, |r| median 1.70 -> 1.57 px; step 0.369 deg 3.39 mm
+  round 13 gate   4.7 px:  30286 matches, |r| median 1.42 -> 1.27 px; step 0.407 deg 3.70 mm
+  round 14 gate   4.0 px:  29907 matches, |r| median 1.25 -> 1.10 px; step 0.277 deg 2.71 mm
+fitted: overlay |offset| median 1.75 p90 5.25 px (35375 matches)
+paper-marker centres, INDEPENDENT: median 2.00 px, p90 8.66, max 9.31 over 512 detections
+camera vs the --arm-from camera (paper-fitted on its episodes): 18.1 mm, 1.76 deg
+camera vs calibration/2026-10-29_fl_markerless/camera_only_H1.json: 21.9 mm, 2.35 deg
+=== p5_1w
+116 stills (episodes held out here: [4, 5, 12, 15, 17, 23, 38, 39, 43]); arm from calibration/2026-10-29_fl_markerless/arm_fit_H2.json
+camera start perturbed by 5.0 deg, 3.0 cm (seed 1)
+start:  overlay |offset| median 3.25 p90 6.00 px (13596 matches); paper 20.16 px
+  round  1 gate  30.0 px:  37753 matches, |r| median 11.50 -> 4.06 px; step 3.752 deg 18.55 mm
+  round  2 gate  25.7 px:  41234 matches, |r| median 2.56 -> 1.85 px; step 1.141 deg 8.19 mm
+  round  3 gate  22.0 px:  41983 matches, |r| median 1.50 -> 1.67 px; step 0.468 deg 3.39 mm
+  round  4 gate  18.8 px:  41019 matches, |r| median 1.84 -> 1.67 px; step 0.197 deg 1.19 mm
+  round  5 gate  16.1 px:  41583 matches, |r| median 1.64 -> 1.59 px; step 0.098 deg 0.88 mm
+  round  6 gate  13.8 px:  40888 matches, |r| median 1.57 -> 1.58 px; step 0.061 deg 0.40 mm
+  round  7 gate  11.8 px:  41729 matches, |r| median 1.59 -> 1.47 px; step 0.074 deg 0.54 mm
+  round  8 gate  10.1 px:  39672 matches, |r| median 1.39 -> 1.43 px; step 0.094 deg 0.28 mm
+  round  9 gate   8.7 px:  41093 matches, |r| median 1.32 -> 1.28 px; step 0.162 deg 0.26 mm
+  round 10 gate   7.4 px:  40886 matches, |r| median 1.19 -> 1.17 px; step 0.123 deg 0.55 mm
+  round 11 gate   6.4 px:  41317 matches, |r| median 1.13 -> 1.19 px; step 0.070 deg 0.33 mm
+  round 12 gate   5.5 px:  39256 matches, |r| median 1.05 -> 1.13 px; step 0.035 deg 0.38 mm
+  round 13 gate   4.7 px:  40208 matches, |r| median 1.08 -> 1.10 px; step 0.035 deg 0.19 mm
+  round 14 gate   4.0 px:  39054 matches, |r| median 1.00 -> 1.03 px; step 0.021 deg 0.22 mm
+fitted: overlay |offset| median 1.25 p90 3.25 px (40115 matches)
+paper-marker centres, INDEPENDENT: median 2.05 px, p90 2.45, max 2.84 over 512 detections
+camera vs the --arm-from camera (paper-fitted on its episodes): 1.8 mm, 0.40 deg
+camera vs calibration/2026-10-29_fl_markerless/camera_only_H1.json: 2.4 mm, 0.37 deg

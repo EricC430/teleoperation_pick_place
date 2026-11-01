@@ -102,14 +102,13 @@ def detect(stills, model, refine="none"):
                 s["det"][i] = cd.undistort_pixels(c.reshape(4, 2).astype(float), model)
 
 
-def id1_segments(stills):
-    """Mount index for ID1: re-taped after the S24 scan and after the S39 scan [柏宇說]."""
+def id1_segments(stills, retaped_before=("S30_", "S43_")):
+    """Mount index for ID1: on 10-14 re-taped after the S24 scan and after the S39 scan [柏宇說].
+    retaped_before = pose-id prefixes where a new taping starts, in capture order (other sessions: --id1-retaped-before)."""
     seg, cur = {}, 0
     for s in stills:
-        if s["pose_id"].startswith("S30_") and cur == 0:
-            cur = 1
-        if s["pose_id"].startswith("S43_") and cur == 1:
-            cur = 2
+        if cur < len(retaped_before) and s["pose_id"].startswith(retaped_before[cur]):
+            cur += 1
         seg[s["pose_id"]] = cur
     return seg
 
@@ -226,7 +225,7 @@ def residuals(x, model, stills, Kmat, paper_w, seg, which=None):
     for s in stills:
         d = s["det"]
         pp = [i for i in PAPER_IDS if i in d]
-        if pp:
+        if pp and getattr(model, "use_paper", True):
             ms = x[model.idx["mat_scale"]]
             res.append((project(Kmat, cam, ms * np.array([paper_w[i] for i in pp])) - np.array([d[i].mean(0) for i in pp])).ravel())
         arm = [i for i in ARM_LINK if i in d]
@@ -350,6 +349,22 @@ def main() -> int:
                     help="effective deg/unit for lift, elbow, flex (the encoder's is exact; play can make it look otherwise, S7)")
     ap.add_argument("--fore-mm", type=float, default=None, help="forearm joint3->4 length to use instead of the URDF's")
     ap.add_argument("--no-sag", action="store_true")
+    ap.add_argument("--no-paper-in-fit", action="store_true",
+                    help="ArUco-free camera: fit it from the ARM markers + FK only, the mat<->arm link from the touch points; "
+                         "the paper markers are then an independent check (they seed the camera start, see --perturb-camera-init)")
+    ap.add_argument("--fix-base-z", type=float, default=None,
+                    help="riser height (m, table -> link0) held fixed, e.g. the ruler's 0.146: without the paper markers "
+                         "nothing else in the fit sees the base height")
+    ap.add_argument("--perturb-camera-init", default="",
+                    help="deg,cm: rotate/shift the paper-PnP camera start by this much, to show the answer does not lean on it")
+    ap.add_argument("--id1-retaped-before", default="S30_,S43_",
+                    help="pose-id prefixes where ID1 was re-taped, in capture order (10-14 default); '' for a session with one taping")
+    ap.add_argument("--fix-arm-from", default="",
+                    help="--out JSON of an earlier fit: hold base, offsets, sag and marker mounts at its values and fit only "
+                         "the camera's 6 DoF from the arm markers (the camera was bumped, the arm was not); paper markers become a check")
+    ap.add_argument("--perturb-seed", type=int, default=0, help="rng seed for --perturb-camera-init and --max-stills")
+    ap.add_argument("--max-stills", type=int, default=0, help="fit on this many randomly drawn fit-set stills (how many to retake after a bump)")
+    ap.add_argument("--max-nfev", type=int, default=200, help="least_squares evaluation budget; the paper-free fits need more than 200 to converge")
     ap.add_argument("--out", default="")
     args = ap.parse_args()
 
@@ -359,7 +374,8 @@ def main() -> int:
                for r in csv.DictReader((REPO / args.points).open(encoding="utf-8"))}
     stills = load_stills(REPO / args.captures, REPO / args.excluded, REPO / args.plan)
     detect(stills, model_cam, args.refine)
-    seg = id1_segments(stills)
+    retaped = tuple(p for p in args.id1_retaped_before.split(",") if p)
+    seg = id1_segments(stills, retaped)
     if args.max_elbow_reading is not None:
         n0 = len(stills)
         stills = [s for s in stills if s["state"][2] <= args.max_elbow_reading]
@@ -367,6 +383,9 @@ def main() -> int:
     hold = {int(e) for e in args.holdout.split(",") if e}
     train = [s for s in stills if s["ep"] not in hold]
     test = [s for s in stills if s["ep"] in hold]
+    if args.max_stills and args.max_stills < len(train):
+        pick = np.random.default_rng(args.perturb_seed + 1000).choice(len(train), args.max_stills, replace=False)
+        train = [train[k] for k in sorted(pick)]
     count = lambda ss, i: sum(i in s["det"] for s in ss)  # noqa: E731
     print(f"stills: {len(stills)} usable ({len(train)} fit / {len(test)} held out: episodes {sorted(hold)})")
     for i in (1, 5, 6):
@@ -378,11 +397,18 @@ def main() -> int:
     else:
         off0 = np.array([jm.OFFSET_RAD[n] for n in jm.LEROBOT_NAMES[:5]])
     off0[0] = jm.OFFSET_RAD["shoulder_pan"]
-    model = Model(3, args.free_lengths, urdf_inertials(), off0)
+    model = Model(len(retaped) + 1, args.free_lengths, urdf_inertials(), off0)
     if args.fore_mm:
         model.base_chain[3] = ((args.fore_mm / 1000.0, 0.0, 0.0), fk._CHAIN[3][1])
     x = np.zeros(len(model.names))
     wfc = init_camera(stills, Kmat, paper_w)
+    if args.perturb_camera_init:
+        d_deg, d_cm = (float(v) for v in args.perturb_camera_init.split(","))
+        rng = np.random.default_rng(args.perturb_seed)
+        ax_, sh_ = rng.normal(size=3), rng.normal(size=3)
+        wfc[:3, :3] = R.from_rotvec(np.radians(d_deg) * ax_ / np.linalg.norm(ax_)).as_matrix() @ wfc[:3, :3]
+        wfc[:3, 3] += d_cm / 100 * sh_ / np.linalg.norm(sh_)
+        print(f"camera start perturbed by {d_deg} deg, {d_cm} cm")
     x[0:3] = R.from_matrix(wfc[:3, :3]).as_rotvec(); x[3:6] = wfc[:3, 3]
     x[9:12] = [-fk._PAN_AXIS_XY[0], 0.0, 0.146]        # pan axis on the mat origin, riser 14.6 cm
     x[model.idx["off_lift"]:model.idx["off_flex"] + 1] = off0[1:4]
@@ -391,14 +417,23 @@ def main() -> int:
     x[model.idx["mat_scale"]] = x[model.idx["marker_scale"]] = x[model.idx["focal_scale"]] = 1.0
     x[model.idx["jscale_lift"]] = x[model.idx["jscale_elbow"]] = x[model.idx["jscale_flex"]] = 1.0
     inits = init_mounts(train, model, x, Kmat, seg)
-    for key in [("id1", 0), ("id1", 1), ("id1", 2), ("id5", 0), ("id6", 0)]:
+    for key in [("id1", k) for k in range(model.n_id1)] + [("id5", 0), ("id6", 0)]:
         if key not in inits:
+            if args.fix_arm_from:      # mounts come from that fit
+                continue
             print(f"🔴 no fit-set detection for mount {key}: change --holdout"); return 1
         print(f"  mount {key}: initialised from {inits[key][2]} detections")
     for key, (rv, t, n) in inits.items():
         pre = f"id1m{key[1]}" if key[0] == "id1" else key[0]
         x[model.idx[f"{pre}_r0"]:model.idx[f"{pre}_r0"] + 3] = rv
         x[model.idx[f"{pre}_x"]:model.idx[f"{pre}_x"] + 3] = t
+    if args.fix_arm_from:
+        prev = json.loads((REPO / args.fix_arm_from).read_text(encoding="utf-8"))
+        if prev["names"] != model.names:
+            print(f"🔴 {args.fix_arm_from}: parameter list differs from this model"); return 1
+        x[6:] = np.array(prev["x"])[6:]
+        args.no_paper_in_fit = True
+        print(f"arm held at {args.fix_arm_from} (episodes held out there: {prev['args']['holdout'] or 'none'}); fitting the camera only")
 
     lo = np.full(len(x), -np.inf); hi = np.full(len(x), np.inf)
     if args.base_tilt_deg:
@@ -407,6 +442,14 @@ def main() -> int:
             lo[model.idx[n]], hi[model.idx[n]] = v - 1e-12, v + 1e-12
             x[model.idx[n]] = v
     model.gravity_in_base = args.gravity_in_base
+    model.use_paper = not args.no_paper_in_fit
+    if args.no_paper_in_fit:
+        print("paper markers: NOT in the fit (camera from arm markers + FK" + (", arm fixed)" if args.fix_arm_from else ", mat<->arm from touch points)"))
+        if args.touch_weight <= 0 and not args.fix_arm_from:
+            print("🔴 --no-paper-in-fit needs --touch-weight > 0: nothing else ties the arm to the mat"); return 1
+    if args.fix_base_z is not None:
+        lo[model.idx["base_z"]], hi[model.idx["base_z"]] = args.fix_base_z - 1e-12, args.fix_base_z + 1e-12
+        x[model.idx["base_z"]] = args.fix_base_z
     if args.fix_base_tilt:
         for n in ("base_r0", "base_r1"):
             lo[model.idx[n]], hi[model.idx[n]] = -1e-12, 1e-12
@@ -438,9 +481,17 @@ def main() -> int:
         touch_report("before")
     r0 = residuals(x, model, train, Kmat, paper_w, seg)
     print(f"initial: median |r| {np.median(np.abs(r0)):.2f} px over {r0.size} residuals")
-    sol = least_squares(residuals, x, args=(model, train, Kmat, paper_w, seg), loss="soft_l1", f_scale=1.5,
-                        bounds=(lo, hi), x_scale="jac", max_nfev=200, verbose=0)
-    x = sol.x
+    if args.fix_arm_from:              # base fixed, so the touch points cannot move: leave them out
+        model.touch = []
+        rest = x[6:].copy()
+        sol = least_squares(lambda q: residuals(np.r_[q, rest], model, train, Kmat, paper_w, seg), x[:6], loss="soft_l1",
+                            f_scale=1.5, x_scale="jac", max_nfev=args.max_nfev, verbose=0)
+        x = np.r_[sol.x, rest]
+        sol.jac = np.c_[sol.jac, np.zeros((sol.jac.shape[0], len(rest)))]
+    else:
+        sol = least_squares(residuals, x, args=(model, train, Kmat, paper_w, seg), loss="soft_l1", f_scale=1.5,
+                            bounds=(lo, hi), x_scale="jac", max_nfev=args.max_nfev, verbose=0)
+        x = sol.x
     if touch:
         touch_report("after ")
     rt = residuals(x, model, train, Kmat, paper_w, seg)
@@ -484,8 +535,8 @@ def main() -> int:
     if np.isfinite(sd[i_lift]) and sd[i_lift] > 0 and sd[i_pitch] > 0:
         print(f"corr(lift offset, base pitch) = {cov[i_lift, i_pitch] / (sd[i_lift] * sd[i_pitch]):+.2f};"
               f" lift offset + base pitch = {deg(x[i_lift] + x[i_pitch]):.2f} deg")
-    m1 = [mounts[("id1", k)] for k in range(3)]
-    for k in (1, 2):
+    m1 = [mounts[("id1", k)] for k in range(model.n_id1)]
+    for k in range(1, model.n_id1):
         dt = np.linalg.norm(m1[k][:3, 3] - m1[0][:3, 3]) * 1000
         dr = deg(R.from_matrix(m1[0][:3, :3].T @ m1[k][:3, :3]).magnitude())
         print(f"ID1 taping {k} vs 0: {dt:.1f} mm, {dr:.1f} deg")
@@ -518,6 +569,22 @@ def main() -> int:
         report[f"ID{i}"] = {"fit_px_median": float(np.median(a)) if a.size else None, "held_px_median": float(np.median(b)) if b.size else None,
                             "fit_mm_median": float(np.median(am)) if am.size else None, "held_mm_median": float(np.median(bm)) if bm.size else None}
     print("  * marker-centre distance between the model and a single-marker PnP of the same still (depth-noisy)")
+
+    # paper markers through the fitted camera: a training residual normally, an independent check with --no-paper-in-fit
+    Kp = Kmat.copy(); Kp[0, 0] *= x[model.idx["focal_scale"]]; Kp[1, 1] *= x[model.idx["focal_scale"]]
+    per_id = {i: [] for i in PAPER_IDS}
+    for s in stills:
+        for i in PAPER_IDS:
+            if i in s["det"]:
+                uv = project(Kp, cam, x[model.idx["mat_scale"]] * paper_w[i][None])
+                per_id[i].append(float(np.linalg.norm(uv[0] - s["det"][i].mean(0))))
+    allp = np.concatenate([v for v in per_id.values() if v])
+    tag = "INDEPENDENT (not fitted)" if args.no_paper_in_fit else "fitted"
+    print(f"\npaper-marker centres, {tag}: median {np.median(allp):.2f} px, p90 {np.percentile(allp, 90):.2f}, max {allp.max():.2f} "
+          f"over {allp.size} detections")
+    print("  per id (median px):", {i: round(float(np.median(v)), 2) for i, v in per_id.items() if v})
+    report["paper_px"] = {"median": float(np.median(allp)), "p90": float(np.percentile(allp, 90)), "max": float(allp.max()),
+                          "in_fit": not args.no_paper_in_fit}
 
     out = Path(args.out) if args.out else None
     if out:

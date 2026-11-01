@@ -60,6 +60,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_link_tilt as S7  # noqa: E402  (Arm with auto-reconnect, capture_stills, prompts)
+from follower_port import DEFAULT_CONFIG, follower_port  # noqa: E402
 from measure_link_tilt import JOINTS  # noqa: E402
 
 
@@ -446,7 +447,8 @@ def main() -> int:
     se.add_argument("--plan", required=True)
     se.add_argument("--csv", required=True, help="calibration/<date>_link_markers.csv (only its name is used)")
     se.add_argument("--cameras", default="front-left,wrist")
-    se.add_argument("--port", default="COM8")
+    se.add_argument("--config", default=DEFAULT_CONFIG, help="robot yaml whose robot.port is the follower port")
+    se.add_argument("--port", default=None, help="overrides the port from --config")
     se.add_argument("--id", default="2026-09-18_omx_follower")
     se.add_argument("--seconds-per-point", type=float, default=0.2,
                     help="per kept path point (every 3rd recorded frame = 0.2 s), so 0.2 is the recorded speed "
@@ -469,7 +471,8 @@ def main() -> int:
     walks.add_argument("--min-from-home", type=float, default=10.0, help="no stops until some joint is this far from HOME")
     walks.add_argument("--min-spacing", type=float, default=6.0, help="units in some joint between consecutive stops")
     walks.add_argument("--cameras", default="front-left")
-    walks.add_argument("--port", default="COM8")
+    walks.add_argument("--config", default=DEFAULT_CONFIG, help="robot yaml whose robot.port is the follower port")
+    walks.add_argument("--port", default=None, help="overrides the port from --config")
     walks.add_argument("--id", default="2026-09-18_omx_follower")
     walks.add_argument("--seconds-per-point", type=float, default=0.2)
     walks.add_argument("--settle", type=float, default=1.5)
@@ -503,6 +506,7 @@ def main() -> int:
                     help="append wrist_flex target/position/PID/PWM/status snapshots before and after each capture to <csv stem>_servo.jsonl; no gain changes")
     sc.set_defaults(func=cmd_scan)
     args = ap.parse_args()
+    args.port = args.port or follower_port(args.config)
     return args.func(args)
 
 
