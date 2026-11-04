@@ -37,5 +37,6 @@ log_freq: 50
 save_freq: 20000
 
 wandb:
+  disable_artifact: true
   enable: true
   project: teleoperation_pick_place

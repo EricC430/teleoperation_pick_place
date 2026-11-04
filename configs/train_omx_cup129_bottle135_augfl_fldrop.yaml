@@ -61,5 +61,6 @@ log_freq: 50
 seed: 1000
 num_workers: 12
 wandb:
+  disable_artifact: true
   enable: true
   project: teleoperation_pick_place
