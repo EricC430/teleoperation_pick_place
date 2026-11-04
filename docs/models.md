@@ -26,6 +26,12 @@
   2026-10-22 加的 `bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30` 三列：4090 上 `sha256sum` 本機檔案，也和開環 `metrics.json` 對過；同日上 Hub（private），Hub API 的 LFS oid 對過，一致。同日補上 `35ffc9043713` 漏記的 10/18 閉環。
   同三列 2026-10-23 在 Windows 另外對過：hash 是 Hub API 的 LFS oid（2026-10-22 讀）；100k 另外下載到 `D:\hf\hub` 後 `sha256sum`，一致；20k／40k 本機沒下載、本機訓練檔沒對（在 4090）。`fl_dropout.json`：135 集、57380 幀、`expected_masked_fraction` 0.0197、`close_below` 54，和交接預期相同。
   2026-10-23 加的 `cup129_bottle135_augfl_fldrop_p30_w30` 四列（M-full，紙杯＋寶特瓶一個模型）：4090 上 `sha256sum` 本機檔案；還沒上 Hub。
+- **2026-11-01 4090 磁碟滿，刪了本機 checkpoint**（2026-11-01 對話中同意：「已過時並且上傳到 hf 的模型權重可刪」）：
+  表中有 Hub repo 的列，逐一把本機 `model.safetensors` 的完整 sha256 和 Hub API 的 LFS sha256 對過，**一致的 38 個**
+  整個 `checkpoints/<step>/`（`pretrained_model` ＋ `training_state`）刪掉，約 22 GB。**這些列的「本機 run / step」只剩歷史意義，權重從 Hub 下載。**
+  `training_state`（optimizer 狀態）沒上 Hub，這 38 個已無法續訓。
+  保留：目前最好的 `aebc8680b965`（紙杯 34/36）、`fe5e98957d38`（寶特瓶 23/36）；沒上 Hub 的列；`f1903a9f9385`（diffusion，Hub hash 不符）；
+  未列的 60k／80k 與煙霧／效能測試 run。各 run 的 log、`eval_plots_*` 沒動。
 
 ## ACT／Diffusion 模型
 
