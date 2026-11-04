@@ -4,5 +4,5 @@ B0_start_front-left*,all,"before the camera was moved (20:01; new camera from 20
 P00_traj_front-left*,all,"before the camera was moved; also a bin-transport pose (gripper closed, markers turned away)"
 P01_traj_front-left*,all,"before the camera was moved; also a bin-transport pose"
 P09_traj_front-left*,all,"a hand was on the arm in the still"
-S24_F0210_*,1,"[柏宇說] ID1 had come loose / shifted during this scan (re-taped right after, within taping error)"
-S39_F0210_p+20_*,1,"[柏宇說] ID1 had come loose / shifted during this scan (re-taped right after, within taping error)"
+S24_F0210_*,1,"[EricC430] ID1 had come loose / shifted during this scan (re-taped right after, within taping error)"
+S39_F0210_p+20_*,1,"[EricC430] ID1 had come loose / shifted during this scan (re-taped right after, within taping error)"

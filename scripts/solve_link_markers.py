@@ -14,16 +14,16 @@ Model (all in the mat frame: origin on the pan axis at the table, +x ahead, +y l
   sag          link angle = encoder angle + c_i * gravity torque on joint i (lift, elbow, flex), URDF masses: play
                between the encoder and the link that the readings cannot see (S7: 2-6 deg, gravity dependent).
   mounts       each arm marker's pose in its link, 6 dof. ID1 gets one mount per taping (re-taped after S24 and
-               after S39 [柏宇說]); the spread between them is reported.
+               after S39 [EricC430]); the spread between them is reported.
   lengths      optional (--free-lengths): a scale on the upper arm (joint2->3 vector, direction kept: its angle is the
                lift offset) and on the forearm (joint3->4). joint5's x is not identifiable (ID6's mount absorbs it).
                First free fit (10-14, every origin free) put both links ~4 mm (3.4 %) longer than the URDF.
   marker size  optional (--free-marker-size): one scale on the 60 mm of the three ARM markers. 10-14: with free link
-               scales the fit said upper arm 124.4 / forearm 165.7 mm, but a ruler (axis to axis, [柏宇說]) reads
+               scales the fit said upper arm 124.4 / forearm 165.7 mm, but a ruler (axis to axis, [EricC430]) reads
                120.5 / 163 mm -- URDF 120.5 / 162. A marker smaller than assumed makes the whole arm look bigger.
   mat scale    optional (--free-mat-scale): true metres per mat metre. The paper centres are in mat units (a printed
                grid), the arm-marker corners in true metres (60 mm), so a printer-scaled mat shows up here.
-Residuals: the 4 corners of each arm marker (60 mm [柏宇說 2026-10-14: all markers are 6 cm]) and the centre of each
+Residuals: the 4 corners of each arm marker (60 mm [EricC430 2026-10-14: all markers are 6 cm]) and the centre of each
 paper marker, in ideal-pinhole pixels (detections undistorted with the camera's own model), soft-L1 loss.
 
     uv run python scripts/solve_link_markers.py --holdout 14,38
@@ -103,7 +103,7 @@ def detect(stills, model, refine="none"):
 
 
 def id1_segments(stills, retaped_before=("S30_", "S43_")):
-    """Mount index for ID1: on 10-14 re-taped after the S24 scan and after the S39 scan [柏宇說].
+    """Mount index for ID1: on 10-14 re-taped after the S24 scan and after the S39 scan [EricC430].
     retaped_before = pose-id prefixes where a new taping starts, in capture order (other sessions: --id1-retaped-before)."""
     seg, cur = {}, 0
     for s in stills:
@@ -327,14 +327,14 @@ def main() -> int:
     ap.add_argument("--refine", choices=("none", "subpix", "contour", "apriltag"), default="none",
                     help="ArUco corner refinement; without it the corners of a ~50 px marker can sit a fraction of a pixel inside")
     ap.add_argument("--base-tilt-deg", default=None,
-                    help="roll,pitch of the base relative to the mat, MEASURED (phone level) and held fixed. [柏宇說 10-15] "
+                    help="roll,pitch of the base relative to the mat, MEASURED (phone level) and held fixed. [EricC430 10-15; was tagged 柏宇說, corrected 2026-10-31] "
                          "base y -0.45, desk -2.85 (near) / -2.65 (far): base is ~2.3 deg off the mat plane")
     ap.add_argument("--gravity-in-base", action="store_true",
-                    help="gravity straight down in the base frame (base level within 0.45 deg [柏宇說]); the mat itself is "
+                    help="gravity straight down in the base frame (base level within 0.45 deg [EricC430]); the mat itself is "
                          "tilted ~2.75 deg, so 'down' in the mat frame is not gravity")
     ap.add_argument("--fix-base-tilt", action="store_true",
                     help="base level with the mat (yaw only): base pitch and the lift offset trade off (corr -0.5); "
-                         "10-13 level check: base within ~0.5 deg of level [柏宇說]")
+                         "10-13 level check: base within ~0.5 deg of level [EricC430]")
     ap.add_argument("--touch-tip", default="", help="touch_test.py CSV, fingertip read directly (10-15)")
     ap.add_argument("--touch-plumb", default="", help="touch_test.py --plumb CSV(s), comma-separated")
     ap.add_argument("--touch-weight", type=float, default=0.0,
@@ -342,7 +342,7 @@ def main() -> int:
     ap.add_argument("--touch-holdout", choices=("none", "even", "odd"), default="none",
                     help="keep every other touch point out of the fit and score it afterwards")
     ap.add_argument("--max-elbow-reading", type=float, default=None,
-                    help="drop stills with the elbow reading above this. [柏宇說 10-15] at HOME the forearm rests on the "
+                    help="drop stills with the elbow reading above this. [EricC430 10-15; was tagged 柏宇說, corrected 2026-10-31] at HOME the forearm rests on the "
                          "shoulder-lift servo: past ~52.8 the link stops while the reading goes on (photos: -2..-5 deg at "
                          "54-55; sim with self-collision stops 2.6 deg short at B0)")
     ap.add_argument("--free-joint-scales", action="store_true",
