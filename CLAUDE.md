@@ -100,6 +100,14 @@ Eric 會查證你的說法，而且經常是對的。**被他推翻不是問題�
 且 **AI 對EricC430的人工工作的時間估計已證實系統性低估 2–3 倍**（「讀 2 篇論文 2 小時」「兩份 pitch 各 60–90 分」），但不限於其他使用者或是AI可以自己做的事情。
 **給估計要乘上去，並邀請他回報實際值來校正。**
 
+### 9. git 作者身分：commit 前先確認是誰在用
+
+**2026-11-05：** 這台 Linux 帳號（`boyuchen`）兩人共用，commit 曾默默掛成 `Boyu00`，不是實際操作的人。
+- 全域 `~/.gitconfig` **刻意沒有** `user.name`／`user.email`，且 `user.useConfigOnly = true`；身分只寫在 repo 的 `.git/config`（本地）。**不要去改全域。**
+- commit 前先看 `git config --local --get-regexp '^user\.'`，**並問使用者現在是誰**；不要從 git user、帳號名或舊 commit 推斷（見 memory「Participants are not the git user」）。
+- 對方不是目前本地身分時，先改本地設定再 commit（EricC430 = chentinghan0904@gmail.com；Boyu00 = boyuchen071@gmail.com），用完換回或說明現在是誰。
+- 不要 push 前改寫已 push 的歷史；只改本地未 push 的 commit 作者。
+
 ---
 
 ## ⚠️ 目前未解（會影響決策）
