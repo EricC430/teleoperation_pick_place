@@ -60,6 +60,14 @@ The script spec is `docs/specs/S4_sim_teleop_collect.md`.
 **成本：** 一次渲染。本機 FK 已驗證能預測 sim 到 0.07 cm，所以**距離數字不必開模擬器**——
 開模擬器只為了「看起來像不像」這件事，那是人眼才能判斷的。
 
+## 2026-10-31：重播 → 物理驗證 → 隨機化蒐集（S9）
+
+`scripts/dr_collect.py` 串起 `dr_objects.py`（物體變體）、`physics_replay.py`（`config_report=` 設定檢查、`pose_log=1` 驗證）、
+`replay_score.py`（夾起判定）、`dr_render.py`（Replicator 渲染隨機化變體）、`scripts/sim_replay_augment.py`（匯出 LeRobot）。
+規格 `docs/specs/S9_sim_dr_collect.md`，實測 `docs/worklog/2026-10-31_sim_dr_pipeline.md`。
+物理參數總表與管線稽核：`docs/sim_physics_params.md`。
+⚠️ `physics_replay.py` 的自碰撞預設是**開**，且所有連桿自動用 SDF 碰撞體（asset 的凸分解手指會互卡、一集都夾不起來）。
+
 ## What is here
 
 | File | Runs where | What it does |

@@ -45,7 +45,9 @@ from pathlib import Path
 
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--render-dir", required=True, help="a sim/replay_render_episode.py --out dir")
+    p.add_argument("--render-dir", required=True, action="append",
+                   help="a sim/replay_render_episode.py --out dir, or a sim/dr_render.py variant dir; repeat it to "
+                        "write several episodes into one dataset (2026-10-31, scripts/dr_collect.py)")
     p.add_argument("--repo-id", required=True, help="must start with 'sim_' (S5 §7)")
     p.add_argument("--root", default=None, help="local dataset root")
     p.add_argument("--source-info", default=None,
@@ -109,8 +111,13 @@ def main():
             "simulated data can never be mistaken for, or pooled with, real recordings"
         )
 
-    render_dir = Path(args.render_dir)
-    manifest = json.loads((render_dir / "manifest.json").read_text())
+    render_dirs = [Path(d) for d in args.render_dir]
+    manifests = [json.loads((d / "manifest.json").read_text()) for d in render_dirs]
+    skipped = [str(d) for d, m in zip(render_dirs, manifests) if m.get("rejected")]
+    keep = [(d, m) for d, m in zip(render_dirs, manifests) if not m.get("rejected")]
+    if skipped:
+        print(f"skipping {len(skipped)} rejected render dirs: {skipped}")
+    render_dir, manifest = keep[0]
     fps = args.fps or manifest["dataset_fps"]
 
     info_path = Path(args.source_info) if args.source_info else Path(manifest["source_dataset_root"]) / "meta" / "info.json"
@@ -134,12 +141,12 @@ def main():
         print(f"DR seed {manifest['dr']['seed']} preset {manifest['dr']['preset']}")
 
     frames = manifest["frames"]
-    if manifest.get("stride", 1) != 1:
+    if any(m.get("stride", 1) != 1 for _, m in keep):
         print(f"\n⚠️  stride={manifest['stride']}: this render SKIPPED frames. The output will not be "
               f"a continuous {fps} fps episode -- fine for a smoke test, wrong for training data.")
 
     if args.dry_run:
-        print(f"\n--dry-run: would write {len(frames)} frames to repo_id {args.repo_id!r}")
+        print(f"\n--dry-run: would write {sum(len(m['frames']) for _, m in keep)} frames in {len(keep)} episodes to repo_id {args.repo_id!r}")
         return
 
     import numpy as np
@@ -174,36 +181,46 @@ def main():
         rgb_encoder=RGBEncoderConfig(**enc_kw),
     )
 
-    for rec in frames:
-        frame = {
-            "action": np.asarray(rec["action"], dtype=np.float32),
-            "observation.state": np.asarray(rec["observation_state"], dtype=np.float32),
-            # lerobot 0.6.2: the task travels INSIDE the frame dict -- add_frame(frame) takes no
-            # `task=` argument (checked against the installed version's own source, 2026-09-18)
-            "task": task,
-        }
-        for key in image_keys:
-            short = key.rsplit(".", 1)[-1]
-            frame[key] = np.asarray(Image.open(render_dir / rec[f"image_{short}"]).convert("RGB"))
-        dataset.add_frame(frame)
+    provenance = []
+    for ep_i, (render_dir, manifest) in enumerate(keep):
+        for rec in manifest["frames"]:
+            frame = {
+                "action": np.asarray(rec["action"], dtype=np.float32),
+                "observation.state": np.asarray(rec["observation_state"], dtype=np.float32),
+                # lerobot 0.6.2: the task travels INSIDE the frame dict -- add_frame(frame) takes no
+                # `task=` argument (checked against the installed version's own source, 2026-09-18)
+                "task": task,
+            }
+            for key in image_keys:
+                short = key.rsplit(".", 1)[-1]
+                frame[key] = np.asarray(Image.open(render_dir / rec[f"image_{short}"]).convert("RGB"))
+            dataset.add_frame(frame)
 
-    dataset.save_episode()
+        dataset.save_episode()
+        # the whole point of S5 §5 item 1: a variant is worthless if you cannot trace it back
+        provenance.append({
+            "episode_index": ep_i,
+            "render_dir": str(render_dir),
+            "source_episode_id": manifest["source_episode_id"],
+            "source_dataset_root": manifest["source_dataset_root"],
+            **{k: manifest[k] for k in ("source_dataset", "source_placement", "object_id", "render_lag_frames", "qa") if k in manifest},
+            "dr": manifest["dr"],
+            "grasp": manifest["grasp"],
+            "fidelity": manifest["fidelity"],
+            "driven_by": manifest["driven_by"],
+            "sign": manifest["sign"],
+        })
+        print(f"  episode {ep_i}: {len(manifest['frames'])} frames from {render_dir}")
 
-    # the whole point of S5 §5 item 1: a variant is worthless if you cannot trace it back
     meta_out = Path(dataset.root) / "meta" / "sim_provenance.json"
     meta_out.parent.mkdir(parents=True, exist_ok=True)
     meta_out.write_text(json.dumps({
-        "source_episode_id": manifest["source_episode_id"],
-        "source_dataset_root": manifest["source_dataset_root"],
-        "dr": manifest["dr"],
-        "grasp": manifest["grasp"],
-        "fidelity": manifest["fidelity"],
-        "driven_by": manifest["driven_by"],
-        "sign": manifest["sign"],
-        "simulator": "Isaac Sim / Isaac Lab (see sim/README.md for the asset pipeline)",
+        "simulator": "Isaac Sim (see sim/README.md for the asset pipeline)",
+        "episodes": provenance,
+        "skipped_rejected": skipped,
     }, indent=2))
 
-    print(f"\nwrote {len(frames)} frames to {dataset.root}")
+    print(f"\nwrote {len(provenance)} episodes, {sum(len(m['frames']) for _, m in keep)} frames to {dataset.root}")
     print(f"provenance -> {meta_out}")
     print("verify next:  uv run python scripts/verify_dataset.py <root>   (S5 §7)")
 

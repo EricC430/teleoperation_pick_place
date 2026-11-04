@@ -7,7 +7,20 @@
 
 ## 0. 狀態
 
-🟡 **提議中，尚未經 Eric 裁決是否要做。** `[AI提議]`
+> **2026-11-04 現況對照（這份是 2026-09 的歷程，不再是現行規格）**
+>
+> | 本份的項目 | 現況 | 現行正本 |
+> |---|---|---|
+> | §2 缺口 1（drive gains／關節零點）、缺口 2（mimic） | 缺口 2 已修（`gearing=+1`、mimic 改 nf 300／ratio 1.0）；零點與下垂改由 10/14 連桿標記擬合＋10/15 觸碰釘住（`scripts/solve_link_markers.py`，`calibration/2026-10-14_link_marker_fit.json`），`prep_closed_loop_replay.py` 逐幀算出關節弧度；drive gains 不再靠回歸，馬達上限用 10/12 匯流排讀到的型號 | S6／S7／S8 頂端的狀態、`sim/omx_constants.py` |
+> | §2 缺口 3（抓取怎麼跟手臂走）、§4 運動學重播＋`grasp_attach.py` 附著 | **取消**：改成物理重播（接觸、摩擦、夾爪力道都是算出來的），驗證夾起且進桶才渲染 | `S9_sim_dr_collect.md` |
+> | §2 缺口 4（相機幾何） | 內參 10/07；front-left 外參 10/14（ArUco），10/29 相機移動後用 CAD 輪廓不貼標記找回；wrist 外參 10/30（CAD 鏡頭）；畸變用實測模型套用 | `docs/worklog/2026-10-29_fl_cad_field.md`、`2026-10-31_wrist_cup_offset.md` |
+> | §3 匯出（`scripts/sim_replay_augment.py`、`sim_` 前綴、provenance、`verify_dataset.py` 提醒） | **沿用並擴充成多集**（可收多個變體、provenance 逐集記錄隨機參數） | S9 §1 export |
+> | §7 驗收、§8 不做 | §7 的煙霧測試結論已過時；§8「不做完整物理接觸模擬」**被推翻**（S9 就是物理接觸）；「不訓練、不宣稱有效」**仍然有效**（D025 閘門未過） | S9 §4、§5 |
+> | §9 與 D025 的關係 | 閘門仍未過（EricC 2026-10-31 確認） | `docs/decisions.md` D025 |
+>
+> 物理參數與管線稽核：`docs/sim_physics_params.md`。以下保留 2026-09 的推理與實測軌跡。
+
+🟡 **（2026-09-15 當時的狀態）提議中，尚未經 Eric 裁決是否要做。** `[AI提議]`；之後的實際走向見上面的對照表。
 
 本規格由 Claude Code 於 **2026-09-15 對話中**整理產生，起因是 Eric 提出「有真實錄製的 OMX 軌跡＋URDF，能否匯入模擬、換隨機背景、重播拍攝以擴增資料」。**這不是 D029 已定案的東西**——D029 定案的是「leader 臂即時遙操作 sim 裡的 follower、蒐集全新 demo」；本規格是「重播**已經錄好**的真實 action 序列＋domain randomization」，兩者共用同一套資產／場景管線，但輸入來源與即時性需求不同（見 §3）。
 

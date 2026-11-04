@@ -8,12 +8,13 @@
 | S2 | `S2_placement_sampler.md` | `scripts/sample_placements.py` | ❌ 不用 | 邏輯可先寫、可測；**凍結清單要等 S1 的數字**（`--from-summary` 讀 S1 產出，或人工填 `--r-*`/`--theta-*`） |
 | S3 | `S3_placement_mat.md` | `scripts/make_placement_mat.py` | ❌ 不用 | 要 S2 的輸出才印正式版；**且要 S1 的 `reference` 樣本**（`azimuth_frame` 必須是 `mat`，見 S3 §2-4） |
 | S4 | `S4_sim_teleop_collect.md` | `scripts/sim_teleop_collect.py` | 🟡 要 leader 臂，不要 follower | ✅ **2026-09-03 解除封鎖（D029）**：模擬器＝Isaac Sim、D025 前提 3 撤銷、leader 直插實驗室 4090 Linux 筆電。**先做 §2-2 的 USD 稽核，再做 §4 管線** |
-| S5 | `S5_sim_replay_augmentation.md` | `scripts/sim_replay_augment.py` | ❌ 不用（重播既有真實錄製，非即時） | 🟡 **2026-09-15 提議中，尚未裁決**（`[AI提議]`）。**2026-09-18 四個缺口的準備工具已建（§11），模擬端腳本尚未在 4090 上跑過。**技術上無硬阻塞——§2 的四個缺口沒有一個卡住開工，只有缺口 4（相機幾何）需要 lab day 且可延後/外包 |
-| S6 | `S6_joint_zero_calibration.md` | `scripts/measure_joint_zeros.py` | 🔴 **要**（手臂通電可讀關節值；不需相機／模擬機／GPU） | 無前置，**且擋住 S5 的抓取判定與 S4 的映射**。兩姿態法解「讀數→弧度」的 SCALE＋OFFSET；求解那半不需硬體，任何 Python 環境可跑（`selftest` 子指令可離線驗算術）。lift／elbow／wrist_flex／wrist_roll 的量法已由 S7 取代 |
-| S7 | `S7_link_tilt_calibration.md` | `scripts/measure_link_tilt.py` | 🔴 **要**（手臂＋手機傾角儀） | 無前置。俯仰關節＋wrist_roll 的零點與比例，參考是重力，高處姿態也能量。姿勢計畫已產生（`configs/s7_link_tilt_plan_normalA1.json`）。2026-10-08 只在假手臂上跑過 |
-| S8 | `S8_pan_axis_on_paper.md` | `scripts/measure_pan_circle.py` | 🔴 **要**（手臂＋座標紙） | 無前置，與 S7 獨立。指尖畫圓：pan 軸在座標紙上的位置、pan 零點與比例。2026-10-08 只在假手臂上跑過 |
+| S5 | `S5_sim_replay_augmentation.md` | `scripts/sim_replay_augment.py` | ❌ 不用（重播既有真實錄製，非即時） | ⚪ **2026-10-31 起由 S9 取代**（物理重播，不用 §4 的附著）。匯出階段（`sim_replay_augment.py`）沿用。保留為 2026-09 歷程，頂端有現況對照表 |
+| S6 | `S6_joint_zero_calibration.md` | `scripts/measure_joint_zeros.py` | 🔴 **要**（手臂通電可讀關節值；不需相機／模擬機／GPU） | ⚪ **已被取代**（零點改由 10/14 連桿標記擬合）。兩姿態法解「讀數→弧度」的 SCALE＋OFFSET；求解那半不需硬體，任何 Python 環境可跑（`selftest` 子指令可離線驗算術）。lift／elbow／wrist_flex／wrist_roll 的量法已由 S7 取代 |
+| S7 | `S7_link_tilt_calibration.md` | `scripts/measure_link_tilt.py` | 🔴 **要**（手臂＋手機傾角儀） | 無前置。俯仰關節＋wrist_roll 的零點與比例，參考是重力，高處姿態也能量。姿勢計畫已產生（`configs/s7_link_tilt_plan_normalA1.json`）。2026-10-10 在真手臂跑過；零點與下垂的現行值改由 10/14 連桿標記擬合（頂端有說明） |
+| S8 | `S8_pan_axis_on_paper.md` | `scripts/measure_pan_circle.py` | 🔴 **要**（手臂＋座標紙） | 無前置，與 S7 獨立。指尖畫圓：pan 軸在座標紙上的位置、pan 零點與比例。2026-10-12 在真手臂跑過一次，驗收兩項沒過，結果沒貼進模擬（頂端有說明） |
+| S9 | `S9_sim_dr_collect.md` | `scripts/dr_collect.py`（＋`sim/dr_render.py` 等） | ❌ 不用（重播 10/14 之後的真實資料） | 無。**2026-10-31 [EricC 決定] 跑通流程優先、只用 10/14 之後的資料**。物理重播驗證成功才渲染；取代 S5 §4 的附著路線，沿用 S5 的匯出。**2026-11-01 正式蒐集一次（收 186、匯出 372 集），D025 未過不訓練**；物理參數稽核見 `docs/sim_physics_params.md` |
 
-## 共同規則（四份都適用）
+## 共同規則（各份都適用）
 
 1. **先讀 `CLAUDE.md`，再讀本規格。** 專案的來源標記制度與失敗模式在那裡。
 2. **不要改 `docs/decisions.md` 的既有條目。** 腳本實作若發現決策有問題，寫進 PR/commit message 或新開一條 D0NN，不要就地改寫別人的決議。

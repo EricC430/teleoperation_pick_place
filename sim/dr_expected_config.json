@@ -1,0 +1,620 @@
+{
+ "_doc": "2026-11-01: 480 Hz (120 Hz lets the fingers through the 1 mm cup wall, sim/penetration.py), cup with a closed bottom (sim/shell_mesh.py), bin + stand in the scene; self-collision on, all links SDF. 10-14 closed loop cup_ref 36 eps: lifted and in the bin 27/30 real successes, no link through the cup in 33/36 replays (docs/worklog/2026-10-31_sim_dr_pipeline.md)",
+ "made_from": "/home/boyuchen/isaaclab_volume/dr/run_20261101/check/config_report.json",
+ "ignore": [
+  "args.",
+  "inputs.cands.",
+  "inputs.cup_asset.path",
+  "inputs.asset.path",
+  "inputs.intr.path",
+  "inputs.ext.path",
+  "inputs.wrist_",
+  "cup.bbox_min_m",
+  "check.",
+  "isaac_sim",
+  "render_api",
+  "runtime.get_dof_gains",
+  "runtime.get_dof_friction_properties",
+  "runtime.get_dof_limits",
+  "cameras.wrist"
+ ],
+ "snapshot": {
+  "isaac_sim": "5.1.0-rc.19+release.26219.9c81211b.gl",
+  "render_api": "replicator",
+  "fps": 15,
+  "physics": {
+   "gravity_direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "gravity_magnitude": 9.8100004196167,
+   "physics_dt": 0.0020833333333333333,
+   "substeps_per_frame": 32,
+   "scene_attrs": {
+    "physxScene:timeStepsPerSecond": 480
+   }
+  },
+  "articulation": {
+   "root": "/World/RobotMount/Robot/root_joint",
+   "attrs": {
+    "physxArticulation:enabledSelfCollisions": true,
+    "physxArticulation:solverPositionIterationCount": 32,
+    "physxArticulation:solverVelocityIterationCount": 1
+   }
+  },
+  "joints": {
+   "world_fixed": {
+    "type": "PhysicsFixedJoint",
+    "attrs": {}
+   },
+   "joint1": {
+    "type": "PhysicsRevoluteJoint",
+    "attrs": {
+     "drive:angular:physics:damping": 0.07500000298023224,
+     "drive:angular:physics:maxForce": 1.5,
+     "drive:angular:physics:stiffness": 1.5,
+     "drive:angular:physics:targetPosition": 0.0,
+     "drive:angular:physics:type": "force",
+     "physics:axis": "Z",
+     "physics:lowerLimit": -360.0,
+     "physics:upperLimit": 360.0,
+     "physxJoint:maxJointVelocity": 366.0
+    }
+   },
+   "joint2": {
+    "type": "PhysicsRevoluteJoint",
+    "attrs": {
+     "drive:angular:physics:damping": 0.07500000298023224,
+     "drive:angular:physics:maxForce": 1.5,
+     "drive:angular:physics:stiffness": 1.5,
+     "drive:angular:physics:targetPosition": 0.0,
+     "drive:angular:physics:type": "force",
+     "physics:axis": "Y",
+     "physics:lowerLimit": -360.0,
+     "physics:upperLimit": 360.0,
+     "physxJoint:maxJointVelocity": 366.0
+    }
+   },
+   "joint3": {
+    "type": "PhysicsRevoluteJoint",
+    "attrs": {
+     "drive:angular:physics:damping": 0.07500000298023224,
+     "drive:angular:physics:maxForce": 1.5,
+     "drive:angular:physics:stiffness": 1.5,
+     "drive:angular:physics:targetPosition": 0.0,
+     "drive:angular:physics:type": "force",
+     "physics:axis": "Y",
+     "physics:lowerLimit": -360.0,
+     "physics:upperLimit": 360.0,
+     "physxJoint:maxJointVelocity": 366.0
+    }
+   },
+   "joint4": {
+    "type": "PhysicsRevoluteJoint",
+    "attrs": {
+     "drive:angular:physics:damping": 0.026000000536441803,
+     "drive:angular:physics:maxForce": 0.5199999809265137,
+     "drive:angular:physics:stiffness": 0.5199999809265137,
+     "drive:angular:physics:targetPosition": 0.0,
+     "drive:angular:physics:type": "force",
+     "physics:axis": "Y",
+     "physics:lowerLimit": -360.0,
+     "physics:upperLimit": 360.0,
+     "physxJoint:maxJointVelocity": 618.0
+    }
+   },
+   "joint5": {
+    "type": "PhysicsRevoluteJoint",
+    "attrs": {
+     "drive:angular:physics:damping": 0.026000000536441803,
+     "drive:angular:physics:maxForce": 0.5199999809265137,
+     "drive:angular:physics:stiffness": 0.5199999809265137,
+     "drive:angular:physics:targetPosition": 0.0,
+     "drive:angular:physics:type": "force",
+     "physics:axis": "X",
+     "physics:lowerLimit": -360.0,
+     "physics:upperLimit": 360.0,
+     "physxJoint:maxJointVelocity": 618.0
+    }
+   },
+   "end_effector_joint": {
+    "type": "PhysicsFixedJoint",
+    "attrs": {}
+   },
+   "gripper_joint_1": {
+    "type": "PhysicsRevoluteJoint",
+    "attrs": {
+     "drive:angular:physics:damping": 0.026000000536441803,
+     "drive:angular:physics:maxForce": 0.5199999809265137,
+     "drive:angular:physics:stiffness": 0.5199999809265137,
+     "drive:angular:physics:targetPosition": 0.0,
+     "drive:angular:physics:type": "force",
+     "physics:axis": "Z",
+     "physics:lowerLimit": 0.0,
+     "physics:upperLimit": 100.0,
+     "physxJoint:maxJointVelocity": 618.0
+    }
+   },
+   "gripper_joint_2": {
+    "type": "PhysicsRevoluteJoint",
+    "attrs": {
+     "drive:angular:physics:damping": 0.0,
+     "drive:angular:physics:maxForce": 1000.0,
+     "drive:angular:physics:stiffness": 0.0,
+     "drive:angular:physics:targetPosition": 0.0,
+     "drive:angular:physics:type": "force",
+     "physics:axis": "Z",
+     "physics:lowerLimit": -360.0,
+     "physics:upperLimit": 360.0,
+     "physxJoint:maxJointVelocity": 275.0197448730469,
+     "physxMimicJoint:rotZ:dampingRatio": 1.0,
+     "physxMimicJoint:rotZ:gearing": 1.0,
+     "physxMimicJoint:rotZ:naturalFrequency": 300.0,
+     "physxMimicJoint:rotZ:offset": 0.0,
+     "physxMimicJoint:rotZ:referenceJointAxis": "rotZ"
+    }
+   },
+   "root_joint": {
+    "type": "PhysicsFixedJoint",
+    "attrs": {}
+   }
+  },
+  "bodies": {
+   "world": {
+    "mass": 0.0,
+    "attrs": {
+     "physics:diagonalInertia": [
+      9.999999747378752e-05,
+      9.999999747378752e-05,
+      9.999999747378752e-05
+     ]
+    }
+   },
+   "link0": {
+    "mass": 0.2238905131816864,
+    "attrs": {
+     "physics:centerOfMass": [
+      -0.014412508346140385,
+      -0.003149888012558222,
+      0.01927659846842289
+     ],
+     "physics:diagonalInertia": [
+      0.0003533457056619227,
+      0.00021932536037638783,
+      0.00045931185013614595
+     ]
+    }
+   },
+   "link1": {
+    "mass": 0.06598704308271408,
+    "attrs": {
+     "physics:centerOfMass": [
+      -6.223620403034147e-06,
+      0.0006049231742508709,
+      0.047418802976608276
+     ],
+     "physics:diagonalInertia": [
+      2.173184293496888e-05,
+      2.13661423913436e-05,
+      1.1643150173767935e-05
+     ]
+    }
+   },
+   "link2": {
+    "mass": 0.08722147345542908,
+    "attrs": {
+     "physics:centerOfMass": [
+      0.018089916557073593,
+      0.00029778757016174495,
+      0.09900545328855515
+     ],
+     "physics:diagonalInertia": [
+      0.00011052231275243685,
+      0.00012092281394870952,
+      3.449097494012676e-05
+     ]
+    }
+   },
+   "link3": {
+    "mass": 0.0837591290473938,
+    "attrs": {
+     "physics:centerOfMass": [
+      0.08739860355854034,
+      0.0004131006426177919,
+      -0.0035829211119562387
+     ],
+     "physics:diagonalInertia": [
+      1.4889840713294689e-05,
+      0.0002260242181364447,
+      0.00023101948318071663
+     ]
+    }
+   },
+   "link4": {
+    "mass": 0.029975062236189842,
+    "attrs": {
+     "physics:centerOfMass": [
+      0.023234980180859566,
+      6.77353746141307e-05,
+      0.005976131185889244
+     ],
+     "physics:diagonalInertia": [
+      4.7207345232891385e-06,
+      7.0995452006172854e-06,
+      6.690230293315835e-06
+     ]
+    }
+   },
+   "link5": {
+    "mass": 0.04381088539958,
+    "attrs": {
+     "physics:centerOfMass": [
+      0.028072407469153404,
+      2.4135941202985123e-05,
+      0.0135289141908288
+     ],
+     "physics:diagonalInertia": [
+      2.420356213406194e-05,
+      2.3235676053445786e-05,
+      6.672772997262655e-06
+     ]
+    }
+   },
+   "end_effector_link": {
+    "mass": 9.999999747378752e-05,
+    "attrs": {
+     "physics:diagonalInertia": [
+      9.999999747378752e-05,
+      9.999999747378752e-05,
+      9.999999747378752e-05
+     ]
+    }
+   },
+   "link6": {
+    "mass": 0.01209067739546299,
+    "attrs": {
+     "physics:centerOfMass": [
+      0.016164565458893776,
+      0.0012731031747534871,
+      0.000272915989626199
+     ],
+     "physics:diagonalInertia": [
+      2.7019382287107874e-06,
+      6.87819238009979e-06,
+      4.695759344031103e-06
+     ]
+    }
+   },
+   "link7": {
+    "mass": 0.01209067739546299,
+    "attrs": {
+     "physics:centerOfMass": [
+      0.016164565458893776,
+      0.0012731031747534871,
+      0.000272915989626199
+     ],
+     "physics:diagonalInertia": [
+      2.7019382287107874e-06,
+      6.87819238009979e-06,
+      4.695759344031103e-06
+     ]
+    }
+   },
+   "cup:Cup": {
+    "mass": 0.012000000104308128,
+    "attrs": {}
+   }
+  },
+  "colliders": {
+   "robot/link0/collisions/follower_01_base/node_STL_BINARY_": {
+    "approximation": "sdf",
+    "attrs": {
+     "physxSDFMeshCollision:sdfResolution": 256
+    }
+   },
+   "robot/link1/collisions/follower_02_base_tilt_Revised/node_STL_BINARY_": {
+    "approximation": "sdf",
+    "attrs": {
+     "physxSDFMeshCollision:sdfResolution": 256
+    }
+   },
+   "robot/link2/collisions/follower_03_middle_verticle/node_STL_BINARY_": {
+    "approximation": "sdf",
+    "attrs": {
+     "physxSDFMeshCollision:sdfResolution": 256
+    }
+   },
+   "robot/link3/collisions/follower_04_middle_horizontal/node_STL_BINARY_": {
+    "approximation": "sdf",
+    "attrs": {
+     "physxSDFMeshCollision:sdfResolution": 256
+    }
+   },
+   "robot/link4/collisions/follower_05_tip/node_STL_BINARY_": {
+    "approximation": "sdf",
+    "attrs": {
+     "physxSDFMeshCollision:sdfResolution": 256
+    }
+   },
+   "robot/link5/collisions/follower_06_pan_Revised/node_STL_BINARY_": {
+    "approximation": "sdf",
+    "attrs": {
+     "physxSDFMeshCollision:sdfResolution": 256
+    }
+   },
+   "robot/link6/collisions/follower_07_gripper_motorized/node_STL_BINARY_": {
+    "approximation": "sdf",
+    "attrs": {
+     "physxSDFMeshCollision:sdfResolution": 256
+    }
+   },
+   "robot/link7/collisions/follower_08_gripper_gear/node_STL_BINARY_": {
+    "approximation": "sdf",
+    "attrs": {
+     "physxSDFMeshCollision:sdfResolution": 256
+    }
+   },
+   "cup/Collision": {
+    "approximation": "sdf",
+    "attrs": {
+     "physxSDFMeshCollision:sdfResolution": 256
+    },
+    "physics_material": "/World/CupMount/Cup/PhysicsMaterial"
+   },
+   "table": {
+    "approximation": "primitive",
+    "attrs": {}
+   }
+  },
+  "physics_materials": {
+   "/World/CupMount/Cup/PhysicsMaterial": {
+    "physics:dynamicFriction": 0.8999999761581421,
+    "physics:restitution": 0.05000000074505806,
+    "physics:staticFriction": 1.2000000476837158
+   }
+  },
+  "runtime": {
+   "dof_names": [
+    "joint1",
+    "joint2",
+    "joint3",
+    "joint4",
+    "joint5",
+    "gripper_joint_1",
+    "gripper_joint_2"
+   ],
+   "get_dof_max_efforts": [
+    1.5,
+    1.5,
+    1.5,
+    0.5199999809265137,
+    0.5199999809265137,
+    0.5199999809265137,
+    1000.0
+   ],
+   "get_dof_max_velocities": [
+    6.387905120849609,
+    6.387905120849609,
+    6.387905120849609,
+    10.786134719848633,
+    10.786134719848633,
+    10.786134719848633,
+    4.800000190734863
+   ],
+   "get_dof_armatures": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "get_dof_gains": [
+    [
+     85.94367218017578,
+     85.94367218017578,
+     85.94367218017578,
+     29.793804168701172,
+     29.793804168701172,
+     29.793804168701172,
+     0.0
+    ],
+    [
+     4.297183513641357,
+     4.297183513641357,
+     4.297183513641357,
+     1.4896903038024902,
+     1.4896903038024902,
+     1.4896903038024902,
+     0.0
+    ]
+   ],
+   "get_dof_friction_properties": [
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "get_link_masses": [
+    1.0,
+    0.2238905131816864,
+    0.06598704308271408,
+    0.08722147345542908,
+    0.0837591290473938,
+    0.029975062236189842,
+    0.04381088539958,
+    9.999999747378752e-05,
+    0.01209067739546299,
+    0.01209067739546299
+   ],
+   "get_dof_limits": [
+    [
+     -6.2831854820251465,
+     -6.2831854820251465,
+     -6.2831854820251465,
+     -6.2831854820251465,
+     -6.2831854820251465,
+     0.0,
+     -6.2831854820251465
+    ],
+    [
+     6.2831854820251465,
+     6.2831854820251465,
+     6.2831854820251465,
+     6.2831854820251465,
+     6.2831854820251465,
+     1.7453292608261108,
+     6.2831854820251465
+    ]
+   ]
+  },
+  "cup": {
+   "bbox_size_m": [
+    0.075,
+    0.075,
+    0.093
+   ],
+   "bbox_min_m": [
+    0.204,
+    -0.0613,
+    -0.0
+   ]
+  },
+  "cameras": {
+   "front-left": {
+    "K": [
+     [
+      427.15106201171875,
+      0.0,
+      431.0731201171875
+     ],
+     [
+      0.0,
+      425.9688415527344,
+      243.66651916503906
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "size": [
+     848,
+     480
+    ],
+    "render_size": [
+     876,
+     498
+    ],
+    "world_from_camera_cv": [
+     [
+      -0.5910511038138391,
+      -0.2942695612838596,
+      0.7510419548748575,
+      0.04051735244733101
+     ],
+     [
+      -0.8051274737325455,
+      0.15833876164318633,
+      -0.5715755309688753,
+      0.24837614501956756
+     ],
+     [
+      0.04927822766183726,
+      -0.9425148602876812,
+      -0.3305108083185799,
+      0.21432179482788616
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ]
+    ]
+   }
+  },
+  "inputs": {
+   "asset": {
+    "path": "/workspace/test_isaaclab/omx_repo/assets/omx_f_generated/omx_f_real.usda",
+    "sha256_16": "a7dfec4d4310eedb"
+   },
+   "cup_asset": {
+    "path": "/workspace/test_isaaclab/omx_repo/assets/paper_cup/paper_cup.usd",
+    "sha256_16": "4ecb674038ca062e"
+   },
+   "intr": {
+    "path": "/workspace/test_isaaclab/omx_repo/calibration/2026-10-07_camera_intrinsics_front-left.json",
+    "sha256_16": "ed37c8e62aa98afe"
+   },
+   "ext": {
+    "path": "/workspace/test_isaaclab/omx_repo/calibration/2026-10-14_camera_extrinsics_front-left.json",
+    "sha256_16": "67d3c240c1e190ff"
+   },
+   "cands": {
+    "path": "/workspace/test_isaaclab/dr/src/cl_20261014_151208/fit_candidate.json",
+    "sha256_16": "a8ce2c11426a601c"
+   }
+  },
+  "args": {
+   "ep": "/workspace/test_isaaclab/dr/src/cl_20261014_151208/cl_ep00",
+   "cand": "fit",
+   "cands": "/workspace/test_isaaclab/dr/src/cl_20261014_151208/fit_candidate.json",
+   "intr": "calibration/2026-10-07_camera_intrinsics_front-left.json",
+   "ext": "calibration/2026-10-14_camera_extrinsics_front-left.json",
+   "selfcol": "1",
+   "finger_coll": "sdf",
+   "finger_links": "link0,link1,link2,link3,link4,link5,link6,link7",
+   "phys_hz": "480",
+   "out": "/workspace/test_isaaclab/dr/run_20261101/check",
+   "config_report": "sim/dr_expected_config.json",
+   "config_only": "1",
+   "render": "0"
+  },
+  "bin": {
+   "bin": "/World/Bin",
+   "center_xyz": [
+    -0.02875000000000001,
+    -0.275,
+    0.11
+   ],
+   "base_dia": 0.15,
+   "top_dia": 0.2,
+   "height": 0.22,
+   "wall": 0.003,
+   "floor": 0.01,
+   "stand": "/World/Bin_Stand",
+   "stand_size": [
+    0.22,
+    0.22,
+    0.11
+   ]
+  }
+ }
+}

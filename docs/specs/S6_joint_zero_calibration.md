@@ -8,6 +8,8 @@
 
 ---
 
+> **2026-11-04 現況：** 2026-09-21 量過一次（`calibration/2026-09-21_joint_zeros.csv`，夾爪相碰讀數 50.21 仍在 `sim/joint_mapping.py` 使用）。肩、肘、腕的零點與比例**不再用本規格**：先被 S7（重力法）取代，再被 10/14 連桿標記擬合＋10/15 觸碰釘住取代（`scripts/solve_link_markers.py`、`calibration/2026-10-14_link_marker_fit.json`：lift／elbow／flex 零點、隨重力力矩的下垂係數、底座 6 DoF 含實測傾斜）。現行重播吃的是這份擬合（`prep_closed_loop_replay.py`），不是本規格的輸出。本規格保留為「兩姿態法」的原理與夾爪量法的紀錄。
+
 ## 1. 這個校正要解什麼問題
 
 LeRobot 錄下來的 `observation.state` / `action` 是**經過校正檔正規化的馬達讀數**；

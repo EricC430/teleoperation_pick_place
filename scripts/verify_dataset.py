@@ -291,9 +291,17 @@ def main(root: Path) -> int:
             print("🔴 但這是【模擬】資料集（有 meta/sim_provenance.json）——結構正確 ≠ 可以進訓練。")
             print("   S5 §8／D025 前提 1：在閘門被裁決之前，不得拿去訓練、不得在書審／報告宣稱有效。")
             print("   fidelity flags：")
-            for k, v in prov.get("fidelity", {}).items():
-                if not k.endswith("_note"):
-                    print(f"     {k} = {v}")
+            # one dict for a single-episode S5 export; {"episodes": [...]} for a multi-episode one (S9, 2026-10-31)
+            per_ep = prov.get("episodes") or [prov]
+            seen = {}
+            for e in per_ep:
+                for k, v in e.get("fidelity", {}).items():
+                    if not k.endswith("_note"):
+                        seen.setdefault(k, set()).add(json.dumps(v))
+            for k, vs in seen.items():
+                print(f"     {k} = {', '.join(sorted(vs))}")
+            if "episodes" in prov:
+                print(f"   provenance: {len(per_ep)} episodes, rejected render dirs skipped: {len(prov.get('skipped_rejected', []))}")
             return 0
         print("✅ 全部通過。這批資料可以進訓練。")
         return 0

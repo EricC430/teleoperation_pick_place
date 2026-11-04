@@ -1,0 +1,12 @@
+{
+ "camera": "wrist",
+ "frame": "link5",
+ "pos_m": [0.049848016, 0.0, 0.034990992],
+ "quat_wxyz": [-0.30998, 0.63554, -0.63554, 0.30998],
+ "convention": "OpenCV camera axes (x right, y down, z forward), like the 10-07 and 10-15 files",
+ "source": "CAD, not a measurement: sim/scene_constants.py CAM_WRIST_OFFSET_ROT (CAMERA_INNOMAKER_720P placement in OMX-AI(Follower).stp) with the origin moved from the part origin (CAM_WRIST_OFFSET_POS) to the centre of the lens front face, (0, -12.61, 13.8) mm in the camera frame, read off the link5 STL (barrel r 6.6 mm). scripts/render_wrist_candidates.py candidate cad_lens.",
+ "chosen_because": "2026-10-30: on far_wrist_A1 ep0 the fingers in the cad_lens render sit closest to the real wrist video (visual call, 陳霆翰). The part origin is 12.6 mm off the lens axis and was ruled out. Not yet quantified (finger-mask overlap) and not re-solved from markers.",
+ "vs_2026-10-15": "optical axis within 0.4 deg (pitch 38.0 vs 37.7, yaw 0 vs -0.3); roll about the optical axis differs 3.3 deg (~18 px at 320 px from the image centre); position differs (-1.6, +6.4, -13.4) mm in link5",
+ "same_place_as_collider": "the link5 STL (and so the sim collider) contains this camera body, so the rendered viewpoint now sits on the lens of the colliding shell",
+ "written_at": "2026-10-30"
+}

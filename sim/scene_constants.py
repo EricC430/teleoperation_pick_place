@@ -92,7 +92,7 @@ _TABLE_MARGIN = 0.10             # [AI推論] breathing room beyond the outermos
 #  arm-base frame to "above the table". With 0.15 here, the S6 constants put the grasp at 16.3 cm
 #  against a 9.5 cm cup rim, median over 60 uvc_60 episodes. That ~6.8 cm is NOT this constant:
 #  1 cm either way is all it is worth. See joint_mapping.py for what it is not.)
-# `[柏宇說 2026-10-07]` what this number is PHYSICALLY: the table-top platform is 11 cm, and the arm is
+# `[EricC430 2026-10-07]` what this number is PHYSICALLY: the table-top platform is 11 cm, and the arm is
 # raised to its intended height by a 3.6 cm stack of books UNDER THE ARM ONLY (11 + 3.6 = 14.6, the value
 # measured at the T2 photo). The third-person camera stands on the 11 cm platform, NOT on the books.
 # So "riser" here is really platform + books, and the camera does not share the arm's height.
@@ -125,6 +125,12 @@ BIN_CENTER_Y = -(ARM_BASE_HALF_Y + BIN_GAP_FROM_ARM_BASE + _bin_max_r)   # -0.27
 #    with the arm base and the riser -- tidy, and consistent with "front edges line up", but not
 #    something he said. Move it if the real layout differs.
 BIN_CENTER_X = RISER_FRONT_X - _bin_max_r
+# Height of the bin's underside above the table top. ⚠️ [AI推論 2026-11-01] since 10-07 the platform is 11 cm and the 3.6 cm
+# books are under the ARM only (the note at ARM_RISER_HEIGHT), so the bin stands on the 11 cm platform; the front-left
+# camera cannot see it to confirm (it projects off the right edge of the image). Data check, 10-14 closed loop:
+# the gripper at release is 4-9 cm from (BIN_CENTER_X, BIN_CENTER_Y) in all 30 real successes, inside the 10 cm opening
+# (docs/worklog/2026-10-31_sim_dr_pipeline.md). physics_replay.py bin_z= overrides it.
+BIN_BASE_Z = 0.11
 
 # the third-person camera also stands ON the riser, so its Y is needed to size the riser below
 CAM_FRONT_LEFT_LEFT_OF_ARM = 0.20     # MEASURED: left of the arm base's left edge
@@ -184,7 +190,7 @@ TRASH_OBJ_SCALE = (0.01, 0.01, 0.01)
 # `[Eric說 2026-09-21]` MEASURED, in the pan-axis frame (+X ahead, +Y operator-left):
 #   * 20 cm to the LEFT of the arm base's left edge          -> y = ARM_BASE_HALF_Y + 0.20
 #   * 4.5 cm inward (-X, toward the operator) from the riser's FRONT edge
-#   * HEIGHT, 2026-10-07 `[柏宇說]`: it stands on an 11 cm riser and its bracket lifts it another 11 cm,
+#   * HEIGHT, 2026-10-07 `[EricC430]`: it stands on an 11 cm riser and its bracket lifts it another 11 cm,
 #     i.e. 22 cm above the table top -- NOT ARM_RISER_HEIGHT (15) + 11 = 26 as 2026-09-21 had it.
 #     Checked: ArUco T2 (calibration/2026-10-07_camera_extrinsics_front-left.json) solves 21.75 cm.
 #     So this no longer follows ARM_RISER_HEIGHT; the arm base height is a separate quantity.

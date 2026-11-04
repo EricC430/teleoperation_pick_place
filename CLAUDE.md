@@ -27,6 +27,7 @@
 | `docs/experiment_spec.md` | ★ 實驗規格凍結（任務定義、物體分級、評估協定） |
 | `docs/execution_plan.md` | 執行計畫與應變 |
 | `docs/act_evidence.md` | ACT 相關文獻與數據佐證 |
+| `docs/sim_physics_params.md` | Isaac Sim／PhysX 物理參數分類總表（2026-11-04，依容器內 schema 原始檔＋官方文件），及 S9 重播管線每個物理設定的稽核（摩擦、夾持力、薄殼 SDF、剛體杯等的判定與待驗項） |
 | `docs/hardware.md` | 硬體清單與現況（含已否決項目與 ETA） |
 | `docs/camera_mount.md` | 相機位置與支架設計、量測協定 |
 | `docs/depth_sensing.md` | 深度相機原理對照（被動／主動雙目、ToF、結構光），2026-10-17 查證筆記；本專案 RealSense 全是雙目 |
