@@ -32,11 +32,11 @@
   "stride": 1,
   "max_frames": 0,
   "brightness_target": [
-   85,
-   175
+   100,
+   170
   ],
   "brightness_iters": 6,
-  "_brightness_note": "auto exposure: every light is scaled until the front-left frame-0 mean grey lands on a target drawn from this range (real 10/14 front-left: p10/p50/p90 129/138/142; wrist 97/126/154). 2026-10-31 without it: 90-216, one studio variant 52% saturated"
+  "_brightness_note": "auto exposure: every light is scaled until the front-left frame-0 mean grey lands on a target drawn from this range (real 10/14 front-left: p10/p50/p90 129/138/142; wrist 97/126/154). 2026-10-31 without it: 90-216, one studio variant 52% saturated | 2026-11-05: measured on a neutral mid-grey ground (a dark ground now stays dark); range raised 80-160 -> 100-170 because dark grounds pulled frames to ~60"
  },
  "objects": {
   "_doc": "geometry = physics-relevant variants (each one is validated by its own physics replay); appearance = visual only",
@@ -240,7 +240,6 @@
      "Vegetation/Shrub/Juniper.usd",
      "Vegetation/Shrub/Privet.usd",
      "Vegetation/Shrub/Yew.usd",
-     "Vegetation/Shrub/Hydrangea.usd",
      "Vegetation/Shrub/Forsythia.usd",
      "Vegetation/Shrub/Pampas_Grass.usd",
      "Vegetation/Shrub/Switchgrass.usd",
@@ -263,7 +262,8 @@
      "ArchVis/Residential/Outdoors/Lighting/3-TierPathLight.usd",
      "ArchVis/Industrial/Railing/MetalFencing_A1.usd"
     ],
-    "shrink_to_fit": true
+    "shrink_to_fit": true,
+    "_excluded": "Vegetation/Shrub/Hydrangea.usd: its Pine_bark.mdl is missing from the asset library (404, checked 2026-11-05); the other 26 assets' materials all resolve"
    }
   },
   "ground_materials": {
@@ -284,7 +284,6 @@
     "Natural/Grass_Winter.mdl",
     "Stone/Terrazzo.mdl",
     "Stone/Granite_Light.mdl",
-    "Stone/Granite_Dark.mdl",
     "Stone/Slate.mdl",
     "Stone/Ceramic_Tile_12.mdl",
     "Stone/Porcelain_Tile_6.mdl",
@@ -356,7 +355,22 @@
    ]
   ],
   "ground_plain_color_jitter": 0.05,
-  "_ground_plain_note": "2026-11-05 EricC: plain-colour ground only in studio mode, earth tones (grey, beige, brown, dark green) with small jitter; outdoor always uses a material"
+  "_ground_plain_note": "2026-11-05 EricC: plain-colour ground only in studio mode, earth tones (grey, beige, brown, dark green) with small jitter; outdoor always uses a material",
+  "ground_patterns": {
+   "outdoor": {
+    "prob": 0.4,
+    "kinds": {
+     "brick_running": 1.0,
+     "brick_basket": 0.6,
+     "paver_grid": 1.0,
+     "sidewalk_slabs": 1.0,
+     "asphalt": 1.5,
+     "tile_corridor": 0.6
+    }
+   },
+   "_doc": "procedural tiles from sim/dr_ground.py (EricC 2026-11-05: more sidewalk / asphalt / brick styles); on top of the Base MDL materials"
+  },
+  "_ground_excluded": "Stone/Granite_Dark.mdl: reads as dark water with a sky reflection (2026-11-05 catalog)"
  },
  "lighting": {
   "dome_intensity": [
@@ -368,8 +382,8 @@
    1.0
   ],
   "color_temperature_K": [
-   2700,
-   9500
+   4800,
+   7500
   ],
   "dome_rotation_deg": [
    0,
@@ -395,7 +409,7 @@
    0.8,
    2.2
   ],
-  "light_color_jitter": 0.15,
+  "light_color_jitter": 0.06,
   "outdoor_sun_prob": 0.6,
   "sun_intensity": [
    1500,
@@ -404,7 +418,8 @@
   "sun_angle_deg": [
    0.5,
    2.0
-  ]
+  ],
+  "_colour_note": "2026-11-05: 2700-9500 K and jitter 0.15 tinted dark surfaces blue/orange (asphalt came out light blue-grey); daylight range now"
  },
  "bin": {
   "liner_colors": [

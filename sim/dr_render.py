@@ -58,6 +58,7 @@ def P(x):
 sys.path[:0] = [str(HERE), str(REPO / "sim"), str(REPO)]
 import numpy as np  # noqa: E402
 import camera_distortion as cd  # noqa: E402
+import dr_ground as DG  # noqa: E402
 
 CFG = json.loads(Path(A["config"]).read_text())
 CC = CFG["cameras"]; RC = CFG["render"]
@@ -291,6 +292,9 @@ def sample(rng):
     s["ground"] = ({"color": np.clip(base + rng.normal(0, env["ground_plain_color_jitter"], 3), 0.05, 0.95).round(3).tolist()}
                    if rng.random() < env["ground_plain_color_prob"][s["mode"]]
                    else {"mdl": env["materials"] + gl[int(rng.integers(len(gl)))]})
+    gp = env.get("ground_patterns", {}).get(s["mode"])   # procedural sidewalk / brick / asphalt / tile patterns (2026-11-05)
+    if gp and rng.random() < gp["prob"]:
+        s["ground"] = {"pattern": choice_w(rng, gp["kinds"])}
     s["dome"] = {"intensity": U(rng, lt["dome_intensity"]), "exposure": U(rng, lt["dome_exposure"]), "temperature": U(rng, lt["color_temperature_K"]),
                  "rotation_deg": U(rng, lt["dome_rotation_deg"])}
     s["lights"] = []
@@ -385,9 +389,12 @@ def build(stage, s, vdir):
         bind(stage.GetPrimAtPath("/World/Bin_Stand"), omnipbr(stage, "/World/Looks/BinStand", color=[0.25, 0.25, 0.27], rough=0.6))
         s["bin_appearance"] = {"outer": outer.round(3).tolist(), "liner": np.clip(liner, 0, 1).round(3).tolist()}
     # no walls, no ceiling (EricC 2026-11-05): the ground plane only, under a dome light (sky / studio HDRI)
-    floor = box_mesh(stage, "/World/Floor", (30.0, 30.0, 0.02), (cx, cy, GROUND_Z - 0.01))
     g = s["ground"]
-    bind(floor, omnipbr(stage, "/World/Looks/Ground", color=g["color"], rough=0.7) if "color" in g else mdl_material(stage, "/World/Looks/Ground", g["mdl"]))
+    if "pattern" in g:   # a seamless procedural tile (sim/dr_ground.py); UVs in metres x 1/tile_m so the pattern keeps its real size
+        g.update(DG.write(np.random.default_rng(s["_seed"] + 3), g["pattern"], vdir / "ground_texture.png"))
+    floor = box_mesh(stage, "/World/Floor", (30.0, 30.0, 0.02), (cx, cy, GROUND_Z - 0.01), uv_scale=1.0 / g["tile_m"] if "pattern" in g else 1.0)
+    bind(floor, omnipbr(stage, "/World/Looks/Ground", texture=vdir / "ground_texture.png", rough=g["roughness"], spec=0.3) if "pattern" in g
+         else omnipbr(stage, "/World/Looks/Ground", color=g["color"], rough=0.7) if "color" in g else mdl_material(stage, "/World/Looks/Ground", g["mdl"]))
     # lights
     dl = UsdLux.DomeLight.Define(stage, "/World/Dome"); d = s["dome"]
     dl.CreateTextureFileAttr(Sdf.AssetPath(s["hdri"])); dl.CreateTextureFormatAttr("latlong")
@@ -398,7 +405,7 @@ def build(stage, s, vdir):
         sl = UsdLux.SphereLight.Define(stage, f"/World/Lights/Sphere{i}")
         sl.CreateIntensityAttr(L["intensity"]); sl.CreateRadiusAttr(L["radius"]); sl.CreateColorAttr(Gf.Vec3f(*L["color"]))
         sl.AddTranslateOp().Set(Gf.Vec3d(*L["pos"]))
-    if "sun" in s:
+    if s.get("sun"):
         sun = UsdLux.DistantLight.Define(stage, "/World/Lights/Sun"); sun.CreateIntensityAttr(s["sun"]["intensity"]); sun.CreateAngleAttr(s["sun"]["angle"])
         sun.AddRotateZOp().Set(s["sun"]["azim_deg"]); sun.AddRotateXOp().Set(90 - s["sun"]["elev_deg"])
     # props on the ground, outside the arm's reach
@@ -451,6 +458,8 @@ for v in [int(x) for x in A["variants"].split(",")]:
     s = sample(rng); s["_seed"] = seed
     if "override" in A:   # tests: force some sampled values, e.g. override='{"wall": {"color": [0.8, 0.8, 0.8]}}'
         s.update(json.loads(A["override"])); s["override"] = json.loads(A["override"])
+    if "overrides" in A:   # catalog runs: a JSON list, one dict per variant index
+        ov = json.load(open(A["overrides"]))[v]; s.update(ov); s.setdefault("override", {}).update(ov)
     print("VARIANT START", vdir.name, json.dumps({k: val for k, val in s.items() if not k.startswith("_")}), flush=True)
     ctx.new_stage(); stage = ctx.get_stage()
     links, oop, pfl, pw, nmesh = build(stage, s, vdir)
@@ -469,6 +478,10 @@ for v in [int(x) for x in A["variants"].split(",")]:
     for n_, op in links.items():
         op.Set(gf(pose_at(FRAMES[0] - LAG, "link_poses", LINK_NAMES.index(n_))))
     oop.Set(gf(pose_at(FRAMES[0] - LAG, "cup_pose")))
+    # 2026-11-05: the exposure is set on a NEUTRAL mid-grey ground, then the real ground goes back on. Measured on the real
+    # ground, the auto exposure pulled the whole frame to one mean, so dark asphalt came out light grey-blue.
+    floor_prim = stage.GetPrimAtPath("/World/Floor"); real_ground = UsdShade.MaterialBindingAPI(floor_prim).GetDirectBinding().GetMaterial()
+    bind(floor_prim, omnipbr(stage, "/World/Looks/NeutralGround", color=[0.35, 0.35, 0.35], rough=0.8))
     for it in range(int(RC.get("brightness_iters", 4))):
         rep.orchestrator.step(rt_subframes=int(RC["first_subframes"]), **REP_STEP)
         g = cv2.cvtColor(cv2.remap(np.asarray(ann["fl"][0].get_data())[..., :3], MX, MY, cv2.INTER_LINEAR), cv2.COLOR_RGB2GRAY)
@@ -479,6 +492,7 @@ for v in [int(x) for x in A["variants"].split(",")]:
         for p in lights:
             if base_int[str(p.GetPath())] is not None:
                 p.GetAttribute("inputs:intensity").Set(float(base_int[str(p.GetPath())] * gain))
+    bind(floor_prim, real_ground); app.update()
     s["exposure"] = {"target_mean": round(tgt, 1), "light_gain": round(gain, 4), "frame0_mean_before_last_step": round(m, 1), "iterations": it + 1}
     frames_out = []; vis = {"fl": [], "w": []}; rejected = None
     zmin = min(POSE[f]["cup_pose"][2] for f in FRAMES if f in POSE)
