@@ -1,0 +1,133 @@
+{
+ "what": "scripts/fit_camera_from_cad.py",
+ "args": {
+  "arm_from": "calibration/2026-10-29_fl_markerless/arm_fit_H2.json",
+  "compare": "",
+  "captures": "calibration/2026-10-29_fl_cad_before_captures.csv",
+  "excluded": "calibration/2026-10-29_fl_cad_field/none.csv",
+  "plan": "configs/link_marker_plan_farwrist.json",
+  "points": "calibration/2026-10-14_aruco_points.csv",
+  "intrinsics": "calibration/2026-10-07_camera_intrinsics_front-left.json",
+  "start_camera": "calibration/2026-10-29_fl_cad_field/start_v2.json",
+  "screen": "calibration/shots/2026-10-29_fl_cad_before_screen.csv",
+  "holdout": "",
+  "max_elbow_reading": 51.0,
+  "max_stills": 0,
+  "perturb_camera_init": "",
+  "perturb_seed": 0,
+  "rounds": 14,
+  "gate_start": 30.0,
+  "gate_end": 4.0,
+  "gate_eval": 6.0,
+  "min_grad": 6.0,
+  "blur": 1.0,
+  "f_scale": 1.5,
+  "max_pts": 400,
+  "card_scale": 1.9,
+  "paper_scale": 1.7,
+  "split_check": true,
+  "overlays": "",
+  "out": "/tmp/claude-1020/-home-boyuchen-teleoperation-pick-place/36fbcc05-4940-4589-8485-ea3ccbf40558/scratchpad/field/split.json"
+ },
+ "world_from_camera": [
+  [
+   -0.5933188447631027,
+   -0.2784373295240619,
+   0.7552783605906407,
+   0.03465454228618402
+  ],
+  [
+   -0.8032886647710629,
+   0.14423301971482794,
+   -0.5778617110297793,
+   0.2508031859385447
+  ],
+  [
+   0.05196219298008418,
+   -0.9495627886303522,
+   -0.3092417192896999,
+   0.21160418003861955
+  ],
+  [
+   0.0,
+   0.0,
+   0.0,
+   1.0
+  ]
+ ],
+ "perturbation_from_arm_from": [
+  -0.6107142718602411,
+  1.2989017653345716,
+  -0.9518706806286535,
+  3.3056360896344485,
+  3.984691082248313,
+  -7.139098823151335
+ ],
+ "report": {
+  "overlay_px": {
+   "median": 1.25,
+   "p90": 4.0,
+   "n": 27119
+  },
+  "paper_px": {
+   "median": NaN,
+   "p90": NaN,
+   "max": NaN,
+   "n": 0
+  },
+  "vs_arm_from": {
+   "mm": 8.818827869097104,
+   "deg": 1.722258839571887
+  },
+  "half0": {
+   "episodes": [
+    4,
+    23,
+    30,
+    38
+   ],
+   "held_out_overlay_median": 1.75,
+   "held_out_overlay_p90": 5.0
+  },
+  "half1": {
+   "episodes": [
+    14,
+    24,
+    36
+   ],
+   "held_out_overlay_median": 1.5,
+   "held_out_overlay_p90": 4.0
+  },
+  "halves": {
+   "mm": 2.303653306463204,
+   "deg": 0.9679264567728375
+  }
+ },
+ "link0_from_camera": [
+  [
+   -0.6167443087713907,
+   -0.23604759791481844,
+   0.750938072757497,
+   0.025891067365323334
+  ],
+  [
+   -0.7866770844976597,
+   0.1512957979222857,
+   -0.5985388427306286,
+   0.24913369532096738
+  ],
+  [
+   0.02766988117721133,
+   -0.9598911985478893,
+   -0.27900405843990156,
+   0.06506026906838697
+  ],
+  [
+   0.0,
+   0.0,
+   0.0,
+   1.0
+  ]
+ ],
+ "note": "world = 2026-10-14 paper frame of arm_fit_H2.json; link0_from_camera is what sim needs (arm base -> camera)"
+}

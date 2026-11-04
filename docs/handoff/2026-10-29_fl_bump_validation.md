@@ -118,7 +118,9 @@ uv run python scripts/capture_link_markers.py scan --csv calibration/<日期>_fl
 
 每停的實際秒數沒有紀錄可查，以上是推估 `推論`。
 
-## 回來之後的分析（在 Linux 這台做，還沒寫）
+## 回來之後的分析（在 Linux 這台做）
+
+**已做（2026-10-29）：結果在 `docs/worklog/2026-10-29_fl_cad_field.md`。** 下面是拍之前的計畫，留著對照。
 
 1. **離線，用 10/14：已做**（worklog §5）。現場要比較的基準：
    - 收斂的解彼此差 ≤ 0.7 mm、0.08°。

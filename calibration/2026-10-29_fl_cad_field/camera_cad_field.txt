@@ -1,0 +1,23 @@
+78 stills (episodes held out here: none); arm from calibration/2026-10-29_fl_markerless/arm_fit_H2.json
+start:  overlay |offset| median 3.25 p90 5.75 px (8740 matches); paper nan px
+  round  1 gate  30.0 px:  21698 matches, |r| median 13.25 -> 5.98 px; step 1.047 deg 5.37 mm
+  round  2 gate  25.7 px:  28010 matches, |r| median 4.56 -> 1.99 px; step 0.245 deg 2.03 mm
+  round  3 gate  22.0 px:  28417 matches, |r| median 1.75 -> 1.76 px; step 0.024 deg 0.13 mm
+  round  4 gate  18.8 px:  28394 matches, |r| median 1.84 -> 1.76 px; step 0.005 deg 0.07 mm
+  round  5 gate  16.1 px:  28286 matches, |r| median 1.64 -> 1.68 px; step 0.014 deg 0.08 mm
+  round  6 gate  13.8 px:  28079 matches, |r| median 1.68 -> 1.66 px; step 0.029 deg 0.13 mm
+  round  7 gate  11.8 px:  28086 matches, |r| median 1.59 -> 1.62 px; step 0.020 deg 0.09 mm
+  round  8 gate  10.1 px:  27903 matches, |r| median 1.61 -> 1.58 px; step 0.015 deg 0.06 mm
+  round  9 gate   8.7 px:  27846 matches, |r| median 1.57 -> 1.53 px; step 0.016 deg 0.06 mm
+  round 10 gate   7.4 px:  27488 matches, |r| median 1.44 -> 1.45 px; step 0.026 deg 0.08 mm
+  round 11 gate   6.4 px:  27314 matches, |r| median 1.38 -> 1.40 px; step 0.023 deg 0.07 mm
+  round 12 gate   5.5 px:  26985 matches, |r| median 1.30 -> 1.30 px; step 0.012 deg 0.04 mm
+  round 13 gate   4.7 px:  26528 matches, |r| median 1.33 -> 1.28 px; step 0.013 deg 0.06 mm
+  round 14 gate   4.0 px:  26074 matches, |r| median 1.25 -> 1.19 px; step 0.009 deg 0.04 mm
+fitted: overlay |offset| median 1.25 p90 4.00 px (27119 matches)
+paper-marker centres, INDEPENDENT: median nan px, p90 nan, max nan over 0 detections
+camera vs the --start-camera: 8.8 mm, 1.72 deg
+half 0 (episodes [4, 23, 30, 38], 39 stills): held-out overlay median 1.75 p90 5.00 px; paper nan px
+half 1 (episodes [14, 24, 36], 39 stills): held-out overlay median 1.50 p90 4.00 px; paper nan px
+half 0 vs half 1 camera: 2.3 mm, 0.97 deg
+wrote /tmp/claude-1020/-home-boyuchen-teleoperation-pick-place/36fbcc05-4940-4589-8485-ea3ccbf40558/scratchpad/field/split.json

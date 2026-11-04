@@ -184,6 +184,8 @@ def overlay_residual(stills, K, wfc, args):
 def paper_check(stills, K, wfc, paper_w):
     e = [np.linalg.norm(SL.project(K, wfc, paper_w[i][None])[0] - s["det"][i].mean(0))
          for s in stills for i in SL.PAPER_IDS if i in s["det"]]
+    if not e:                      # no paper in the scene (2026-10-29 field shots)
+        return float("nan"), float("nan"), float("nan"), 0
     return float(np.median(e)), float(np.percentile(e, 90)), float(np.max(e)), len(e)
 
 
@@ -201,6 +203,9 @@ def main() -> int:
     ap.add_argument("--plan", default="configs/link_marker_plan_farwrist.json")
     ap.add_argument("--points", default="calibration/2026-10-14_aruco_points.csv")
     ap.add_argument("--intrinsics", default="calibration/2026-10-07_camera_intrinsics_front-left.json")
+    ap.add_argument("--start-camera", default="", help="JSON with world_from_camera in the --arm-from world frame: start here "
+                    "instead of at the --arm-from camera (a session whose camera moved far, e.g. 2026-10-29)")
+    ap.add_argument("--screen", default="", help="screen_fl_cad_shots.py CSV: drop the shots it flags")
     ap.add_argument("--holdout", default="", help="episodes NOT used here (e.g. the arm fit's own episodes)")
     ap.add_argument("--max-elbow-reading", type=float, default=51.0)
     ap.add_argument("--max-stills", type=int, default=0)
@@ -228,6 +233,9 @@ def main() -> int:
     stills = SL.load_stills(REPO / args.captures, REPO / args.excluded, REPO / args.plan)
     SL.detect(stills, cm, "apriltag")
     stills = [s for s in stills if s["state"][2] <= args.max_elbow_reading]
+    if args.screen:
+        flagged = {r["image"] for r in SL.csv.DictReader((REPO / args.screen).open(encoding="utf-8")) if r["flag"]}
+        stills = [s for s in stills if s["image"].name not in flagged]
     hold = {int(e) for e in args.holdout.split(",") if e}
     stills = [s for s in stills if s["ep"] not in hold]
     if args.max_stills and args.max_stills < len(stills):
@@ -241,6 +249,8 @@ def main() -> int:
     model.gravity_in_base = prev["args"].get("gravity_in_base", False)
     x = np.array(prev["x"])
     wfc_ref = np.array(prev["world_from_camera"])
+    if args.start_camera:
+        wfc_ref = np.array(json.loads((REPO / args.start_camera).read_text(encoding="utf-8"))["world_from_camera"])
     meshes = [load_stl(MESH_DIR / f"{m}.stl") for m in MESHES]
     us, vs = np.meshgrid(np.arange(cm.width, dtype=np.float64), np.arange(cm.height, dtype=np.float64))
     src = cd.distort_pixels(np.stack([us.ravel(), vs.ravel()], 1), cm).reshape(cm.height, cm.width, 2).astype(np.float32)
@@ -265,7 +275,8 @@ def main() -> int:
     print(f"fitted: overlay |offset| median {ov[0]:.2f} p90 {ov[1]:.2f} px ({ov[2]} matches)")
     print(f"paper-marker centres, INDEPENDENT: median {pc[0]:.2f} px, p90 {pc[1]:.2f}, max {pc[2]:.2f} over {pc[3]} detections")
     dref = pose_diff(wfc_ref, wfc)
-    print(f"camera vs the --arm-from camera (paper-fitted on its episodes): {dref[0]:.1f} mm, {dref[1]:.2f} deg")
+    print(f"camera vs the {'--start-camera' if args.start_camera else '--arm-from camera (paper-fitted on its episodes)'}: "
+          f"{dref[0]:.1f} mm, {dref[1]:.2f} deg")
     report = {"overlay_px": {"median": ov[0], "p90": ov[1], "n": ov[2]}, "paper_px": {"median": pc[0], "p90": pc[1], "max": pc[2], "n": pc[3]},
               "vs_arm_from": {"mm": dref[0], "deg": dref[1]}}
     for f in [f for f in args.compare.split(",") if f]:
