@@ -108,6 +108,9 @@ def episodes(src, only_success=True):
     out = []
     for d in sorted(src.glob("cl_ep*")):
         E = json.load(open(d / "episode.json"))
+        if E.get("orientation") not in (None, "", "stand"):   # 2026-11-11: physics_replay places the object standing
+            print(f"skip {d.name}: object_orientation {E['orientation']!r} (only standing objects are replayed)", flush=True)
+            continue
         if not only_success or E.get("outcome") == "success":
             out.append(d)
     return out

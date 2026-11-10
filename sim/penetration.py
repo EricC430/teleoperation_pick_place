@@ -104,8 +104,10 @@ def main():
         deep = float(A.get("bottle_deep_mm", "1.0")) / 1000
         rmax = max(o["body_dia"], o.get("base_dia", 0), o["cap_dia"], o.get("waist_dia", 0)) / 2
         lo_c = np.array([-rmax, -rmax, 0.0]) - 1e-3; hi_c = np.array([rmax, rmax, o["height"]]) + 1e-3
-        print(f"bottle {oid}: solid, through = deeper than {deep * 1000:.2f} mm", flush=True)
+        gate = max(0.25, o["height"] + 0.10)   # link origin to the object's BASE origin: a cap grasp is ~height above it
+        print(f"bottle {oid}: solid, through = deeper than {deep * 1000:.2f} mm, links tested within {gate:.2f} m", flush=True)
     else:
+        gate = 0.25
         geo = (o["top_dia"] / 2, o["bot_dia"] / 2, o["height"], o.get("wall", 0.001), o.get("bottom") or o.get("wall", 0.001))
         lo_c = np.array([-geo[0], -geo[0], 0.0]) - 1e-3; hi_c = np.array([geo[0], geo[0], geo[2]]) + 1e-3   # cup box, cup frame
     res = {}
@@ -119,7 +121,7 @@ def main():
             for l, pts in P.items():
                 T = lps[names.index(l)]; Rl, ol = R(T[3:7]), np.array(T[:3])
                 n_in, thr, side = 0, False, None
-                if np.linalg.norm(ol - oc) < 0.25:
+                if np.linalg.norm(ol - oc) < gate:
                     # the cup's box in the link frame -> only samples inside it are moved and tested
                     cor = np.array([[x, y, z] for x in (lo_c[0], hi_c[0]) for y in (lo_c[1], hi_c[1]) for z in (lo_c[2], hi_c[2])])
                     cl = (Rl.T @ ((Rc @ cor.T).T + oc - ol).T).T

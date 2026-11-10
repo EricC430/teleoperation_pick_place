@@ -103,6 +103,7 @@ for e in eps:
     st = np.array([d["observation.state"][i] for i in idx], float); ac = np.array([d["action"][i] for i in idx], float)
     ed = OUT / f"cl_ep{e:02d}"; ed.mkdir(exist_ok=True)
     json.dump({"dataset": RID, "episode": e, "fps": 15, "placement": md["placement_id"], "outcome": md["outcome"],
+               "orientation": md.get("object_orientation") or None,   # 2026-11-11: physics_replay stands the object up; dr_collect skips 'lying'
                "cup_xy_m": pl[md["placement_id"]], "state": st.tolist(), "action": ac.tolist(),
                "q_body_rad": [qbody(s).tolist() for s in st],
                # S10 (2026-11-07): the same mapping applied to the ACTION, for sim/physics_replay.py target_source=action[_nosag]
