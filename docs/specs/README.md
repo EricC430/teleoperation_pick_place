@@ -13,6 +13,7 @@
 | S7 | `S7_link_tilt_calibration.md` | `scripts/measure_link_tilt.py` | 🔴 **要**（手臂＋手機傾角儀） | 無前置。俯仰關節＋wrist_roll 的零點與比例，參考是重力，高處姿態也能量。姿勢計畫已產生（`configs/s7_link_tilt_plan_normalA1.json`）。2026-10-10 在真手臂跑過；零點與下垂的現行值改由 10/14 連桿標記擬合（頂端有說明） |
 | S8 | `S8_pan_axis_on_paper.md` | `scripts/measure_pan_circle.py` | 🔴 **要**（手臂＋座標紙） | 無前置，與 S7 獨立。指尖畫圓：pan 軸在座標紙上的位置、pan 零點與比例。2026-10-12 在真手臂跑過一次，驗收兩項沒過，結果沒貼進模擬（頂端有說明） |
 | S9 | `S9_sim_dr_collect.md` | `scripts/dr_collect.py`（＋`sim/dr_render.py` 等） | ❌ 不用（重播 10/14 之後的真實資料） | 無。**2026-10-31 [EricC 決定] 跑通流程優先、只用 10/14 之後的資料**。物理重播驗證成功才渲染；取代 S5 §4 的附著路線，沿用 S5 的匯出。**2026-11-01 正式蒐集一次（收 186、匯出 372 集），D025 未過不訓練**；物理參數稽核見 `docs/sim_physics_params.md` |
+| S10 | `S10_sim_closed_loop.md` | （待寫）sim 閉環＋疊合比對 | ❌ 不用（只讀 10/16 實機閉環影片） | 無。**2026-11-06 草案、組內未確認**。先 A 段（餵實機 action）量控制缺口，過了才接模型；不比成功率，只比與實機影片的逐幀疊合 |
 
 ## 共同規則（各份都適用）
 

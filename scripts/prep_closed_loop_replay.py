@@ -32,6 +32,7 @@ ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDe
 ap.add_argument("out")
 ap.add_argument("dataset", nargs="?", default=DEFAULT)
 ap.add_argument("--root", default=os.environ.get("HF_LEROBOT_HOME"))
+ap.add_argument("--meta", default="", help="episode_meta csv if its name differs from the dataset directory (10/16 15:20: the csv has _paper_cup_)")
 ap.add_argument("--episodes", default="", help="comma list; default all in episode_meta")
 args = ap.parse_args()
 
@@ -81,14 +82,16 @@ ROOT = dataset_dir(args.dataset, args.root); RID = ROOT.name
 OUT = Path(args.out); OUT.mkdir(parents=True, exist_ok=True)
 m = TT.FitModel(TT.REPO / "calibration/2026-10-14_link_marker_fit.json")
 pl = placements()
-meta = {int(r["episode_index"]): r for r in csv.DictReader(open(REPO / f"episode_meta/{RID}.csv", encoding="utf-8-sig"))}
+meta = {int(r["episode_index"]): r for r in csv.DictReader(open(args.meta or REPO / f"episode_meta/{RID}.csv", encoding="utf-8-sig"))}
 eps = [int(e) for e in args.episodes.split(",")] if args.episodes else sorted(meta)
 d = read_frames(ROOT)
 ei = np.array(d["episode_index"]); fi = np.array(d["frame_index"])
 
 
-def qbody(st):
+def qbody(st, sag=True):
     q = jm.SCALE_RAD_PER_UNIT["shoulder_lift"] * st[:5] + m.off
+    if not sag:   # reading -> rad only (what a servo is commanded to; the arm's own gravity droop is the sim's job)
+        return q
     tau = SL.gravity_torques(SL.chain_transforms(q, m.chain), m.inert, np.array([0, 0, -9.81]) if m.g_in_base else m.base[:3, :3].T @ np.array([0, 0, -9.81]))
     q = q.copy(); q[1:4] += m.sag * tau
     return q
@@ -101,7 +104,9 @@ for e in eps:
     ed = OUT / f"cl_ep{e:02d}"; ed.mkdir(exist_ok=True)
     json.dump({"dataset": RID, "episode": e, "fps": 15, "placement": md["placement_id"], "outcome": md["outcome"],
                "cup_xy_m": pl[md["placement_id"]], "state": st.tolist(), "action": ac.tolist(),
-               "q_body_rad": [qbody(s).tolist() for s in st]}, open(ed / "episode.json", "w"))
+               "q_body_rad": [qbody(s).tolist() for s in st],
+               # S10 (2026-11-07): the same mapping applied to the ACTION, for sim/physics_replay.py target_source=action[_nosag]
+               "q_action_rad": [qbody(s).tolist() for s in ac], "q_action_nosag_rad": [qbody(s, False).tolist() for s in ac]}, open(ed / "episode.json", "w"))
     json.dump({"gripper_target_rad_from_action": [float(jm.lerobot_to_urdf_rad(np.r_[np.zeros(5), g])[5]) for g in ac[:, 5]],
                "gripper_rad_from_state": [float(jm.lerobot_to_urdf_rad(np.r_[np.zeros(5), g])[5]) for g in st[:, 5]]}, open(ed / "gripper.json", "w"))
 json.dump({"fit": {"name": "touch-pinned link-marker fit (calibration/2026-10-14_link_marker_fit.json)", "world_from_link0": m.base.tolist()}},

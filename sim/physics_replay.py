@@ -200,12 +200,36 @@ def usd_cam(T_cv):   # OpenCV camera axes (x right, y down, z forward) -> USD ca
 
 E = json.load(open(EP / "episode.json")); G = json.load(open(EP / "gripper.json"))
 C = json.load(open(P(A["cands"])))[CAND]
-QB = np.array(E["q_body_rad"]) if CAND == "fit" else None   # per-frame link angles from the fit (offsets + sag)
+# target_source (S10, 2026-11-07): state (default) = the link angles of the recorded observation.state, as always;
+# action / action_nosag = the same mapping applied to the recorded ACTION (what the follower was commanded; with / without
+# the fit's gravity-sag term), so the arm is driven the way a policy would drive it. q_body_rad stays the reference.
+TSRC = A.get("target_source", "state")
+if TSRC not in ("state", "action", "action_nosag"):
+    raise ValueError("target_source must be state, action or action_nosag")
+_QKEY = {"state": "q_body_rad", "action": "q_action_rad", "action_nosag": "q_action_nosag_rad"}[TSRC]
+QB = np.array(E[_QKEY]) if CAND == "fit" else None   # per-frame link angles from the fit (offsets + sag)
+if QB is not None and TSRC != "state":
+    # act_lag=<frames> act_bias_deg=<5 comma-separated deg>: an empirical servo model on top of the action. The real follower's
+    # reported angle sits a steady 1.6-2.4 (lift), 2.5-3.2 (flex), 0.6-0.9 (elbow) deg from the mapped action and ~1 frame behind
+    # (scripts/score_action_tracking.py, 10-16 closed loop); a sim drive that tracks the command does not reproduce that.
+    _lags = [float(v) for v in A.get("act_lag", "0").split(",")]   # frames, fractional ok (linear interpolation); one value for all five joints, or five (pan,lift,elbow,flex,roll)
+    if len(_lags) == 1:
+        _lags = _lags * 5
+    if len(_lags) != 5:
+        raise ValueError("act_lag needs 1 or 5 values")
+    _bias = np.radians([float(v) for v in A.get("act_bias_deg", "0,0,0,0,0").split(",")])
+    if len(_bias) != 5:
+        raise ValueError("act_bias_deg needs 5 values")
+    _t = np.arange(len(QB), dtype=float)
+    QB = np.stack([np.interp(np.maximum(_t - _lags[j], 0.0), _t, QB[:, j]) for j in range(5)], axis=1) + _bias
 ST = np.array(E["state"]); N = len(ST)
 GRIP_SOURCE = A.get("gripper_source", "action")
 if GRIP_SOURCE not in ("state", "action"):
     raise ValueError("gripper_source must be state or action")
 GRIP_TARGET = G["gripper_rad_from_state"] if GRIP_SOURCE == "state" else G["gripper_target_rad_from_action"]
+if "grip_lag" in A:   # S10: the real gripper reaches a commanded opening ~1.5 frames (closing) / ~1.0 (opening) after the action; frames, fractional ok
+    _t = np.arange(len(GRIP_TARGET), dtype=float)
+    GRIP_TARGET = np.interp(np.maximum(_t - float(A["grip_lag"]), 0.0), _t, np.asarray(GRIP_TARGET, float)).tolist()
 OUT = P(A["out"]) if "out" in A else EP / (f"sim_{CAND}" + (f"_{A['tag']}" if 'tag' in A else "")); OUT.mkdir(parents=True, exist_ok=True)
 BODY = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll")
 
@@ -636,7 +660,7 @@ def full(qb, g):
 
 
 K0 = int(A.get("start", "0"))
-q0 = full(body_rad(ST[K0], K0), G["gripper_rad_from_state"][K0])
+q0 = full(np.array(E["q_body_rad"][K0]) if CAND == "fit" else body_rad(ST[K0], K0), G["gripper_rad_from_state"][K0])   # start where the real arm was, whatever drives it afterwards
 robot.set_dof_positions(q0); robot.set_dof_position_targets(q0); robot.set_dof_velocities(np.zeros_like(q0))
 pause(); app.update()
 if A.get("diag", "0") == "1":
