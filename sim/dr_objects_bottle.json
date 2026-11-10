@@ -1,26 +1,26 @@
 {
  "_doc": "Bottle geometry for the DR collection (sim/bottle_mesh.py), kept OUT of sim/dr_config.json so a cup run never replays cup trajectories with a bottle: scripts/dr_collect.py --objects sim/dr_objects_bottle.json replaces objects.geometry (and physics_replay.expected_config when given) in the work dir's copy of the config. 2026-11-11, Boyu + Claude.",
- "_status": "PLACEHOLDER. The real bottle is 御茶園 特撰冰釀綠茶 590ml [Boyu 2026-11-11]; no size, mass, fill or friction of it is recorded anywhere (web shop pages list only the volume; a 550 ml variant of the same line exists, do not mix). Every number below is 未確認: shape read off one front-left frame (omx_pick_place_pilot_plastic_bottle_normal_A1 ep0 f0: straight labelled body, clear shoulder, narrow neck, yellow cap), sizes typical of a 590 ml PET bottle. Replace with measurements before any physics claim.",
+ "_status": "MEASURED IN PART (2026-11-11). The real bottle is 御茶園 特撰冰釀綠茶 590ml [Boyu]; the shop pages (momo, PChome, uni-prosperity) list only the volume, and a 550 ml variant of the same line exists, do not mix. Sizes are Boyu's measurements (see bottle_ref._source); waist position, foot rounding, mass and friction are still 未確認.",
  "_not_done": "physics_replay's config check (dr_collect 'check' step) runs the default paper-cup asset, not these objects, so it says nothing about the bottle; a bottle expected_config needs one run on the 4090 first. dr_render.py textures are the cup's (printed_paper etc.) mapped on the outer surface. Standing bottles only: the 11 tipped demos (object_orientation lying) need an orientation input physics_replay does not have.",
  "geometry": [
   {
    "id": "bottle_ref",
    "shape": "bottle",
-   "height": 0.215,
-   "body_dia": 0.068,
-   "base_dia": 0.062,
+   "height": 0.23,
+   "body_dia": 0.06939,
+   "base_dia": 0.063,
    "base_h": 0.008,
-   "shoulder_z0": 0.145,
-   "shoulder_z1": 0.180,
-   "neck_dia": 0.026,
-   "cap_dia": 0.031,
-   "cap_h": 0.018,
+   "shoulder_z0": 0.182,
+   "shoulder_z1": 0.207,
+   "neck_dia": 0.03,
+   "cap_dia": 0.028,
+   "cap_h": 0.015,
    "shell_mass": 0.018,
    "cap_mass": 0.002,
    "fill_ml": 0,
    "mu_s": 0.5,
    "mu_d": 0.4,
-   "_source": "all 未確認 (placeholder, see _status)"
+   "_source": "Boyu measured 2026-11-11 (ruler / tape, 'about'): height 23 cm with cap; body circumference 21.8 cm -> dia 6.939 (circumference / pi); waist circumference 18.4 cm -> dia 5.857, WAIST HEIGHT RANGE NOT GIVEN YET so no waist in the model; base dia 6.3; shoulder starts 18.2, neck starts 20.7; neck dia 3.0, cap dia 2.8; cap bottom at 21.5 -> cap_h 1.5 (AI's reading of the answer, to confirm). Empty, cap on [Boyu]. Still 未確認: base_h (foot rounding), shell_mass + cap_mass (not weighed), mu_s / mu_d. Sanity: solid volume 753 ml without the waist (~720 with it) vs the 590 ml label -> some part may be modelled too fat or too long; not resolved."
   }
  ]
 }
