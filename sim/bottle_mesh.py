@@ -14,6 +14,7 @@ Parameters (metres / kg, in an objects.geometry entry with "shape": "bottle"):
   body_dia      straight body
   base_dia      at z = 0 (the foot is rounded in to it over base_h)        base_h
   waist_dia     optional narrower band between waist_z0 and waist_z1      waist_z0, waist_z1
+  body_points   optional [[z, dia], ...] from z = 0 to shoulder_z0, cosine-blended; replaces base_* and waist_*
   shoulder_z0   top of the body = start of the shoulder; shoulder_z1 = start of the neck (cosine blend in between)
   neck_dia      neck below the cap
   cap_dia, cap_h
@@ -34,22 +35,35 @@ def profile(p, n_foot=4, n_shoulder=12, n_body=10):
     hb = p.get("base_h", 0.0)
     z0, z1 = p["shoulder_z0"], p["shoulder_z1"]
     rn, rc, hc = p["neck_dia"] / 2, p["cap_dia"] / 2, p["cap_h"]
-    if not (0 <= hb < z0 < z1 < H - hc):
+    if not (0 <= hb < z0 < z1 < H - hc) and not (p.get("body_points") and 0 < z0 < z1 < H - hc):
         raise ValueError(f"bottle {p.get('id')}: need 0 <= base_h < shoulder_z0 < shoulder_z1 < height - cap_h")
-    pts = [(0.0, rf)]
-    for i in range(1, n_foot + 1):                                      # rounded foot: quarter-sine from base_dia to body_dia
-        if hb <= 0:
-            break
-        t = i / n_foot
-        pts.append((hb * t, rf + (rb - rf) * math.sin(t * math.pi / 2)))
-    wz = (p.get("waist_z0"), p.get("waist_z1")); rw = p.get("waist_dia", p["body_dia"]) / 2
-    for i in range(n_body + 1):                                         # body, with an optional waist (cosine dip)
-        z = hb + (z0 - hb) * i / n_body
-        r = rb
-        if wz[0] is not None and wz[0] < z < wz[1]:
-            r = rb - (rb - rw) * 0.5 * (1 - math.cos(2 * math.pi * (z - wz[0]) / (wz[1] - wz[0])))
-        if z > pts[-1][0] + 1e-9:
-            pts.append((z, r))
+    if p.get("body_points"):
+        # [[z, dia], ...] from z = 0 up to shoulder_z0, cosine-blended between points (2026-11-11: the real bottle
+        # narrows from its foot to a waist at 7.3 cm and widens again; base_dia / base_h / waist_* are then ignored)
+        bp = sorted((float(z), float(d) / 2) for z, d in p["body_points"])
+        if bp[0][0] != 0 or bp[-1][0] != z0:
+            raise ValueError(f"bottle {p.get('id')}: body_points must start at z = 0 and end at shoulder_z0")
+        pts = [bp[0]]
+        for (za, ra), (zb, rb_) in zip(bp, bp[1:]):
+            for i in range(1, n_body + 1):
+                t = i / n_body
+                pts.append((za + (zb - za) * t, ra + (rb_ - ra) * 0.5 * (1 - math.cos(math.pi * t))))
+        rb = bp[-1][1]
+    else:
+        pts = [(0.0, rf)]
+        for i in range(1, n_foot + 1):                                  # rounded foot: quarter-sine from base_dia to body_dia
+            if hb <= 0:
+                break
+            t = i / n_foot
+            pts.append((hb * t, rf + (rb - rf) * math.sin(t * math.pi / 2)))
+        wz = (p.get("waist_z0"), p.get("waist_z1")); rw = p.get("waist_dia", p["body_dia"]) / 2
+        for i in range(n_body + 1):                                     # body, with an optional waist (cosine dip)
+            z = hb + (z0 - hb) * i / n_body
+            r = rb
+            if wz[0] is not None and wz[0] < z < wz[1]:
+                r = rb - (rb - rw) * 0.5 * (1 - math.cos(2 * math.pi * (z - wz[0]) / (wz[1] - wz[0])))
+            if z > pts[-1][0] + 1e-9:
+                pts.append((z, r))
     for i in range(1, n_shoulder + 1):                                  # shoulder: cosine from body to neck radius
         t = i / n_shoulder
         pts.append((z0 + (z1 - z0) * t, rn + (rb - rn) * 0.5 * (1 + math.cos(math.pi * t))))
