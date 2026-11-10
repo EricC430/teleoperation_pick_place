@@ -117,6 +117,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--work", required=True); ap.add_argument("--source", required=True)
     ap.add_argument("--config", default=str(REPO / "sim/dr_config.json"))
+    ap.add_argument("--objects", default=None,
+                    help="JSON with a 'geometry' list (e.g. sim/dr_objects_bottle.json) that replaces the config's objects.geometry, "
+                         "and an optional 'expected_config' for physics_replay; the merged config is what the work dir keeps")
     ap.add_argument("--steps", default=",".join(STEPS)); ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--pen-jobs", type=int, default=8, help="parallel penetration measurements (CPU only)")
     ap.add_argument("--episodes", default="", help="comma list of episode indices (default: every real success)")
@@ -128,7 +131,12 @@ def main():
                          "real datasets; the heavy per-frame renders stay in the work dir, which the container can write)")
     a = ap.parse_args()
     work, src = Path(a.work).expanduser().resolve(), Path(a.source).expanduser().resolve()
-    cfg = json.loads(Path(a.config).read_text())
+    cfg = json.loads(Path(a.config).read_text(encoding="utf-8"))
+    if a.objects:   # 2026-11-11: bottles live outside dr_config.json so a cup run never gets them
+        ov = json.loads(Path(a.objects).read_text(encoding="utf-8"))
+        cfg["objects"]["geometry"] = ov["geometry"]; cfg["objects"]["_geometry_from"] = str(a.objects)
+        if "expected_config" in ov:
+            cfg["physics_replay"]["expected_config"] = ov["expected_config"]
     for p in (work, src):
         p.relative_to(HOST_VOL)   # must be inside the mounted volume
     steps = a.steps.split(",")
@@ -143,7 +151,10 @@ def main():
               f"then {cfg['variants_per_replay']} rendered variants per replay that lifts the object; work dir {work}")
         return
     (work / "logs").mkdir(parents=True, exist_ok=True)
-    shutil.copy2(a.config, work / "dr_config.json")
+    if a.objects:
+        (work / "dr_config.json").write_text(json.dumps(cfg, indent=1, ensure_ascii=False), encoding="utf-8")
+    else:
+        shutil.copy2(a.config, work / "dr_config.json")
     sync()
 
     objs_dir = work / "objects"

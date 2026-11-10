@@ -93,8 +93,21 @@ def main():
     P = link_samples(A["links"], links, pitch)
     of, oid = A["cup"].rsplit(":", 1)
     o = next(x for x in json.load(open(of))["objects"] if x["id"] == oid)
-    geo = (o["top_dia"] / 2, o["bot_dia"] / 2, o["height"], o.get("wall", 0.001), o.get("bottom") or o.get("wall", 0.001))
-    lo_c = np.array([-geo[0], -geo[0], 0.0]) - 1e-3; hi_c = np.array([geo[0], geo[0], geo[2]]) + 1e-3   # cup box, cup frame
+    bottle = o.get("shape") == "bottle"
+    if bottle:
+        # 2026-11-11: a bottle is a SOLID of revolution (sim/bottle_mesh.py), no wall and no cavity. vol_mm3 = link volume
+        # inside the solid; "through" = some sample deeper than bottle_deep_mm (default 1.0, the cup's wall thickness,
+        # threshold not decided); no side flips (nothing to be inside of).
+        import os
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from bottle_mesh import depth_inside
+        deep = float(A.get("bottle_deep_mm", "1.0")) / 1000
+        rmax = max(o["body_dia"], o.get("base_dia", 0), o["cap_dia"], o.get("waist_dia", 0)) / 2
+        lo_c = np.array([-rmax, -rmax, 0.0]) - 1e-3; hi_c = np.array([rmax, rmax, o["height"]]) + 1e-3
+        print(f"bottle {oid}: solid, through = deeper than {deep * 1000:.2f} mm", flush=True)
+    else:
+        geo = (o["top_dia"] / 2, o["bot_dia"] / 2, o["height"], o.get("wall", 0.001), o.get("bottom") or o.get("wall", 0.001))
+        lo_c = np.array([-geo[0], -geo[0], 0.0]) - 1e-3; hi_c = np.array([geo[0], geo[0], geo[2]]) + 1e-3   # cup box, cup frame
     res = {}
     for lp in A["logs"].split(","):
         D = json.load(open(lp)); L = D["log"]; names = [b.split("/")[-1] for b in D["link_bodies"]]
@@ -113,8 +126,11 @@ def main():
                     sel = np.all((pts >= cl.min(0)) & (pts <= cl.max(0)), axis=1)
                     if sel.any():
                         c = (Rc.T @ (((Rl @ pts[sel].T).T + ol) - oc).T).T
-                        lay = wall_layer(c, *geo); n_in = int((lay >= 0).sum()); thr = bool(all((lay == k).any() for k in (0, 1, 2)))
-                        side = side_of(c, *geo)
+                        if bottle:
+                            d = depth_inside(c, o); n_in = int((d > 0).sum()); thr = bool((d > deep).any())
+                        else:
+                            lay = wall_layer(c, *geo); n_in = int((lay >= 0).sum()); thr = bool(all((lay == k).any() for k in (0, 1, 2)))
+                            side = side_of(c, *geo)
                 fr[l] = {"vol_mm3": float(n_in * (pitch * 1000) ** 3), "through": thr, "side": side}
             per.append(fr)
         # between two logged frames a link can go through the wall and come out clean on the other side: flag a link

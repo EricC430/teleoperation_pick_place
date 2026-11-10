@@ -1,0 +1,26 @@
+{
+ "_doc": "Bottle geometry for the DR collection (sim/bottle_mesh.py), kept OUT of sim/dr_config.json so a cup run never replays cup trajectories with a bottle: scripts/dr_collect.py --objects sim/dr_objects_bottle.json replaces objects.geometry (and physics_replay.expected_config when given) in the work dir's copy of the config. 2026-11-11, Boyu + Claude.",
+ "_status": "PLACEHOLDER. The real bottle is 御茶園 特撰冰釀綠茶 590ml [Boyu 2026-11-11]; no size, mass, fill or friction of it is recorded anywhere (web shop pages list only the volume; a 550 ml variant of the same line exists, do not mix). Every number below is 未確認: shape read off one front-left frame (omx_pick_place_pilot_plastic_bottle_normal_A1 ep0 f0: straight labelled body, clear shoulder, narrow neck, yellow cap), sizes typical of a 590 ml PET bottle. Replace with measurements before any physics claim.",
+ "_not_done": "physics_replay's config check (dr_collect 'check' step) runs the default paper-cup asset, not these objects, so it says nothing about the bottle; a bottle expected_config needs one run on the 4090 first. dr_render.py textures are the cup's (printed_paper etc.) mapped on the outer surface. Standing bottles only: the 11 tipped demos (object_orientation lying) need an orientation input physics_replay does not have.",
+ "geometry": [
+  {
+   "id": "bottle_ref",
+   "shape": "bottle",
+   "height": 0.215,
+   "body_dia": 0.068,
+   "base_dia": 0.062,
+   "base_h": 0.008,
+   "shoulder_z0": 0.145,
+   "shoulder_z1": 0.180,
+   "neck_dia": 0.026,
+   "cap_dia": 0.031,
+   "cap_h": 0.018,
+   "shell_mass": 0.018,
+   "cap_mass": 0.002,
+   "fill_ml": 0,
+   "mu_s": 0.5,
+   "mu_d": 0.4,
+   "_source": "all 未確認 (placeholder, see _status)"
+  }
+ ]
+}
