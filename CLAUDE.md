@@ -38,7 +38,7 @@
 | `docs/exp_a3_recovery_ablation.md` | A3 recovery 消融實驗設計 |
 | `docs/meeting/` | **只放會議**（組內／指導教授／Physical AI 子計畫），索引在 `docs/meeting/README.md`。最新：組內 `2026-10-18_team_meeting.md`；子計畫一 `2026-10-15.md` |
 | `docs/worklog/` | ★ 現場／實驗／分析工作紀錄（非會議），**數字的正本**。2026-10-19 從 `docs/meeting/` 搬來、檔名不變。索引（一檔一行，新→舊）在 `docs/worklog/README.md`；最新：`2026-10-31_wrist_cup_offset.md` 手腕畫面紙杯 vs 10/14 手臂模型（10/14 後無系統偏差、每集約 1 cm；10/08 偏 −1.2 cm；ep0 離群） |
-| `docs/weekly/` | 週報（只整理、不當正本，數字以 `docs/worklog/` 為準）。一份＝一週（週一–週日），檔名＝該週週一：`<YYYY-MM-DD>.md`。最新：`2026-10-19.md`（10/19–10/25：寶特瓶補錄 75 集、135 集模型閉環 23/36、M-full 訓練完）；`2026-10-12.md`（10/12–10/18：紙杯 19→34/36、u60augfl 20/36、寶特瓶 0/15）；10/26 週待寫 |
+| `docs/weekly/` | 週報（只整理、不當正本，數字以 `docs/worklog/` 為準）。一份＝一週（週一–週日），檔名＝該週週一：`<YYYY-MM-DD>.md`。最新：`2026-11-02.md`（11/02–11/08：模擬物理參數稽核、DR 改戶外場景；無實機）；`2026-10-26.md`（10/26–11/01：模擬 DR 匯出 372 集但 D025 未過、front-left 不貼標記校正、寶特瓶 b60 閉環只跑 c1–c9） |
 | `eval/README.md` | 評估記錄規格（outcome/mechanism 兩軸） |
 | `docs/models.md` | 模型對照表：權重 hash ↔ 本機 run/step ↔ Hub repo ↔ 物品 ↔ 閉環用過哪次 |
 
