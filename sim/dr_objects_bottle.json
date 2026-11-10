@@ -1,6 +1,6 @@
 {
  "_doc": "Bottle geometry for the DR collection (sim/bottle_mesh.py), kept OUT of sim/dr_config.json so a cup run never replays cup trajectories with a bottle: scripts/dr_collect.py --objects sim/dr_objects_bottle.json replaces objects.geometry (and physics_replay.expected_config when given) in the work dir's copy of the config. 2026-11-11, Boyu + Claude.",
- "_status": "MEASURED IN PART (2026-11-11). The real bottle is 御茶園 特撰冰釀綠茶 590ml [Boyu]; the shop pages (momo, PChome, uni-prosperity) list only the volume, and a 550 ml variant of the same line exists, do not mix. Sizes are Boyu's measurements (see bottle_ref._source); full-width height, mass and friction are still 未確認; the spiral grooves are not modelled.",
+ "_status": "MEASURED IN PART (2026-11-11). The real bottle is 御茶園 特撰冰釀綠茶 590ml [Boyu]; the shop pages (momo, PChome, uni-prosperity) list only the volume, and a 550 ml variant of the same line exists, do not mix. Sizes are Boyu's measurements (see bottle_ref._source); mass and friction are still 未確認; the spiral grooves are not modelled.",
  "_not_done": "physics_replay's config check (dr_collect 'check' step) runs the default paper-cup asset, not these objects, so it says nothing about the bottle; a bottle expected_config needs one run on the 4090 first. dr_render.py textures are the cup's (printed_paper etc.) mapped on the outer surface. Standing bottles only: the 11 tipped demos (object_orientation lying) need an orientation input physics_replay does not have.",
  "geometry": [
   {
@@ -18,7 +18,7 @@
      0.05857
     ],
     [
-     0.13,
+     0.118,
      0.06939
     ],
     [
@@ -36,7 +36,7 @@
    "fill_ml": 0,
    "mu_s": 0.5,
    "mu_d": 0.4,
-   "_source": "Boyu measured 2026-11-11 (ruler / tape, 'about'): height 23 cm with cap; body circumference 21.8 cm -> dia 6.939 (circumference / pi); waist circumference 18.4 cm -> dia 5.857, narrowest at 7.3 cm height; base dia 6.3; shoulder starts 18.2, neck starts 20.7; neck dia 3.0, cap dia 2.8, cap from 21.5 -> cap_h 1.5 (confirmed). Empty, cap on; no scale. Body has spiral grooves (not modelled: smooth solid). body_points: foot 6.3 -> waist 5.857 at 7.3 -> full 6.939 from 13 cm; the 13 cm is 未確認 (the front-left frame shows a gradual taper, 11-15 cm gives a solid volume 671-649 ml vs the 590 ml label). Still 未確認: where the body is full width again, shell_mass + cap_mass (not weighed, 18 + 2 g), mu_s / mu_d."
+   "_source": "Boyu measured 2026-11-11 (ruler / tape, 'about'): height 23 cm with cap; body circumference 21.8 cm -> dia 6.939 (circumference / pi); waist circumference 18.4 cm -> dia 5.857, narrowest at 7.3 cm height; base dia 6.3; shoulder starts 18.2, neck starts 20.7; neck dia 3.0, cap dia 2.8, cap from 21.5 -> cap_h 1.5 (confirmed). Empty, cap on; no scale. Body has spiral grooves (not modelled: smooth solid). body_points: foot 6.3 -> waist 5.857 at 7.3 -> full 6.939 from 11.8 cm (Boyu measured). Still 未確認: shell_mass + cap_mass (not weighed, 18 + 2 g), mu_s / mu_d."
   }
  ]
 }
