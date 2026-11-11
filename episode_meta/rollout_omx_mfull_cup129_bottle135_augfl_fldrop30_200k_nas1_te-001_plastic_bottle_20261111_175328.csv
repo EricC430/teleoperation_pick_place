@@ -4,7 +4,7 @@
 2,plastic_bottle,stand,c3,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[AI補，看截圖不是影片] 21.9 s 瓶子已不在第三視角原位
 3,plastic_bottle,stand,c4,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 4,plastic_bottle,stand,c5,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[AI補，看截圖不是影片] 28.9 s 瓶子倒在第三視角左下
-5,plastic_bottle,stand,c6,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,pushed_away;timeout,,1,,,,物體疑似太遠；[AI補，看截圖不是影片] 多次接近；20.4 s 腕部畫面瓶身在兩指之間但沒夾起；44.8 s 瓶子被推倒；673 幀＝跑滿 45 s。沒加 bad_aim（看不出偏離半個瓶寬）。20:00 那段 c6 先錄一次被 Left 重錄（20:00:41–20:01:13，計時紀錄），存的是第二次；那次重錄是因為不確定擺位放得對不對 [柏宇說 11/12]
+5,plastic_bottle,stand,c6,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,pushed_away;timeout,,1,,,,物體疑似太遠；[AI補，看截圖不是影片] 多次接近；20.4 s 腕部畫面瓶身在兩指之間但沒夾起；44.8 s 瓶子被推倒；673 幀＝跑滿 45 s。沒加 bad_aim（看不出偏離半個瓶寬）。20:00 那段 c6 先錄一次被 Left 重錄（20:00:41–20:01:13，計時紀錄），存的是第二次；那次重錄是因為不確定擺位放得對不對 [柏宇說 11/12]；[柏宇判 11/12] 可能是 repetition_loop，但物體有移位，先不算
 6,plastic_bottle,stand,c7,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 7,plastic_bottle,stand,c8,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[AI補，看截圖不是影片] 20.5 s 瓶子已倒
 8,plastic_bottle,stand,c9,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
@@ -24,7 +24,7 @@
 22,plastic_bottle,stand,c23,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,伸不夠遠；[AI補，看截圖不是影片] 18.4 s 瓶子已倒
 23,plastic_bottle,stand,c24,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 24,plastic_bottle,stand,c25,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
-25,plastic_bottle,stand,c26,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;timeout,,1,,,,伸不夠遠；[AI補，看截圖不是影片] 669 幀＝跑滿 45 s；多次接近，瓶子到最後仍站著、位置沒明顯變 → 拿掉 pushed_away
+25,plastic_bottle,stand,c26,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away;timeout,,1,,,,伸不夠遠；[AI補，看截圖不是影片] 669 幀＝跑滿 45 s；多次接近，瓶子到最後仍站著、位置沒明顯變 → 拿掉 pushed_away；[柏宇說 11/12] 物體有移位 → 上面 AI 拿掉的 pushed_away 加回；物體有移位，不算 repetition_loop
 26,plastic_bottle,stand,c27,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 27,plastic_bottle,stand,c28,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,伸不夠遠；[AI補，看截圖不是影片] 22.8 s 瓶子已倒
 28,plastic_bottle,stand,c29,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
