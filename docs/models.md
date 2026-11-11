@@ -26,6 +26,7 @@
   2026-10-22 加的 `bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30` 三列：4090 上 `sha256sum` 本機檔案，也和開環 `metrics.json` 對過；同日上 Hub（private），Hub API 的 LFS oid 對過，一致。同日補上 `35ffc9043713` 漏記的 10/18 閉環。
   同三列 2026-10-23 在 Windows 另外對過：hash 是 Hub API 的 LFS oid（2026-10-22 讀）；100k 另外下載到 `D:\hf\hub` 後 `sha256sum`，一致；20k／40k 本機沒下載、本機訓練檔沒對（在 4090）。`fl_dropout.json`：135 集、57380 幀、`expected_masked_fraction` 0.0197、`close_below` 54，和交接預期相同。
   2026-10-23 加的 `cup129_bottle135_augfl_fldrop_p30_w30` 四列（M-full，紙杯＋寶特瓶一個模型）：4090 上 `sha256sum` 本機檔案；還沒上 Hub。
+  2026-11-11 四個都上 Hub（private）；Windows 下載到 `D:\hf\hub` 後 `sha256sum`，和 Hub API 的 LFS oid、表內 hash 都一致。
 - **2026-11-01 4090 磁碟滿，刪了本機 checkpoint**（2026-11-01 對話中同意：「已過時並且上傳到 hf 的模型權重可刪」）：
   表中有 Hub repo 的列，逐一把本機 `model.safetensors` 的完整 sha256 和 Hub API 的 LFS sha256 對過，**一致的 38 個**
   整個 `checkpoints/<step>/`（`pretrained_model` ＋ `training_state`）刪掉，約 22 GB。**這些列的「本機 run / step」只剩歷史意義，權重從 Hub 下載。**
@@ -84,10 +85,10 @@
 | `4ade453d7024` | `bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30` / 20k | `act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_20k` | 寶特瓶 | `omx_pick_place_pilot_60_plastic_bottle` 60 集＋10/21 補錄 normal_A1 16、recovery_A1_tight 12（剪前段，`--close_below 54`）、precise_A1 37、tipped_A1 11（排除 ep 134）＝ 135 集；增強與 dropout 同 `bottle60_augfl_fldrop_p30_w30`（`configs/train_omx_bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop.yaml`；`docs/handoff/2026-10-21_bottle_136.md`） | — |
 | `02a3bd75ebbd` | `bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30` / 40k | `act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_40k` | 寶特瓶 | 同上 | — |
 | `fe5e98957d38` | `bottle_60_normal_tightcut_precise_tipped_A1_augfl_fldrop_p30_w30` / 100k | `act_omx_b4a_plastic-bottle_60-16-12rcvrycut-37precise-10tipped-augfl-fldrop30_100k` | 寶特瓶 | 同上 | 10/22 `__8247bde0`（temporal ensembling −0.01，`2026-10-22.md`：23/36）；同日 nas30 `__b14112f4`（沒存到任何一集）、`__bb85bee1`（作廢） |
-| `a72d73e652ba` | `cup129_bottle135_augfl_fldrop_p30_w30` / 20k | — | 紙杯＋寶特瓶 | `omx_pick_place_pilot_cup129_bottle135`（本機 merge，從 9 個原始資料集；273 集排除 9 集 → 264 集＝紙杯 129＋寶特瓶 135）；增強與 dropout 同 `…_augfl_fldrop_p30_w30`，200k 步（`configs/train_omx_cup129_bottle135_augfl_fldrop.yaml`） | — |
-| `a21624dd7255` | `cup129_bottle135_augfl_fldrop_p30_w30` / 40k | — | 紙杯＋寶特瓶 | 同上 | — |
-| `decdc7fa02a7` | `cup129_bottle135_augfl_fldrop_p30_w30` / 100k | — | 紙杯＋寶特瓶 | 同上 | — |
-| `8c42b7e0652e` | `cup129_bottle135_augfl_fldrop_p30_w30` / 200k | — | 紙杯＋寶特瓶 | 同上 | — |
+| `a72d73e652ba` | `cup129_bottle135_augfl_fldrop_p30_w30` / 20k | `act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_20k` | 紙杯＋寶特瓶 | `omx_pick_place_pilot_cup129_bottle135`（本機 merge，從 9 個原始資料集；273 集排除 9 集 → 264 集＝紙杯 129＋寶特瓶 135）；增強與 dropout 同 `…_augfl_fldrop_p30_w30`，200k 步（`configs/train_omx_cup129_bottle135_augfl_fldrop.yaml`） | — |
+| `a21624dd7255` | `cup129_bottle135_augfl_fldrop_p30_w30` / 40k | `act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_40k` | 紙杯＋寶特瓶 | 同上 | — |
+| `decdc7fa02a7` | `cup129_bottle135_augfl_fldrop_p30_w30` / 100k | `act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_100k` | 紙杯＋寶特瓶 | 同上 | — |
+| `8c42b7e0652e` | `cup129_bottle135_augfl_fldrop_p30_w30` / 200k | `act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_200k` | 紙杯＋寶特瓶 | 同上 | — |
 
 未列：60k／80k checkpoint（沒上 Hub、沒閉環過）、`my-002`／`smoke-001`／`perf-*`／`openloop-eval`（煙霧測試與效能測試）。
 

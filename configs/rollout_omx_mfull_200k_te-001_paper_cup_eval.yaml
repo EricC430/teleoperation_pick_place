@@ -1,0 +1,85 @@
+# RECORDED closed-loop evaluation of ericc430/act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_200k
+# (M-full: ONE model for paper cup + plastic bottle, 264 eps), object for this file: paper cup.
+# TEMPORAL ENSEMBLING (n_action_steps=1, coeff -0.01), same inference as the bottle file
+# ([Boyu decided 2026-10-22] in configs/train_omx_cup129_bottle135_augfl_fldrop.yaml header). Step 200k chosen by Boyu 2026-11-11.
+# Episode 30 s for the cup, NOT 45 s like the bottle file [Boyu 2026-11-11: "cup first, 30 first"]: same length as the
+# cup 34/36 run, so only the model and the inference differ from it.
+# NEGATIVE coeff: the sign is not visible in 'te001'-style names, so the repo says te-001; the config record is the truth.
+# lerobot rejects temporal ensembling with n_action_steps > 1. Check: a full 30 s episode should have ~450 frames.
+# Model: ACT 200k steps, sha256 8c42b7e0652e (D:\hf\hub download 2026-11-11 matches the Hub LFS oid and docs/models.md).
+# 20k a72d73e652ba / 40k a21624dd7255 / 100k decdc7fa02a7 are on the Hub as ..-fldrop30_20k / _40k / _100k.
+# Training: configs/train_omx_cup129_bottle135_augfl_fldrop.yaml - 273 eps, exclude 9 -> 264 (cup 129 + bottle 135);
+# front-left shift only, fl dropout p 0.3, window 30. fl_dropout.json (200k on the Hub): 264 eps, frames_in_window 7372,
+# expected_masked_fraction 0.0231 - matches the expected values in the training config header.
+# Gate (docs/phase_plan.md stage 0): BOTH objects >= 29/36 (80%) [Boyu].
+# Comparison: cup single-object best aebc8680b965, 34/36 on 2026-10-16 (nas30, 30 s); here nas1 + ensembling, 30 s -
+# model AND inference differ, so a gap cannot be put on the model alone.
+#
+#   uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_mfull_200k_te-001_paper_cup_eval.yaml --policy.path=ericc430/act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_200k --policy.n_action_steps=1 --policy.temporal_ensemble_coeff=-0.01 --meta-template paper_cup_A1
+#
+# KEEP THIS FILE ASCII-ONLY (lerobot opens it as cp950 when policy.path is set).
+# policy.n_action_steps and temporal_ensemble_coeff must be given on the command line with --policy.path (2026-10-05 note).
+# Copied from configs/rollout_omx_b4a_plastic_bottle_136_augfl_fldrop30_100k_te-001_eval.yaml; only policy.path, dataset.repo_id and comments differ.
+# Model input_features (config.json, 200k): state [6], wrist [3,480,640], front-left [3,480,848] - same as the robot block.
+# Before running, in this order: read_joint_pose.py --goto-home --home-episode 10, lerobot-find-cameras opencv (wrist index),
+# align_camera.py --dataset-root .cache/lerobot/omx_pick_place_pilot_paper_cup_far_wrist_A1 --episodes 1 4 8
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-10-08_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: opencv_uvc
+      index_or_path: 2
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 15
+      fourcc: YUY2
+      exposure: -5
+      gain: 0
+      white_balance: null
+    front-left:
+      type: intelrealsense_pinned
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+      exposure: 400
+      gain: 70
+      white_balance: null
+
+policy:
+  path: ericc430/act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_200k  # private; cached in D:\hf\hub (sha256 checked 2026-11-11)
+
+strategy:
+  type: episodic
+  reset_to_initial_position: true   # no teleop: arm goes back to its startup pose between trials
+
+inference:
+  type: sync
+
+dataset:
+  repo_id: ericc430/rollout_omx_mfull_cup129_bottle135_augfl_fldrop30_200k_nas1_te-001_30s_paper_cup   # must start with rollout_; timestamp appended; nas1 + coeff -0.01 (keep in sync with the CLI)
+  single_task: "Pick up the object and place it into the box"   # same string as training
+  fps: 15                  # must match camera fps
+  num_episodes: 36         # eval-close c1..c36 (template paper_cup_A1)
+  episode_time_s: 30       # Boyu 2026-11-11: cup at 30 s first (same as the 34/36 cup run); the bottle file stays 45 s
+  reset_time_s: 120        # time to re-place the object; Right/Up ends it early
+  video: true
+  push_to_hub: false       # upload later by hand once the session looks right
+  private: true
+  streaming_encoding: false
+  encoder_threads: 2
+  rgb_encoder:
+    vcodec: h264
+    preset: veryfast
+    crf: 23
+    pix_fmt: yuv420p
+
+fps: 15
+task: "Pick up the object and place it into the box"
+display_data: true
+return_to_initial_position: true
