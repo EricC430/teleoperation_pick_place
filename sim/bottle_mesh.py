@@ -15,6 +15,7 @@ Parameters (metres / kg, in an objects.geometry entry with "shape": "bottle"):
   base_dia      at z = 0 (the foot is rounded in to it over base_h)        base_h
   waist_dia     optional narrower band between waist_z0 and waist_z1      waist_z0, waist_z1
   body_points   optional [[z, dia], ...] from z = 0 to shoulder_z0, cosine-blended; replaces base_* and waist_*
+  grooves       optional [[z_centre, width, depth], ...] ring grooves cut into the body (cosine dip, depth radial)
   shoulder_z0   top of the body = start of the shoulder; shoulder_z1 = start of the neck (cosine blend in between)
   neck_dia      neck below the cap
   cap_dia, cap_h
@@ -64,12 +65,31 @@ def profile(p, n_foot=4, n_shoulder=12, n_body=10):
                 r = rb - (rb - rw) * 0.5 * (1 - math.cos(2 * math.pi * (z - wz[0]) / (wz[1] - wz[0])))
             if z > pts[-1][0] + 1e-9:
                 pts.append((z, r))
+    if p.get("grooves"):
+        pts = _grooved(pts, p["grooves"], z0)
     for i in range(1, n_shoulder + 1):                                  # shoulder: cosine from body to neck radius
         t = i / n_shoulder
         pts.append((z0 + (z1 - z0) * t, rn + (rb - rn) * 0.5 * (1 + math.cos(math.pi * t))))
     pts.append((H - hc, rn))                                            # neck
     pts.append((H - hc, rc)); pts.append((H, rc))                       # cap (a step out, then straight up)
     return np.array(pts, float)
+
+
+def _grooved(pts, grooves, z_top, dz=0.001):
+    """Body outline with ring grooves cut in (2026-11-11: the real bottle has 3 around the grasp height). grooves =
+    [[z_centre, width, depth], ...] (m, depth radial); each is a cosine dip of that depth over that width. The body is
+    resampled every dz (1 mm) and densely across each groove, so an 8 mm groove keeps its shape in the mesh."""
+    zs, rs = np.array([q[0] for q in pts]), np.array([q[1] for q in pts])
+    zz = set(np.round(np.arange(0.0, z_top, dz), 6)) | {round(float(z), 6) for z in zs} | {round(z_top, 6)}
+    for zc, w, _ in grooves:
+        if not (0 < zc - w / 2 and zc + w / 2 < z_top):
+            raise ValueError(f"groove at {zc} m (width {w}) must lie inside the body (0..{z_top})")
+        zz |= set(np.round(np.linspace(zc - w / 2, zc + w / 2, 17), 6))
+    zz = np.array(sorted(zz)); rr = np.interp(zz, zs, rs)
+    for zc, w, d in grooves:
+        m = np.abs(zz - zc) < w / 2
+        rr[m] -= d * 0.5 * (1 + np.cos(2 * math.pi * (zz[m] - zc) / w))
+    return [(float(z), float(r)) for z, r in zip(zz, rr)]
 
 
 def bottle_mesh(p, n_sides=48):
