@@ -88,7 +88,7 @@
 | `a72d73e652ba` | `cup129_bottle135_augfl_fldrop_p30_w30` / 20k | `act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_20k` | 紙杯＋寶特瓶 | `omx_pick_place_pilot_cup129_bottle135`（本機 merge，從 9 個原始資料集；273 集排除 9 集 → 264 集＝紙杯 129＋寶特瓶 135）；增強與 dropout 同 `…_augfl_fldrop_p30_w30`，200k 步（`configs/train_omx_cup129_bottle135_augfl_fldrop.yaml`） | — |
 | `a21624dd7255` | `cup129_bottle135_augfl_fldrop_p30_w30` / 40k | `act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_40k` | 紙杯＋寶特瓶 | 同上 | — |
 | `decdc7fa02a7` | `cup129_bottle135_augfl_fldrop_p30_w30` / 100k | `act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_100k` | 紙杯＋寶特瓶 | 同上 | — |
-| `8c42b7e0652e` | `cup129_bottle135_augfl_fldrop_p30_w30` / 200k | `act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_200k` | 紙杯＋寶特瓶 | 同上 | — |
+| `8c42b7e0652e` | `cup129_bottle135_augfl_fldrop_p30_w30` / 200k | `act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_200k` | 紙杯＋寶特瓶 | 同上 | 11/11 紙杯 `__bc3e6dcc`（TE −0.01、30 s，`2026-11-11_mfull_closed_loop.md`：29/36）；同日寶特瓶 `__23810125` 新開＋續錄 `__70aa3514`／`__12a55ac5`／`__73a8b56f`（TE −0.01、45 s：25/36）；試跑 `__137171a6`（5 集設定，c1–c3 成功後中斷） |
 
 未列：60k／80k checkpoint（沒上 Hub、沒閉環過）、`my-002`／`smoke-001`／`perf-*`／`openloop-eval`（煙霧測試與效能測試）。
 
