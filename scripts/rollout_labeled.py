@@ -182,6 +182,118 @@ class Speaker:
                 proc.wait(timeout=10)
 
 
+class FrameTimer:
+    """Per-frame timing log, outputs/rollout_timing/<dataset>__<HHMMSS>.csv (2026-11-11, Boyu asked for it).
+
+    Why: the wrist camera's latest frame went > 500 ms stale mid-episode (TimeoutError in read_latest), and the
+    loop had slowed to 10.7-14.9 Hz just before. Each row splits one loop iteration into: follower bus read,
+    each camera read and how old its latest frame was, the action step (policy + send), add_frame, and system CPU.
+    LOGGING ONLY: the control loop, its timing and its errors are unchanged (exceptions are re-raised as they are).
+    A row is written when the next observation starts, or at once when get_observation raises.
+    """
+
+    def __init__(self, path: Path, cam_keys: list[str]):
+        import csv
+
+        import psutil
+
+        self._psutil = psutil
+        psutil.cpu_percent(None)  # first call only primes the counter
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.columns = ["wall", "phase", "episode", "frame", "loop_ms", "bus_ms"]
+        for k in cam_keys:
+            self.columns += [f"{k}_age_ms", f"{k}_ms"]
+        self.columns += ["action_ms", "add_frame_ms", "cpu_pct", "error"]
+        self._fh = open(self.path, "w", newline="", encoding="utf-8")
+        self._writer = csv.DictWriter(self._fh, fieldnames=self.columns)
+        self._writer.writeheader()
+        self._fh.flush()
+        self.phase, self.episode, self.frame = "setup", -1, 0
+        self._row: dict | None = None
+        self._last_start: float | None = None
+
+    def start_episode(self, idx: int) -> None:
+        self.phase, self.episode, self.frame, self._last_start = "policy", idx, 0, None
+
+    def set_phase(self, phase: str) -> None:
+        self.phase, self._last_start = phase, None
+
+    def _write(self) -> None:
+        if self._row is None:
+            return
+        self._row["cpu_pct"] = self._psutil.cpu_percent(None)
+        self._writer.writerow(self._row)
+        self._fh.flush()
+        self._row = None
+
+    def close(self) -> None:
+        with contextlib.suppress(Exception):
+            self._write()
+            self._fh.close()
+
+    def wrap_robot(self, robot) -> None:
+        """Instance-level replacement of get_observation with the same reads as OmxFollower.get_observation."""
+
+        def get_observation():
+            self._write()
+            now = time.perf_counter()
+            row = {"wall": time.strftime("%H:%M:%S"), "phase": self.phase, "episode": self.episode,
+                   "frame": self.frame,
+                   "loop_ms": "" if self._last_start is None else round((now - self._last_start) * 1e3, 1)}
+            self._row, self._last_start = row, now
+            self.frame += 1
+            try:
+                t = time.perf_counter()
+                obs = robot.bus.sync_read("Present_Position")
+                row["bus_ms"] = round((time.perf_counter() - t) * 1e3, 1)
+                obs = {f"{motor}.pos": val for motor, val in obs.items()}
+                for cam_key, cam in robot.cameras.items():
+                    if getattr(cam, "use_rgb", True):
+                        ts = getattr(cam, "latest_timestamp", None)
+                        row[f"{cam_key}_age_ms"] = "" if ts is None else round((time.perf_counter() - ts) * 1e3, 1)
+                        t = time.perf_counter()
+                        try:
+                            obs[cam_key] = cam.read_latest()
+                        finally:
+                            row[f"{cam_key}_ms"] = round((time.perf_counter() - t) * 1e3, 1)
+                    if getattr(cam, "use_depth", False):
+                        obs[f"{cam_key}_depth"] = cam.read_latest_depth()
+                return obs
+            except Exception as e:
+                row["error"] = repr(e)[:300]
+                self._write()
+                raise
+
+        robot.get_observation = get_observation
+
+    def wrap_send_next_action(self, module) -> None:
+        orig = module.send_next_action
+
+        def send_next_action(*args, **kwargs):
+            t = time.perf_counter()
+            try:
+                return orig(*args, **kwargs)
+            finally:
+                if self._row is not None:
+                    self._row["action_ms"] = round((time.perf_counter() - t) * 1e3, 1)
+
+        module.send_next_action = send_next_action
+
+    def wrap_add_frame(self, dataset) -> None:
+        orig = dataset.add_frame
+
+        def add_frame(frame):
+            t = time.perf_counter()
+            try:
+                return orig(frame)
+            finally:
+                if self._row is not None:
+                    self._row["add_frame_ms"] = round((time.perf_counter() - t) * 1e3, 1)
+
+        dataset.add_frame = add_frame
+
+
 def make_strategy_class():
     from lerobot.datasets import VideoEncodingManager
     from lerobot.rollout.strategies.core import safe_push_to_hub
@@ -199,6 +311,7 @@ def make_strategy_class():
             self._homed = False
             self._sheet = None
             self._saving = False  # save_episode() running: the episode and its verdict are final
+            self._timer = None  # FrameTimer, set in setup()
 
         def setup(self, ctx) -> None:
             if ctx.hardware.teleop is not None:
@@ -215,6 +328,19 @@ def make_strategy_class():
                 template=self.meta_args.template_data,
             )
             logger.info("episode_meta: %s", self._sheet.path)
+
+            import lerobot.rollout.strategies.episodic as episodic_module
+
+            robot = ctx.hardware.robot_wrapper.inner
+            self._timer = FrameTimer(
+                SCRIPTS.parent / "outputs" / "rollout_timing"
+                / f"{Path(str(dataset.root)).name}__{time.strftime('%Y%m%d_%H%M%S')}.csv",
+                cam_keys=list(robot.cameras),
+            )
+            self._timer.wrap_robot(robot)
+            self._timer.wrap_send_next_action(episodic_module)
+            self._timer.wrap_add_frame(dataset)
+            print(f"[timing] per-frame log: {self._timer.path}", flush=True)
 
             self._listener = create_key_listener(
                 self._on_key, controls_help="Right = success, Up = fail, Left = redo, Esc = stop"
@@ -265,6 +391,8 @@ def make_strategy_class():
                         line = f"Re-record episode {idx}" if redo else f"Recording episode {idx}"
                         self._speaker.say(self._pending + line)
                         self._pending = ""
+                        if self._timer is not None:
+                            self._timer.start_episode(idx)
                         self._policy_loop(
                             ctx=ctx,
                             robot=ctx.hardware.robot_wrapper,
@@ -275,6 +403,8 @@ def make_strategy_class():
                             dataset=dataset,
                             single_task=single_task,
                         )
+                        if self._timer is not None:
+                            self._timer.set_phase("between")
                         if events["stop_recording"] or ctx.runtime.shutdown_event.is_set():
                             break
 
@@ -365,6 +495,9 @@ def make_strategy_class():
                 ):
                     self._speaker.say("Dataset uploaded to hub", wait=True)
             self._teardown_hardware(ctx.hardware, return_to_initial_position=False)
+            if self._timer is not None:
+                self._timer.close()
+                logger.info("per-frame timing log: %s", self._timer.path)
             self._speaker.say("Exiting")
 
     return LabeledEpisodicStrategy
