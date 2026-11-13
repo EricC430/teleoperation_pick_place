@@ -16,7 +16,7 @@
 > | §2 缺口 4（相機幾何） | 內參 10/07；front-left 外參 10/14（ArUco），10/29 相機移動後用 CAD 輪廓不貼標記找回；wrist 外參 10/30（CAD 鏡頭）；畸變用實測模型套用 | `docs/worklog/2026-10-29_fl_cad_field.md`、`2026-10-31_wrist_cup_offset.md` |
 > | §3 匯出（`scripts/sim_replay_augment.py`、`sim_` 前綴、provenance、`verify_dataset.py` 提醒） | **沿用並擴充成多集**（可收多個變體、provenance 逐集記錄隨機參數） | S9 §1 export |
 > | §7 驗收、§8 不做 | §7 的煙霧測試結論已過時；§8「不做完整物理接觸模擬」**被推翻**（S9 就是物理接觸）；「不訓練、不宣稱有效」**仍然有效**（D025 閘門未過） | S9 §4、§5 |
-> | §9 與 D025 的關係 | 閘門仍未過（EricC 2026-10-31 確認）；判準 2026-11-13 寫成 D033 | `docs/decisions.md` D025、D033 |
+> | §9 與 D025 的關係 | 判準 2026-11-13 寫成 D033，EricC430 判定通過（同日記錄） | `docs/decisions.md` D025、D033 |
 >
 > 物理參數與管線稽核：`docs/sim_physics_params.md`。以下保留 2026-09 的推理與實測軌跡。
 
