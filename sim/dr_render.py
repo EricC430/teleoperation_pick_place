@@ -62,6 +62,22 @@ import dr_ground as DG  # noqa: E402
 
 CFG = json.loads(Path(A["config"]).read_text())
 CC = CFG["cameras"]; RC = CFG["render"]
+
+
+def _object_params():
+    """This object's objects.geometry entry, from the objects.json sim/dr_objects.py wrote next to the object USD
+    (2026-11-13: a "shape": "bottle" gets the bottle look below instead of the cup textures). {} if not found."""
+    j = Path(A["object"]).parent / "objects.json"
+    try:
+        for o in json.loads(j.read_text())["objects"]:
+            if o["id"] == A.get("object_id"):
+                return o
+    except (OSError, ValueError, KeyError) as e:
+        print(f"object params: {j} not readable ({e}); using the cup look", flush=True)
+    return {}
+
+
+OBJ = _object_params()
 I = cd.load_model(P(CC["front_left_intr"])); Iw = cd.load_model(P(CC["wrist_intr"]))
 
 
@@ -283,6 +299,93 @@ def object_texture(rng, kind, out_png):
     return params
 
 
+# --------------------------------------------------------------------------- PET bottle look (2026-11-13, D033 follow-up)
+# The collider is a solid (sim/bottle_mesh.py); the look is the render-only meshes sim/dr_objects.py writes
+# (/Mesh = PET below the cap, /Cap) plus a label sleeve made here. Real bottles: label + clear shoulder + opaque cap
+# (our 御茶園 590 ml, docs/worklog/2026-11-11_bottle_model.md); fully clear bottles are in the range on purpose
+# (EricC430 + Boyu 2026-11-13). Empty only (the real ones are empty: full ones are too heavy to lift). The cap is always
+# opaque. 未確認 until rendered on the 4090: whether OmniGlass thin_walled on one closed surface looks like a hollow
+# bottle in the Replicator RTX mode -- pet_material "pbr_opacity" is the fallback (see-through, no refraction).
+def omniglass(stage, path, color, rough, ior, thin_walled=True):
+    mat = UsdShade.Material.Define(stage, path)
+    sh = UsdShade.Shader.Define(stage, f"{path}/Shader")
+    sh.CreateImplementationSourceAttr(UsdShade.Tokens.sourceAsset)
+    sh.SetSourceAsset(Sdf.AssetPath("OmniGlass.mdl"), "mdl"); sh.SetSourceAssetSubIdentifier("OmniGlass", "mdl")
+    sh.CreateInput("glass_color", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*map(float, color)))
+    sh.CreateInput("frosting_roughness", Sdf.ValueTypeNames.Float).Set(float(rough))
+    sh.CreateInput("glass_ior", Sdf.ValueTypeNames.Float).Set(float(ior))
+    sh.CreateInput("thin_walled", Sdf.ValueTypeNames.Bool).Set(bool(thin_walled))
+    for o in (mat.CreateSurfaceOutput("mdl"), mat.CreateVolumeOutput("mdl"), mat.CreateDisplacementOutput("mdl")):
+        o.ConnectToSource(sh.ConnectableAPI(), "out")
+    return mat
+
+
+def label_texture(rng, out_png):
+    """A random printed label: base colour, 0-2 horizontal bands, logo-ish blobs, text-like bars, print noise."""
+    W, H = 512, 256
+    base = rng.uniform(0.05, 0.95, 3); img = np.zeros((H, W, 3), np.float32); img[:] = base
+    nb = int(rng.integers(0, 3))
+    for _ in range(nb):
+        y0, y1 = sorted(rng.integers(0, H, 2)); img[y0:y1 + 1] = rng.uniform(0, 1, 3)
+    for _ in range(int(rng.integers(2, 8))):
+        cv2.circle(img, (int(rng.uniform(0, W)), int(rng.uniform(0, H))), int(rng.uniform(8, 60)), tuple(map(float, rng.uniform(0, 1, 3))), -1)
+    for _ in range(int(rng.integers(3, 15))):
+        x, y, w, h = int(rng.uniform(0, W)), int(rng.uniform(0, H)), int(rng.uniform(10, 120)), int(rng.uniform(3, 14))
+        img[y:y + h, x:x + w] = 0.05 if rng.random() < 0.6 else 0.95
+    img = np.clip(img + rng.normal(0, 0.015, img.shape), 0, 1)
+    cv2.imwrite(str(out_png), (img[..., ::-1] * 255).astype(np.uint8))
+    return {"base": base.round(3).tolist(), "bands": nb}
+
+
+def bottle_look(stage, op, rng, p, vdir, force):
+    """Materials for the PET part and the cap, and an optional label sleeve under the object prim. `force` = the
+    variant's s["bottle"] (override='{"bottle": {"pet_material": "pbr_opacity", "label": false}}' for render tests).
+    Returns the parameters for the manifest."""
+    from bottle_mesh import label_band
+    ba = CFG["objects"]["bottle_appearance"]
+    pet_mat = force.get("pet_material", ba["pet_material"])
+    tint = np.array(ba["pet_tints"][int(rng.integers(len(ba["pet_tints"])))]) + rng.normal(0, ba["pet_tint_jitter"], 3)
+    tint = np.clip(force.get("pet_tint", tint), 0, 1)
+    pr = U(rng, ba["pet_roughness"])
+    pet = next(q for q in Usd.PrimRange(op) if q.IsA(UsdGeom.Mesh) and q.GetName() == "Mesh")
+    if pet_mat == "glass":
+        bind(pet, omniglass(stage, "/World/Looks/ObjPET", tint, pr, ba["pet_ior"]))
+    else:   # "pbr_opacity": see-through without refraction
+        m = omnipbr(stage, "/World/Looks/ObjPET", color=tint, rough=pr, spec=0.5)
+        sh = UsdShade.Shader(stage.GetPrimAtPath("/World/Looks/ObjPET/Shader"))
+        sh.CreateInput("enable_opacity", Sdf.ValueTypeNames.Bool).Set(True)
+        sh.CreateInput("opacity_constant", Sdf.ValueTypeNames.Float).Set(float(ba["pbr_opacity"]))
+        bind(pet, m)
+    out = {"kind": "bottle", "pet": {"material": pet_mat, "tint": np.round(tint, 3).tolist(), "roughness": round(pr, 3)}}
+    cap = next((q for q in Usd.PrimRange(op) if q.IsA(UsdGeom.Mesh) and q.GetName() == "Cap"), None)
+    if cap is not None:
+        cc = (rng.uniform(0.05, 0.95, 3) if rng.random() < ba["cap_random_prob"]
+              else np.array(ba["cap_colors"][int(rng.integers(len(ba["cap_colors"])))]) + rng.normal(0, 0.03, 3))
+        cc = np.clip(force.get("cap_color", cc), 0, 1); cr = U(rng, ba["cap_roughness"])
+        bind(cap, omnipbr(stage, "/World/Looks/ObjCap", color=cc, rough=cr))
+        out["cap"] = {"color": np.round(cc, 3).tolist(), "roughness": round(cr, 3)}
+    else:
+        print("bottle: no /Cap mesh in the object USD (made before 2026-11-13?): the cap renders with the PET material", flush=True)
+    has_label = force.get("label", rng.random() < ba["label_prob"])
+    if not has_label:
+        out["label"] = None   # fully clear bottle
+        return out
+    zt = p["shoulder_z0"]; za, zb = (f * zt for f in ba["label_zone_frac"])
+    h = force.get("label_height_frac", U(rng, ba["label_height_frac"])) * (zb - za)
+    z0 = force.get("label_z0", U(rng, [za, zb - h])); z1 = min(z0 + h, zt)
+    q, fcq, fiq, uvq = label_band(p, z0, z1)
+    lm = UsdGeom.Mesh.Define(stage, op.GetPath().AppendChild("Label"))
+    lm.GetPointsAttr().Set(Vt.Vec3fArray([Gf.Vec3f(*map(float, x)) for x in q]))
+    lm.GetFaceVertexCountsAttr().Set(Vt.IntArray(fcq.tolist())); lm.GetFaceVertexIndicesAttr().Set(Vt.IntArray(fiq.tolist()))
+    lm.GetSubdivisionSchemeAttr().Set("none"); lm.GetDoubleSidedAttr().Set(True)
+    UsdGeom.PrimvarsAPI(lm).CreatePrimvar("st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.faceVarying).Set(
+        Vt.Vec2fArray([Gf.Vec2f(float(a), float(b)) for a, b in uvq]))
+    ltex = vdir / "label_texture.png"; lt_ = label_texture(rng, ltex); lr = U(rng, ba["label_roughness"])
+    bind(lm.GetPrim(), omnipbr(stage, "/World/Looks/ObjLabel", texture=ltex, rough=lr))
+    out["label"] = dict(lt_, z0_m=round(z0, 4), z1_m=round(z1, 4), roughness=round(lr, 3))
+    return out
+
+
 def sample(rng):
     env, lt, ap, arm = CFG["environment"], CFG["lighting"], CFG["objects"]["appearance"], CFG["arm"]
     s = {"arm_skin": choice_w(rng, arm["skins"]), "object_kind": choice_w(rng, ap["kinds"]), "mode": choice_w(rng, env["modes"])}
@@ -364,10 +467,17 @@ def build(stage, s, vdir):
             UsdPhysics.RigidBodyAPI(p).CreateRigidBodyEnabledAttr(False)
     oxf = UsdGeom.Xformable(op); oxf.ClearXformOpOrder(); oop = oxf.AddTransformOp()
     obj_mesh = next(p for p in Usd.PrimRange(op) if p.IsA(UsdGeom.Mesh) and p.GetName() == "Mesh")
-    tex = vdir / "object_texture.png"
-    s["object_appearance"] = object_texture(np.random.default_rng(s["_seed"] + 1), s["object_kind"], tex)
-    oa = s["object_appearance"]
-    bind(obj_mesh, omnipbr(stage, "/World/Looks/Obj", texture=tex, rough=oa["roughness"], metal=oa["metallic"]))
+    if OBJ.get("shape") != "bottle" and any(p.GetName() == "Cap" for p in Usd.PrimRange(op)):
+        # a bottle USD (it has a Cap) but its objects.json entry was not found: do not render it with the cup look
+        raise RuntimeError(f"{A['object']} has a Cap mesh but objects.json next to it has no bottle entry '{A.get('object_id')}'")
+    if OBJ.get("shape") == "bottle":   # 2026-11-13: PET (clear or tinted) + opaque cap + optional label, not the cup textures
+        s["object_kind"] = "bottle"
+        s["object_appearance"] = bottle_look(stage, op, np.random.default_rng(s["_seed"] + 1), OBJ, vdir, s.get("bottle", {}))
+    else:
+        tex = vdir / "object_texture.png"
+        s["object_appearance"] = object_texture(np.random.default_rng(s["_seed"] + 1), s["object_kind"], tex)
+        oa = s["object_appearance"]
+        bind(obj_mesh, omnipbr(stage, "/World/Looks/Obj", texture=tex, rough=oa["roughness"], metal=oa["metallic"]))
     label(op, "object")
     # the robot's riser on the ground (no table: the ground is at the old table top)
     cx, cy = env["scene_center_xy_m"]

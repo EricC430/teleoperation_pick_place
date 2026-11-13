@@ -27,12 +27,13 @@ from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade, Vt  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from shell_mesh import INSIDE_V, cup_mesh  # noqa: E402,F401  closed bottom since 2026-11-01
-from bottle_mesh import bottle_mesh, mass_props  # noqa: E402  "shape": "bottle" entries (2026-11-11)
+from bottle_mesh import bottle_mesh, mass_props, visual_parts  # noqa: E402  "shape": "bottle" entries (2026-11-11)
 
 
 def write(path, p):
     # "shape": "bottle" (sim/bottle_mesh.py, 2026-11-11): a closed solid of revolution with the hollow bottle's mass
-    # properties set explicitly; same prim layout (/PaperCup/...) so physics_replay.py and dr_render.py take it unchanged.
+    # properties set explicitly; same prim layout (/PaperCup/...) so physics_replay.py and dr_render.py take it unchanged
+    # (2026-11-13: plus a /PaperCup/Cap render mesh; /PaperCup/Mesh is then the PET part only).
     # Cups (no "shape") go through exactly the code path they always did.
     bottle = p.get("shape") == "bottle"
     if bottle:
@@ -43,14 +44,20 @@ def write(path, p):
     stage = Usd.Stage.CreateNew(str(path))
     UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.z); UsdGeom.SetStageMetersPerUnit(stage, 1.0)
     root = UsdGeom.Xform.Define(stage, "/PaperCup"); root.AddTranslateOp().Set(Gf.Vec3d(0, 0, 0)); stage.SetDefaultPrim(root.GetPrim())
-    P = Vt.Vec3fArray([Gf.Vec3f(*map(float, q)) for q in pts])
-    for name, vis in (("Mesh", True), ("Collision", False)):
+    # Visible meshes vs the collider. A cup: one mesh for both (as always). A bottle (2026-11-13): the collider is the
+    # solid, the look is two closed render-only meshes, Mesh = the PET bottle below the cap and Cap = the cap, so
+    # sim/dr_render.py can give the PET a transparent material and keep the cap opaque. Physics only uses Collision.
+    vp = visual_parts(p) if bottle else None
+    parts = [("Mesh", True, (pts, fc, fi, uv))] if not bottle else [("Mesh", True, vp["pet"]), ("Cap", True, vp["cap"])]
+    parts.append(("Collision", False, (pts, fc, fi, uv)))
+    for name, vis, (q, fcq, fiq, uvq) in parts:
         m = UsdGeom.Mesh.Define(stage, f"/PaperCup/{name}")
-        m.GetPointsAttr().Set(P); m.GetFaceVertexCountsAttr().Set(Vt.IntArray(fc.tolist())); m.GetFaceVertexIndicesAttr().Set(Vt.IntArray(fi.tolist()))
+        m.GetPointsAttr().Set(Vt.Vec3fArray([Gf.Vec3f(*map(float, x)) for x in q]))
+        m.GetFaceVertexCountsAttr().Set(Vt.IntArray(fcq.tolist())); m.GetFaceVertexIndicesAttr().Set(Vt.IntArray(fiq.tolist()))
         m.GetSubdivisionSchemeAttr().Set("none")
         if vis:
             st = UsdGeom.PrimvarsAPI(m).CreatePrimvar("st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.faceVarying)
-            st.Set(Vt.Vec2fArray([Gf.Vec2f(float(a), float(b)) for a, b in uv]))
+            st.Set(Vt.Vec2fArray([Gf.Vec2f(float(a), float(b)) for a, b in uvq]))
         else:
             m.GetVisibilityAttr().Set("invisible")
     mat = UsdShade.Material.Define(stage, "/PaperCup/PaperMaterial")
@@ -58,6 +65,8 @@ def write(path, p):
     sh.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.92, 0.88, 0.80)); sh.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.85)
     mat.CreateSurfaceOutput().ConnectToSource(sh.ConnectableAPI(), "surface")
     UsdShade.MaterialBindingAPI.Apply(stage.GetPrimAtPath("/PaperCup/Mesh")).Bind(mat)
+    if bottle:
+        UsdShade.MaterialBindingAPI.Apply(stage.GetPrimAtPath("/PaperCup/Cap")).Bind(mat)
     UsdPhysics.RigidBodyAPI.Apply(root.GetPrim())
     col = stage.GetPrimAtPath("/PaperCup/Collision")
     UsdPhysics.CollisionAPI.Apply(col); UsdPhysics.MeshCollisionAPI.Apply(col).GetApproximationAttr().Set("convexDecomposition")
