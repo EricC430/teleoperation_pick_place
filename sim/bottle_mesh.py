@@ -119,6 +119,62 @@ def bottle_mesh(p, n_sides=48):
     return np.array(pts, np.float32), np.array(fc, np.int32), np.array(fi, np.int32), np.array(uv, np.float32)
 
 
+def _revolve(rows, n_sides, close_bottom, close_top, v_of_z):
+    """Closed (or open-ended) surface of revolution through profile rows [(z, r), ...] (z increasing), normals out.
+    Returns points, face counts, face indices, face-varying uv (u around, v = v_of_z(z); end discs get v_of_z too)."""
+    rows = np.asarray(rows, float); n = len(rows)
+    ang = 2 * math.pi * np.arange(n_sides) / n_sides
+    pts = [[r * math.cos(a), r * math.sin(a), z] for z, r in rows for a in ang]
+    fc, fi, uv = [], [], []
+
+    def poly(idx, uvs):
+        fc.append(len(idx)); fi.extend(idx); uv.extend(uvs)
+
+    for i in range(n - 1):
+        for j in range(n_sides):
+            j1 = (j + 1) % n_sides; u0, u1 = j / n_sides, (j + 1) / n_sides
+            a, b, c, d = i * n_sides + j, i * n_sides + j1, (i + 1) * n_sides + j1, (i + 1) * n_sides + j
+            va, vc = v_of_z(rows[i, 0]), v_of_z(rows[i + 1, 0])
+            poly([a, b, c], [(u0, va), (u1, va), (u1, vc)]); poly([a, c, d], [(u0, va), (u1, vc), (u0, vc)])
+    if close_bottom:
+        cb = len(pts); pts.append([0.0, 0.0, rows[0, 0]]); vb = v_of_z(rows[0, 0])
+        for j in range(n_sides):
+            poly([cb, (j + 1) % n_sides, j], [(0.5, vb)] * 3)
+    if close_top:
+        ct = len(pts); pts.append([0.0, 0.0, rows[-1, 0]]); vt = v_of_z(rows[-1, 0]); top = (n - 1) * n_sides
+        for j in range(n_sides):
+            poly([ct, top + j, top + (j + 1) % n_sides], [(0.5, vt)] * 3)
+    return np.array(pts, np.float32), np.array(fc, np.int32), np.array(fi, np.int32), np.array(uv, np.float32)
+
+
+def visual_parts(p, n_sides=48):
+    """Render-only meshes (2026-11-13, D033 follow-up: PET bottles can be transparent). The collider stays the solid of
+    bottle_mesh(); the LOOK is split so each part gets its own material:
+      pet  the bottle below the cap (foot, body, grooves, shoulder, neck), closed: underside disc + a disc at the neck top
+           (hidden under the cap). One surface: a thin-walled glass material renders it as a hollow bottle; a second
+           inner wall is not modelled.
+      cap  closed cylinder cap_dia x cap_h on top (always opaque).
+    Same return layout as bottle_mesh() for each part; uv v = z / height over 0..0.96 (as bottle_mesh)."""
+    prof = profile(p); H, hc = p["height"], p["cap_h"]
+    k = next(i for i in range(len(prof)) if abs(prof[i, 0] - (H - hc)) < 1e-12)   # first row at the neck top
+    vo = lambda z: 0.96 * z / H   # noqa: E731
+    rc = p["cap_dia"] / 2
+    return {"pet": _revolve(prof[:k + 1], n_sides, True, True, vo),
+            "cap": _revolve([(H - hc, rc), (H, rc)], n_sides, True, True, vo)}
+
+
+def label_band(p, z0, z1, offset=0.0003, n_sides=48, dz=0.001):
+    """Render-only label sleeve between heights z0 < z1 (both within the body, 0..shoulder_z0): an OPEN tube that follows
+    the outer radius (grooves included) offset outward by `offset` (0.3 mm, against z-fighting with the bottle surface).
+    uv: u around, v 0..1 from z0 to z1 (the label texture's full height). Render it double-sided: seen through a clear
+    bottle, its back shows."""
+    if not (0 <= z0 < z1 <= p["shoulder_z0"] + 1e-9):
+        raise ValueError(f"label {z0}..{z1} m must lie inside the body (0..{p['shoulder_z0']})")
+    zs = np.unique(np.concatenate([np.arange(z0, z1, dz), [z1]]))
+    rows = [(float(z), float(radius_at(p, z)) + offset) for z in zs]
+    return _revolve(rows, n_sides, False, False, lambda z: (z - z0) / (z1 - z0))
+
+
 def radius_at(p, z):
     """Outer radius of the solid at height z (0 outside 0..height); z may be an array."""
     prof = profile(p); z = np.asarray(z, float)
@@ -206,3 +262,16 @@ if __name__ == "__main__":   # self-test on the placeholder of sim/dr_objects_bo
         assert v_mesh > 0 and abs(v_mesh - v_prof) / v_prof < 0.02, "mesh and profile volumes disagree"
         d = depth_inside(np.array([[0, 0, p["height"] / 2], [p["body_dia"], 0, 0.05], [0, 0, p["height"] + 0.01]]), p)
         assert d[0] > 0 and d[1] < 0 and d[2] < 0
+        # render-only parts (2026-11-13): PET + cap closed and together the solid's volume; the label band open at both ends
+        vp = visual_parts(p); v_parts = {}
+        for name, (q, fcq, fiq, uvq) in vp.items():
+            assert (fcq == 3).all() and len(uvq) == len(fiq)
+            assert check_closed(fiq) == 0, f"{name} not watertight"
+            v_parts[name] = mesh_volume(q, fiq)
+        lb = label_band(p, 0.02, p["shoulder_z0"])
+        open_edges = check_closed(lb[2])
+        print(f"  visual: pet {v_parts['pet'] * 1e6:.1f} ml + cap {v_parts['cap'] * 1e6:.1f} ml = "
+              f"{sum(v_parts.values()) * 1e6:.1f} ml (solid mesh {v_mesh * 1e6:.1f}); label band 2..{p['shoulder_z0'] * 100:.1f} cm: "
+              f"{len(lb[1])} tris, open edges {open_edges} (expect {2 * 48}), uv v {lb[3][:, 1].min():.2f}..{lb[3][:, 1].max():.2f}")
+        assert abs(sum(v_parts.values()) - v_mesh) / v_mesh < 0.005, "pet + cap do not add up to the solid"
+        assert open_edges == 2 * 48, "label band should be a tube open at both ends"

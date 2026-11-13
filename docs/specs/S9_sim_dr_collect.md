@@ -82,7 +82,25 @@ python3 scripts/dr_collect.py --work ~/isaaclab_volume/dr/<name> --source ~/isaa
 - 環境是地面＋HDRI 天空，沒有牆與天花板（2026-11-05 移除房間模式，本專案以戶外部署為主）。戶外地面除了 Base MDL 材質（人行道磚、柏油、水泥、草地、廊道石材磁磚、土石落葉，共 24 種），另有 40% 用 `sim/dr_ground.py` 的程序紋理：疊砌磚、編織磚、方磚人行道、水泥板人行道（板縫）、柏油（碎石粒、裂縫）、廊道磁磚，都是無縫貼圖、真實尺寸。周邊物件是 NVIDIA／Isaac 資產庫的灌木、草叢、石頭、落葉、花盆、矮柱燈、鐵欄杆（26 種，每集 2–7 個，只做畫面，不擋碰撞；實物大小的植物縮到 1.5 m 內）。**顏色**：曝光改在中灰地面上校（深色地面維持深色，原本整張畫面被拉到同一個平均亮度，柏油變淺藍灰），色溫改 4800–7500 K。`scripts/dr_ground_catalog.py` 把每種地面在同一光下各渲染一張，用來檢查。Isaac 內建環境 USD（Outdoor 等）沒接，因為要先為每個場景找能放手臂的位置。**限制**：道具遮住物體或相機的比例沒統計；Hydrangea 因資產缺 Pine_bark.mdl 已移除；Granite_Dark 看起來像水面已移除。
 - 道具只保證離底座 > 0.52 m（手臂搆不到），沒有檢查會不會擋住相機看物體。
 - 物體變體目前都是杯型（錐台殼），夾取方式相同；不同類別的物體要另外設計幾何並驗證。
-  - **寶特瓶（2026-11-11，Boyu＋Claude，`未在模擬器執行`）**：`sim/bottle_mesh.py`（實心旋轉體、空瓶的質量／重心／慣量另外寫進 USD、穿透用「陷入深度」），清單在 `sim/dr_objects_bottle.json`，**不放進 `dr_config.json`**，用 `dr_collect.py --objects sim/dr_objects_bottle.json` 換進工作目錄的 config。實物是御茶園特撰冰釀綠茶 590ml，**尺寸、重量、摩擦全是暫定值（未確認）**，要換成量測值。本機只驗了網格封閉、體積（網格 612.3 ml 對輪廓 614.1 ml）；USD、物理、穿透都還沒在 4090 上跑過。check 步驟用的是預設紙杯資產，對寶特瓶沒有檢查作用；只做站立的瓶子（倒瓶 11 集要先有方向輸入）。
+  - **寶特瓶（2026-11-11，Boyu＋Claude，`未在模擬器執行`）**：`sim/bottle_mesh.py`（實心旋轉體、空瓶的質量／重心／慣量另外寫進 USD、穿透用「陷入深度」），清單在 `sim/dr_objects_bottle.json`，**不放進 `dr_config.json`**，用 `dr_collect.py --objects sim/dr_objects_bottle.json` 換進工作目錄的 config。實物是御茶園特撰冰釀綠茶 590ml，**尺寸、重量、摩擦全是暫定值（未確認）**，要換成量測值。本機只驗了網格封閉、體積（網格 612.3 ml 對輪廓 614.1 ml）；USD、物理、穿透都還沒在 4090 上跑過。check 步驟用的是預設紙杯資產，對寶特瓶沒有檢查作用；只做站立的瓶子（倒瓶 11 集要先有方向輸入）。（同日稍晚已在 4090 跑物理重播 101 集，結果見 `docs/worklog/2026-11-11_bottle_sim_validate.md`。）
+  - **寶特瓶外觀（2026-11-13，EricC430＋柏宇決定範圍，Claude 實作，`未在模擬器執行`）**：瓶子可以有透明區域，**也可以完全透明**；瓶蓋一律不透明；只做空瓶（實物是空的，裝水太重夾不起來）。
+    碰撞網格不變（實心），外觀改成只給渲染用的網格：`/PaperCup/Mesh`＝瓶蓋以下的 PET、`/PaperCup/Cap`＝瓶蓋（`sim/bottle_mesh.py` `visual_parts`，`sim/dr_objects.py`）；標籤是 `dr_render.py` 每個變體另外產生的套筒（`label_band`，貼著瓶身外徑、含凹槽、外推 0.3 mm、雙面）。`physics_replay.py` 只對有 `MeshCollisionAPI` 的 `Collision` 設碰撞，所以**物理不受影響**。
+    隨機範圍在 `dr_config.json` 的 `objects.bottle_appearance`：PET 無色／淡藍／淡綠、標籤機率 0.7（其餘是完全透明）、標籤高度和位置、瓶蓋顏色。PET 材質預設 OmniGlass 薄壁（`thin_walled`），備案 `pbr_opacity`（OmniPBR 半透明、沒有折射）。
+    和 `experiment_spec.md` 的關係：規格把透明寶特瓶放在 L3／P2，那是**實機評估的物體**；模擬資料裡有透明外觀，不代表要拿實機透明瓶評估。
+    本機驗過：網格封閉、PET＋瓶蓋體積＝實心體（701.5 ml）、標籤帶兩端開口、標籤取樣與貼圖。**沒驗**：USD 能不能寫出、OmniGlass 的輸入名稱對不對、透明效果像不像——要在 4090 渲染（待驗項目見下一點）。
+    11/13 之前產生的物體 USD 沒有 `Cap`，要重新產生。兩種做法：
+    - **沿用 11/11 的物理重播（不重跑 validate）**：⚠️ `dr_collect.py` 每次執行都會用**目前的**設定覆蓋工作目錄的 `dr_config.json`（第 165–168 行），直接在舊目錄重跑的話，瓶子外形會變成現在的 v2；當初若用 v1，碰撞體就和驗證時不同。所以要先把舊的 `objects/` 改名保留，用該目錄**原本那份** `dr_config.json` 直接跑 `sim/dr_objects.py config=<那份> out=<work>/objects`，再用 `dr_collect.py --steps render,export,sheet`。測試第 3 項負責確認物理真的沒變。
+    - **開新目錄全部重跑**：最乾淨，但 101 集的物理重播要重跑；11/11 實際花了約 4 小時（01:09–05:10，含一次重啟）。
+    如果 USD 有 `Cap`、旁邊的 `objects.json` 卻沒有寶特瓶的參數，`dr_render.py` 會直接報錯，不會默默用杯子的外觀渲染。
+  - **寶特瓶外觀的渲染測試（待做，未指定人）**。第 1、2 項決定其他項目的結果能不能信，要先做：
+    1. **MDL 輸入名稱**：USD 會**默默忽略**不認得的 shader 輸入，所以「log 沒有錯誤」證明不了名稱是對的。在容器裡找 `OmniGlass.mdl`、`OmniPBR.mdl`，確認 `glass_color`、`frosting_roughness`、`glass_ior`、`thin_walled`、`enable_opacity`、`opacity_constant` 都存在；或強制一個很明顯的顏色（`override='{"bottle": {"pet_tint": [1, 0.2, 0.2], "label": false}}'`），看玻璃有沒有真的變紅。
+    2. **重跑 `objects`**：USD 裡要有 `Mesh`、`Cap`、`Collision` 三個網格。
+    3. **物理不變**：挑 11/11 跑過的 2–3 集重跑 `validate`，`task_success` 和穿透結果要和 11/11 一樣。
+    4. **材質 A/B**：同一集、同一個變體種子，`override='{"bottle": {"pet_material": "glass", "label": false}}'` 對 `"pbr_opacity"`，戶外和攝影棚各一次。看完全透明的瓶子像中空的瓶子（看得到後面的背景、邊緣有反光），還是像一根實心玻璃棒（背景整個上下顛倒、放大）。⚠️ 如果有一邊**整支消失或變成實心**，先查即時渲染的設定，不要直接判定那個材質不行：OmniPBR 的透明度在 RTX 即時模式下可能只有「全透或全不透」，要開 fractional cutout opacity（`/rtx/raytracing/fractionalCutoutOpacity`）；玻璃的折射也依賴半透明的渲染設定。這兩點是 `推論`（記憶，沒查證）。
+    5. 標籤：滿版和部分標籤各一次，看有沒有閃爍或破面（z-fighting）、有沒有貼著凹槽、從透明部分看得到標籤背面。
+    6. 像不像實物：`override` 指定黃色滿版標籤＋黃色瓶蓋，用 `scripts/compare_sim_real_frames.py` 和 `normal_A1` ep0 的實機畫面並排比。
+    7. 分割、QA 與速度：透明瓶的 `object_visible_frac` 要合理（遮罩要涵蓋整支瓶子）；自動曝光不受影響；玻璃材質每幀的渲染時間和原本的貼圖比。
+    8. 用預設隨機跑 20 個左右的變體，看 contact sheet：透明瓶約佔 30%，整體看起來合理（這也是 D033 第 3 點「訓練前看場地」的一部分）。
 - 渲染延遲 `render_lag_frames` 預設 0（實機影像約落後 0.75 幀，見 wrist_cup_offset §6）。
 - **D025 閘門尚未通過**（EricC 2026-10-31）：sim 資料不訓練、不宣稱有效；也不和實機資料混在同一個 dataset（`sim_` 前綴強制）。判準 2026-11-13 寫成 D033（看影片判斷），**EricC430 已判定通過**（同日記錄）；訓練前仍要先讓兩人看過場地的樣子（D033 第 3 點）。
 - 自碰撞開、所有連桿 SDF（EricC 2026-10-31）：HOME 時前臂靠在伺服機上、肘讀值超出連桿實際角度 2–5°，只有自碰撞能讓模擬停在那裡；凸分解的手指會互卡，所以要 SDF（worklog 2026-10-31_sim_dr_pipeline）。

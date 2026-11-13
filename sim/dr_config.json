@@ -40,6 +40,22 @@
  },
  "objects": {
   "_doc": "geometry = physics-relevant variants (each one is validated by its own physics replay); appearance = visual only",
+  "bottle_appearance": {
+   "_doc": "2026-11-13 (EricC430 + Boyu, after D033): look of 'shape': 'bottle' objects in sim/dr_render.py instead of the cup kinds below. PET part clear or lightly tinted; cap always opaque; label sleeve with label_prob, otherwise a fully clear bottle (allowed on purpose). Empty bottles only (no liquid: the real ones are empty). The real 御茶園 590 ml has a full-wrap yellow label, clear shoulder, yellow cap (docs/worklog/2026-11-11_bottle_model.md); its label height was not measured. pet_material 'glass' = OmniGlass thin_walled on the closed PET surface, 'pbr_opacity' = OmniPBR with opacity (no refraction): which one looks right is 未確認 until rendered on the 4090. pet_ior 1.57 = typical PET (推論, not measured).",
+   "pet_material": "glass",
+   "pet_tints": [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [0.88, 0.95, 1.0], [0.88, 1.0, 0.92]],
+   "pet_tint_jitter": 0.02,
+   "pet_roughness": [0.0, 0.05],
+   "pet_ior": 1.57,
+   "pbr_opacity": 0.15,
+   "cap_colors": [[0.95, 0.8, 0.1], [0.95, 0.95, 0.95], [0.1, 0.3, 0.8], [0.8, 0.1, 0.1], [0.1, 0.55, 0.2], [0.1, 0.1, 0.1]],
+   "cap_random_prob": 0.3,
+   "cap_roughness": [0.3, 0.6],
+   "label_prob": 0.7,
+   "label_zone_frac": [0.03, 1.0],
+   "label_height_frac": [0.25, 1.0],
+   "label_roughness": [0.3, 0.7]
+  },
   "geometry": [
    {
     "id": "cup_ref",
