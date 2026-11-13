@@ -22,7 +22,7 @@
 
 | 檔案 | 內容 |
 |---|---|
-| `docs/decisions.md` | ★★ 決策日誌 **D001–D032 ＋ 頂部 Status index**，含「什麼證據會推翻它」。⚠️ Status index 停在 2026-08-26／09-13，D031 之後要看本文 |
+| `docs/decisions.md` | ★★ 決策日誌 **D001–D033 ＋ 頂部 Status index**，含「什麼證據會推翻它」。⚠️ Status index 停在 2026-08-26／09-13，D031 之後要看本文 |
 | `docs/phase_plan.md` | ★ v3 階段規劃 Phase A–D；頂部「現況對照」寫各 Phase 實際走到哪 |
 | `docs/experiment_spec.md` | ★ 實驗規格凍結（任務定義、物體分級、評估協定） |
 | `docs/execution_plan.md` | 執行計畫與應變 |

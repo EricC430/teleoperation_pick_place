@@ -8,7 +8,8 @@ Steps (default all, in order; each skips work whose output already exists, so a 
             the physics configuration must equal the one validated against the real closed loop; stops on FAIL
   validate  sim/physics_replay.py render=0 pose_log=1 for every (real-success episode x object variant); scored with
             sim/replay_score.py; sim/penetration.py measures the gripper links against the object wall in every frame.
-            Accepted (dr_collect.accepted): real success, lifted, in the bin, no link through the object.
+            Accepted (dr_collect.accepted): real success, lifted, in the bin, no link through the object (into it is
+            allowed since 2026-11-13, docs/decisions.md D033).
   render    sim/dr_render.py: each validated replay is re-rendered kinematically (the logged link and object poses)
             `variants_per_replay` times, each with its own randomized object appearance / environment / lights / arm skin
   export    scripts/sim_replay_augment.py in the huggingface/lerobot-gpu image: all rendered variants -> one LeRobot
@@ -93,9 +94,16 @@ def physx_failed(log):
 
 def accepted(s):
     """Real success, and in sim: lifted, dropped in the bin (when the scene has it, since 2026-11-01), and no gripper link
-    through the object in any frame (when measured, since 2026-11-01)."""
+    THROUGH the object in any frame (when measured, since 2026-11-01).
+
+    2026-11-13 (docs/decisions.md D033, EricC430 + Boyu): a link may go INTO the object but not through it. At 480 Hz a
+    finger slightly inside the cup wall still comes free on release, so the old rule (also reject any frame with more
+    than 1 mm^3 of overlap) was too strict. The overlap volume is still logged (penetration.clean / frames_vol_gt_1mm3)
+    but no longer decides acceptance. "Through" is sim/penetration.py's: for a cup, link samples in the outer, middle
+    and inner third of the wall; for a solid bottle, deeper than bottle_deep_mm (default 1 mm)."""
     ok = s["real_success"] and (s["task_success"] if s.get("task_success") is not None else s["sim_success"])
-    return bool(ok and s.get("penetration", {}).get("clean", True))
+    pen = s.get("penetration")
+    return bool(ok and (pen is None or sum(pen["frames_through"]) == 0))
 
 
 def physics_args(cfg, src):
@@ -203,7 +211,8 @@ def main():
             for (o, d, out), (rc, dt) in ex.map(one, jobs):
                 print(f"  {o['id']} {d.name}: rc {rc} {dt:.0f}s", flush=True)
         # Penetration (2026-11-01, EricC: "務必解決穿模"): every replay's gripper links vs the cup wall, sim/penetration.py.
-        # A replay where a link goes through the wall in any frame is not accepted (render step).
+        # A replay where a link goes through the wall in any frame is not accepted (render step); going into it is allowed
+        # (2026-11-13, D033).
         links = work / "links.npz"
         if not links.exists():
             asset = cfg["physics_replay"].get("extra", {}).get("asset", "assets/omx_f_generated/omx_f_real.usda")
@@ -245,7 +254,9 @@ def main():
             print(f"  {o['id']}: sim lifted {sum(s['sim_success'] for s in ss)}/{len(ss)}; of real successes {sum(s['sim_success'] for s in real)}/{len(real)}; "
                   f"first-close agreement {agree}/{len(ss)}"
                   + (f"; lifted AND in the bin {sum(bool(s.get('task_success')) for s in real)}/{len(real)}" if any(s.get("in_bin_final") is not None for s in ss) else "")
-                  + (f"; no penetration {sum(s['penetration']['clean'] for s in ss if 'penetration' in s)}/{sum('penetration' in s for s in ss)}"
+                  + (f"; not through {sum(sum(s['penetration']['frames_through']) == 0 for s in ss if 'penetration' in s)}"
+                     f"/{sum('penetration' in s for s in ss)}"
+                     f" (no overlap > 1 mm^3 either: {sum(s['penetration']['clean'] for s in ss if 'penetration' in s)})"
                      f" (accepted: {sum(accepted(s) for s in real)}/{len(real)})" if any("penetration" in s for s in ss) else ""), flush=True)
 
     rend = work / "render"
