@@ -1,5 +1,5 @@
 ﻿episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
-0,plastic_bottle,stand,c1,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,靠的不夠近，但這個點我跑了幾次有可能成功也有可能會失敗；[AI補，看截圖不是影片] 20.4 s 瓶子已倒在桌上；跑了好多次是因為一直跳掉（中斷）[柏宇說 11/12]
+0,plastic_bottle,stand,c1,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,靠的不夠近，但這個點我跑了幾次有可能成功也有可能會失敗；[AI補，看截圖不是影片] 20.4 s 瓶子已倒在桌上；跑了好多次是因為一直跳掉（中斷）[柏宇說 11/12]；11/14 看 k258–285 序列：是瞄歪，閉爪前手腕相機已經碰到瓶子、距離夠 [柏宇判 11/14]（原 note「靠的不夠近」保留）
 1,plastic_bottle,stand,c2,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 2,plastic_bottle,stand,c3,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,[AI補，看截圖不是影片] 21.9 s 瓶子已不在第三視角原位
 3,plastic_bottle,stand,c4,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
@@ -21,7 +21,7 @@
 19,plastic_bottle,stand,c20,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 20,plastic_bottle,stand,c21,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 21,plastic_bottle,stand,c22,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
-22,plastic_bottle,stand,c23,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,伸不夠遠；[AI補，看截圖不是影片] 18.4 s 瓶子已倒
+22,plastic_bottle,stand,c23,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,伸不夠遠；[AI補，看截圖不是影片] 18.4 s 瓶子已倒；11/14：第一次閉爪前已經在推寶特瓶 [柏宇說 11/14]（front-left k244 瓶子已斜、k259 閉爪、k265 倒 [AI看幀序列]）；原 note「伸不夠遠」跟影片對不上，是誰寫、指哪一次未確認
 23,plastic_bottle,stand,c24,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 24,plastic_bottle,stand,c25,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 25,plastic_bottle,stand,c26,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away;timeout,,1,,,,伸不夠遠；[AI補，看截圖不是影片] 669 幀＝跑滿 45 s；多次接近，瓶子到最後仍站著、位置沒明顯變 → 拿掉 pushed_away；[柏宇說 11/12] 物體有移位 → 上面 AI 拿掉的 pushed_away 加回；物體有移位，不算 repetition_loop
