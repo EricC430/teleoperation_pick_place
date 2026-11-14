@@ -93,7 +93,8 @@ def lens_maps(m):
 RW, RH, MX, MY = lens_maps(I); RWw, RHw, MXw, MYw = lens_maps(Iw)
 from isaacsim import SimulationApp  # noqa: E402
 
-app = SimulationApp({"headless": True, "width": RW, "height": RH})
+app = SimulationApp({"headless": True, "width": RW, "height": RH, **({"renderer": A["renderer"]} if "renderer" in A else {}),
+                   **({"extra_args": A["kit_args"].split()} if "kit_args" in A else {})})   # kit_args="--/persistent/rtx/modes/rt2/enabled=true" for render tests   # renderer=PathTracing for render tests
 import carb.settings  # noqa: E402
 import cv2  # noqa: E402
 import omni.usd  # noqa: E402
@@ -110,6 +111,8 @@ REP_STEP = dict(delta_time=0.0)
 if "pause_timeline" in inspect.signature(rep.orchestrator.step).parameters:
     REP_STEP["pause_timeline"] = True
 carb.settings.get_settings().set("/rtx/post/dlss/execMode", 0)
+for _k, _v in json.loads(A.get("rtx", "{}")).items():   # render tests: rtx='{"/rtx/translucency/worldEps": 0.001}'
+    carb.settings.get_settings().set(_k, _v)
 AP = 20.955
 
 E = json.load(open(Path(A["ep"]) / "episode.json"))
@@ -320,10 +323,15 @@ def omniglass(stage, path, color, rough, ior, thin_walled=True):
     return mat
 
 
-def label_texture(rng, out_png):
-    """A random printed label: base colour, 0-2 horizontal bands, logo-ish blobs, text-like bars, print noise."""
+def label_texture(rng, out_png, plain=None):
+    """A random printed label: base colour, 0-2 horizontal bands, logo-ish blobs, text-like bars, print noise.
+    plain=[r, g, b] (render tests, override "label_color"): one flat colour, no bands / blobs / bars."""
     W, H = 512, 256
-    base = rng.uniform(0.05, 0.95, 3); img = np.zeros((H, W, 3), np.float32); img[:] = base
+    base = np.array(plain, float) if plain is not None else rng.uniform(0.05, 0.95, 3)
+    img = np.zeros((H, W, 3), np.float32); img[:] = base
+    if plain is not None:
+        cv2.imwrite(str(out_png), (img[..., ::-1] * 255).astype(np.uint8))
+        return {"base": base.round(3).tolist(), "bands": 0, "plain": True}
     nb = int(rng.integers(0, 3))
     for _ in range(nb):
         y0, y1 = sorted(rng.integers(0, H, 2)); img[y0:y1 + 1] = rng.uniform(0, 1, 3)
@@ -340,23 +348,24 @@ def label_texture(rng, out_png):
 def bottle_look(stage, op, rng, p, vdir, force):
     """Materials for the PET part and the cap, and an optional label sleeve under the object prim. `force` = the
     variant's s["bottle"] (override='{"bottle": {"pet_material": "pbr_opacity", "label": false}}' for render tests).
-    Returns the parameters for the manifest."""
+    Returns the parameters for the manifest.
+
+    PET material (2026-11-14, Boyu + EricC430): a fully clear bottle is OmniGlass (refraction; looks like clear PET from
+    the front). A labelled bottle is OmniPBR with opacity: in RTX Real-Time 2.0 the inside of a labelled glass bottle seen
+    from the wrist camera through the clear shoulder renders black (path tracing lights it; the real bottle is bright inside,
+    outputs/bottle_look_test/real_wrist_normalA1.jpg), while pbr_opacity gives a grey inside at the cost of a slightly milky
+    PET from the front (outputs/bottle_look_test/diag_pbr_vs_glass_wrist.jpg). Binding happens after the label draw and
+    uses no random numbers, so the sampled values are the same as before this rule."""
     from bottle_mesh import label_band
     ba = CFG["objects"]["bottle_appearance"]
-    pet_mat = force.get("pet_material", ba["pet_material"])
     tint = np.array(ba["pet_tints"][int(rng.integers(len(ba["pet_tints"])))]) + rng.normal(0, ba["pet_tint_jitter"], 3)
     tint = np.clip(force.get("pet_tint", tint), 0, 1)
     pr = U(rng, ba["pet_roughness"])
     pet = next(q for q in Usd.PrimRange(op) if q.IsA(UsdGeom.Mesh) and q.GetName() == "Mesh")
-    if pet_mat == "glass":
-        bind(pet, omniglass(stage, "/World/Looks/ObjPET", tint, pr, ba["pet_ior"]))
-    else:   # "pbr_opacity": see-through without refraction
-        m = omnipbr(stage, "/World/Looks/ObjPET", color=tint, rough=pr, spec=0.5)
-        sh = UsdShade.Shader(stage.GetPrimAtPath("/World/Looks/ObjPET/Shader"))
-        sh.CreateInput("enable_opacity", Sdf.ValueTypeNames.Bool).Set(True)
-        sh.CreateInput("opacity_constant", Sdf.ValueTypeNames.Float).Set(float(ba["pbr_opacity"]))
-        bind(pet, m)
-    out = {"kind": "bottle", "pet": {"material": pet_mat, "tint": np.round(tint, 3).tolist(), "roughness": round(pr, 3)}}
+    if force.get("pet_fast_refraction_shadow", ba.get("pet_fast_refraction_shadow", False)):
+        # without it the PET shadows like an opaque solid (dark foot below the label, black bottle shadow; 2026-11-14)
+        pet.CreateAttribute("primvars:enableFastRefractionShadow", Sdf.ValueTypeNames.Bool).Set(True)
+    out = {"kind": "bottle", "pet": {"tint": np.round(tint, 3).tolist(), "roughness": round(pr, 3)}}
     cap = next((q for q in Usd.PrimRange(op) if q.IsA(UsdGeom.Mesh) and q.GetName() == "Cap"), None)
     if cap is not None:
         cc = (rng.uniform(0.05, 0.95, 3) if rng.random() < ba["cap_random_prob"]
@@ -367,12 +376,24 @@ def bottle_look(stage, op, rng, p, vdir, force):
     else:
         print("bottle: no /Cap mesh in the object USD (made before 2026-11-13?): the cap renders with the PET material", flush=True)
     has_label = force.get("label", rng.random() < ba["label_prob"])
+    pet_mat = force.get("pet_material", ba["pet_material_labelled"] if has_label else ba["pet_material"])
+    if pet_mat == "glass":
+        bind(pet, omniglass(stage, "/World/Looks/ObjPET", tint, pr, ba["pet_ior"]))
+    else:   # "pbr_opacity": see-through without refraction
+        opac = float(force.get("pbr_opacity", ba["pbr_opacity"]))
+        m = omnipbr(stage, "/World/Looks/ObjPET", color=tint, rough=pr, spec=0.5)
+        sh = UsdShade.Shader(stage.GetPrimAtPath("/World/Looks/ObjPET/Shader"))
+        sh.CreateInput("enable_opacity", Sdf.ValueTypeNames.Bool).Set(True)
+        sh.CreateInput("opacity_constant", Sdf.ValueTypeNames.Float).Set(opac)
+        bind(pet, m); out["pet"]["opacity"] = opac
+    out["pet"]["material"] = pet_mat
     if not has_label:
         out["label"] = None   # fully clear bottle
         return out
     zt = p["shoulder_z0"]; za, zb = (f * zt for f in ba["label_zone_frac"])
     h = force.get("label_height_frac", U(rng, ba["label_height_frac"])) * (zb - za)
-    z0 = force.get("label_z0", U(rng, [za, zb - h])); z1 = min(z0 + h, zt)
+    # max(): a full-height label makes zb - h a hair below za and uniform() fails (2026-11-13)
+    z0 = force["label_z0"] if "label_z0" in force else U(rng, [za, max(za, zb - h)]); z1 = min(z0 + h, zt)
     q, fcq, fiq, uvq = label_band(p, z0, z1)
     lm = UsdGeom.Mesh.Define(stage, op.GetPath().AppendChild("Label"))
     lm.GetPointsAttr().Set(Vt.Vec3fArray([Gf.Vec3f(*map(float, x)) for x in q]))
@@ -380,7 +401,7 @@ def bottle_look(stage, op, rng, p, vdir, force):
     lm.GetSubdivisionSchemeAttr().Set("none"); lm.GetDoubleSidedAttr().Set(True)
     UsdGeom.PrimvarsAPI(lm).CreatePrimvar("st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.faceVarying).Set(
         Vt.Vec2fArray([Gf.Vec2f(float(a), float(b)) for a, b in uvq]))
-    ltex = vdir / "label_texture.png"; lt_ = label_texture(rng, ltex); lr = U(rng, ba["label_roughness"])
+    ltex = vdir / "label_texture.png"; lt_ = label_texture(rng, ltex, force.get("label_color")); lr = U(rng, ba["label_roughness"])
     bind(lm.GetPrim(), omnipbr(stage, "/World/Looks/ObjLabel", texture=ltex, rough=lr))
     out["label"] = dict(lt_, z0_m=round(z0, 4), z1_m=round(z1, 4), roughness=round(lr, 3))
     return out
@@ -576,6 +597,7 @@ for v in [int(x) for x in A["variants"].split(",")]:
     print("VARIANT BUILT", vdir.name, flush=True)
     app.update()
     rp_fl = rep.create.render_product(pfl, (RW, RH)); rp_w = rep.create.render_product(pw, (RWw, RHw))
+    print("RENDERMODE", carb.settings.get_settings().get("/rtx/rendermode"), carb.settings.get_settings().get("/rtx/pathtracing/totalSpp"), "rt2", carb.settings.get_settings().get("/persistent/rtx/modes/rt2/enabled"), "rtptBounces", carb.settings.get_settings().get("/rtx/rtpt/maxSpecularAndTransmissionBounces"), flush=True)
     ann = {}
     for nm, rpd in (("fl", rp_fl), ("w", rp_w)):
         a_rgb = rep.AnnotatorRegistry.get_annotator("rgb"); a_rgb.attach([rpd])
