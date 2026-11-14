@@ -287,7 +287,10 @@ def main():
             name = f"{oid}_{Path(ep_dir).name}"
             return name, run_sim("dr_render.py", [f"config={guest(work / 'dr_config.json')}", f"ep={guest(Path(ep_dir))}", f"log={guest(Path(log))}",
                                                   f"object={obj_by_id[oid]['usd_guest']}", f"object_id={oid}", f"variants={','.join(map(str, vs))}",
-                                                  f"out={guest(rend)}", f"src_root_host={src_root_host(ep_dir)}"], work / "logs" / f"render_{name}.log",
+                                                  f"out={guest(rend)}", f"src_root_host={src_root_host(ep_dir)}"]
+                                 + ([f"kit_args={cfg['render']['bottle_kit_args']}"]
+                                    if obj_by_id[oid].get("shape") == "bottle" and cfg["render"].get("bottle_kit_args") else []),
+                                 work / "logs" / f"render_{name}.log",
                                  timeout_s=1200 + 900 * len(vs))
         with cf.ThreadPoolExecutor(max(1, a.jobs - 1)) as ex:
             for name, (rc, dt) in ex.map(onerender, by.items()):

@@ -26,6 +26,8 @@
   "_lag_note": "the real image lags the joint reading by ~0.75 frame (docs/worklog/2026-10-31_wrist_cup_offset.md section 6); 0 = render the pose of the same frame"
  },
  "render": {
+  "_bottle_kit_args_doc": "2026-11-14 (Boyu + Claude): bottles render in RTX Real-Time 2.0. The legacy real-time mode (Isaac Sim 5.1 default) draws the OmniGlass PET black at the bottom and inside the label top; Real-Time 2.0 removes the bottom one at about the same speed (40 frames: 31 s vs 32 s); path tracing removes both but is 6-7x slower (Boyu: not worth it). Cups have no glass and stay on the legacy mode.",
+  "bottle_kit_args": "--/persistent/rtx/modes/rt2/enabled=true",
   "subframes": 4,
   "first_subframes": 32,
   "jpeg_quality": 95,
@@ -43,8 +45,11 @@
   "bottle_appearance": {
    "_doc": "2026-11-13 (EricC430 + Boyu, after D033): look of 'shape': 'bottle' objects in sim/dr_render.py instead of the cup kinds below. PET part clear or lightly tinted; cap always opaque; label sleeve with label_prob, otherwise a fully clear bottle (allowed on purpose). Empty bottles only (no liquid: the real ones are empty). The real 御茶園 590 ml has a full-wrap yellow label, clear shoulder, yellow cap (docs/worklog/2026-11-11_bottle_model.md); its label height was not measured. pet_material 'glass' = OmniGlass thin_walled on the closed PET surface, 'pbr_opacity' = OmniPBR with opacity (no refraction): which one looks right is 未確認 until rendered on the 4090. pet_ior 1.57 = typical PET (推論, not measured).",
    "pet_material": "glass",
-   "pet_tints": [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [0.88, 0.95, 1.0], [0.88, 1.0, 0.92]],
-   "pet_tint_jitter": 0.02,
+   "pet_material_labelled": "pbr_opacity",
+   "_doc_2026_11_14": "2026-11-14 (Boyu + Claude): PET colorless only (Boyu: an empty clear bottle has no colour; a tinted glass PET looked like a coloured glass bottle or one with liquid), was clear / clear / light blue / light green with jitter 0.02. pet_fast_refraction_shadow sets primvars:enableFastRefractionShadow on the PET: with an ordinary shadow the PET shadowed like an opaque solid (dark foot below the label, black bottle shadow); with it the foot is see-through and the shadow is light (RT 2.0, cl_ep00 v3, outputs/bottle_look_test/diag_wrist_shadow.jpg). pet_material_labelled (Boyu + EricC430, 2026-11-14): a labelled bottle uses pbr_opacity (opacity pbr_opacity), a fully clear one stays glass; with glass the inside of a labelled bottle seen from the wrist camera renders black in Real-Time 2.0 (the real one is bright), pbr_opacity makes it grey and the PET slightly milky from the front.",
+   "pet_tints": [[1.0, 1.0, 1.0]],
+   "pet_tint_jitter": 0.0,
+   "pet_fast_refraction_shadow": true,
    "pet_roughness": [0.0, 0.05],
    "pet_ior": 1.57,
    "pbr_opacity": 0.15,
