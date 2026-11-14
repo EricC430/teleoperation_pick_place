@@ -177,6 +177,7 @@
         <tr><td>theta_deg</td><td id="infoTheta">—</td></tr>
         <tr><td>x_cm</td><td id="infoX">—</td></tr>
         <tr><td>y_cm</td><td id="infoY">—</td></tr>
+        <tr><td>replaces</td><td id="infoReplaces">—</td></tr>
       </table>
     </div>
 
@@ -247,13 +248,23 @@
     const stem = filename.slice(0, dot);
     const tokens = stem.split("_");
     if (tokens.length < 2) return null;
-    const suffix = tokens[tokens.length - 1];
-    let rest = tokens.slice(0, -1);
+    // split/meta token is usually last, but bottle lists are named
+    // "bottle_eval-close_20261113.csv" (date after the split). Use the last
+    // split/meta token; date tokens after it join the mat name so lists from
+    // different dates stay separate mats ("bottle_20261113").
+    let si = -1;
+    for (let i = tokens.length - 1; i >= 0; i--) {
+      if (SPLITS.includes(tokens[i]) || tokens[i] === "meta") { si = i; break; }
+    }
+    if (si < 0 || !tokens.slice(si + 1).every((t) => /^\d{8}$/.test(t))) si = tokens.length - 1;
+    const suffix = tokens[si];
+    const after = tokens.slice(si + 1);
+    let rest = tokens.slice(0, si);
     while (rest.length && /^\d{8}$/.test(rest[rest.length - 1])) {
       rest = rest.slice(0, -1);
     }
-    const mat = rest.join("_");
-    if (!mat) return null;
+    if (!rest.length) return null;
+    const mat = rest.concat(after).join("_");
     return { mat, suffix, ext };
   }
 
@@ -272,6 +283,7 @@
       theta: header.indexOf("theta_deg"),
       x: header.indexOf("x_cm"),
       y: header.indexOf("y_cm"),
+      replaces: header.indexOf("replaces"),
     };
     const rows = [];
     for (let i = 1; i < lines.length; i++) {
@@ -283,6 +295,7 @@
         theta: parseFloat(cols[idx.theta]),
         x: parseFloat(cols[idx.x]),
         y: parseFloat(cols[idx.y]),
+        replaces: idx.replaces >= 0 ? (cols[idx.replaces] || "").trim() : "",
       });
     }
     return rows;
@@ -618,6 +631,7 @@
     $("infoTheta").textContent = current ? current.theta.toFixed(2) : "—";
     $("infoX").textContent = current ? current.x.toFixed(2) : "—";
     $("infoY").textContent = current ? current.y.toFixed(2) : "—";
+    $("infoReplaces").textContent = current && current.replaces ? shortLabel(current.replaces) + "(" + current.replaces + ")" : "—";
     if (current) {
       const m = /_(\d+)$/.exec(current.id);
       labelCategory.value = current.split;

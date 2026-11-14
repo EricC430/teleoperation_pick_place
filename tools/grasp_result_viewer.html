@@ -135,8 +135,11 @@
   .result-list label { display: flex; gap: 6px; align-items: center; color: var(--text); font-size: 12px; margin: 0; padding: 2px 0; cursor: pointer; }
   .result-list .rnum { color: var(--muted); min-width: 22px; font-variant-numeric: tabular-nums; }
   .result-list .rname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .result-list .rdel { flex: 0 0 auto; padding: 0 6px; font-size: 13px; line-height: 18px; border: none; background: none; color: var(--muted); }
+  .result-list .rdel:hover { color: var(--fail); background: var(--border); }
   .result-actions { display: flex; gap: 6px; margin-top: 4px; }
   .result-actions button { padding: 3px 10px; font-size: 12px; }
+  .plotwrap .stats-box { margin-top: 10px; padding: 10px 4px 4px; }
   #statsFiles { font-size: 11.5px; color: var(--muted); margin-top: 6px; text-align: left; line-height: 1.5; }
   #statsFiles div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -203,13 +206,6 @@
       </div>
     </div>
 
-    <div class="panel stats-box" id="statsBox">
-      <div class="stats-title">成功率</div>
-      <div class="stats-big" id="statsBig">— / —</div>
-      <div class="stats-detail" id="statsDetail"></div>
-      <div id="statsFiles"></div>
-    </div>
-
     <div class="nav">
       <button id="prevBtn">◀ 上一個</button>
       <button id="nextBtn">下一個 ▶</button>
@@ -243,6 +239,13 @@
 
   <div class="panel plotwrap">
     <svg id="plot" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+    <!-- under the map so one screenshot holds map + success rate -->
+    <div class="stats-box" id="statsBox">
+      <div class="stats-title">成功率</div>
+      <div class="stats-big" id="statsBig">— / —</div>
+      <div class="stats-detail" id="statsDetail"></div>
+      <div id="statsFiles"></div>
+    </div>
   </div>
 </div>
 
@@ -317,13 +320,23 @@
     const stem = filename.slice(0, dot);
     const tokens = stem.split("_");
     if (tokens.length < 2) return null;
-    const suffix = tokens[tokens.length - 1];
-    let rest = tokens.slice(0, -1);
+    // split/meta token is usually last, but bottle lists are named
+    // "bottle_eval-close_20261113.csv" (date after the split). Use the last
+    // split/meta token; date tokens after it join the mat name so lists from
+    // different dates stay separate mats ("bottle_20261113").
+    let si = -1;
+    for (let i = tokens.length - 1; i >= 0; i--) {
+      if (SPLITS.includes(tokens[i]) || tokens[i] === "meta") { si = i; break; }
+    }
+    if (si < 0 || !tokens.slice(si + 1).every((t) => /^\d{8}$/.test(t))) si = tokens.length - 1;
+    const suffix = tokens[si];
+    const after = tokens.slice(si + 1);
+    let rest = tokens.slice(0, si);
     while (rest.length && /^\d{8}$/.test(rest[rest.length - 1])) {
       rest = rest.slice(0, -1);
     }
-    const mat = rest.join("_");
-    if (!mat) return null;
+    if (!rest.length) return null;
+    const mat = rest.concat(after).join("_");
     return { mat, suffix, ext };
   }
 
@@ -567,7 +580,21 @@ eval-close_036,17.69,-47.29,12.00,-13.00`;
       const nm = document.createElement("span");
       nm.className = "rname";
       nm.textContent = name;
-      lab.append(cb, num, nm);
+      const del = document.createElement("button");
+      del.className = "rdel";
+      del.textContent = "×";
+      del.title = "移除這份紀錄（不再讀取；要用再重新載入）";
+      del.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        delete resultSets[name];
+        selectedResults.delete(name);
+        log(`移除結果: ${name}`);
+        refreshResultList();
+        currentIndex = 0;
+        rebuildMerge();
+      });
+      lab.append(cb, num, nm, del);
       resultList.appendChild(lab);
     });
   }
@@ -691,14 +718,14 @@ eval-close_036,17.69,-47.29,12.00,-13.00`;
       $("statsBig").textContent = "— / —";
       $("statsDetail").textContent = "";
     }
+    // always list mat + files (even a single one) so a screenshot says what it shows
     const names = selectedResultNames();
-    $("statsFiles").innerHTML = names.length > 1
-      ? names.map((file, k) => {
-          const t = tally(all.filter((x) => x.num === k + 1));
-          return `<div title="${escapeHtml(file)}">#${k + 1} ${t.successes}/${t.total}` +
-            (t.blank ? ` (含空白 ${t.blank})` : "") + `　${escapeHtml(file)}</div>`;
-        }).join("")
-      : "";
+    $("statsFiles").innerHTML = (currentMat ? `<div>座標: ${escapeHtml(currentMat)}</div>` : "") +
+      names.map((file, k) => {
+        const t = tally(all.filter((x) => x.num === k + 1));
+        return `<div title="${escapeHtml(file)}">#${k + 1} ${t.successes}/${t.total}` +
+          (t.blank ? ` (含空白 ${t.blank})` : "") + `　${escapeHtml(file)}</div>`;
+      }).join("");
   }
 
   // ---------- outcome -> color ----------
@@ -1028,8 +1055,12 @@ eval-close_036,17.69,-47.29,12.00,-13.00`;
   }
 
   // ---------- wiring ----------
-  placementInput.addEventListener("change", (e) => handleFiles(e.target.files));
-  resultInput.addEventListener("change", (e) => handleFiles(e.target.files));
+  // clear the input when the picker opens (not after reading, so the chosen filename stays visible),
+  // so a removed file can be picked again — re-picking the same selection fires no change otherwise
+  [placementInput, resultInput].forEach((inp) => {
+    inp.addEventListener("click", () => { inp.value = ""; });
+    inp.addEventListener("change", (e) => handleFiles(e.target.files));
+  });
 
   ["dragenter", "dragover"].forEach((ev) =>
     dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add("drag"); })
