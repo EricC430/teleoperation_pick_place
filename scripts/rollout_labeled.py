@@ -527,9 +527,35 @@ def default_placement_prefix(meta: argparse.Namespace) -> str | None:
     return None if meta.template else "c"
 
 
+def placement_plan(meta: argparse.Namespace) -> str:
+    """Where this run's placement_id values come from, printed before the robot connects.
+
+    A wrong or missing template still runs and silently records c1..cN, which is wrong once the
+    point list changes (bottle list of 2026-11-13 skips c6/c12/c26 and adds c37-c39).
+    """
+    prefix = default_placement_prefix(meta)
+    if prefix:
+        src = f"--placement-prefix {prefix}" if meta.placement_prefix else "沒帶 --meta-template"
+        return (f"⚠ {src}：placement_id 一律填 {prefix}1, {prefix}2, {prefix}3, …（照 episode 順序）。"
+                f"擺放清單不是連號的話（例如寶特瓶 11/13 清單），要用對應的範本")
+    if meta.template_data is None:
+        return "placement_id 留空（--placement-prefix ''）"
+    rows, _ = meta.template_data
+    ids = [rows[i].get("placement_id", "") or "(空)" for i in sorted(rows)]
+    return f"範本 {template_path(meta.template)}（{len(ids)} 列）的 placement_id，依 episode 順序：\n  " + " ".join(ids)
+
+
+def confirm_placement_plan(meta: argparse.Namespace) -> None:
+    """Print the placement plan; on a terminal, wait for Enter (Ctrl+C aborts before anything connects)."""
+    print("\n[episode_meta] " + placement_plan(meta), flush=True)
+    if sys.stdin.isatty():
+        input("[episode_meta] 跟現場要擺的點位清單一樣嗎？一樣按 Enter 開始，不一樣按 Ctrl+C 取消：")
+
+
 def main() -> None:
     meta, rest = parse_meta_args(sys.argv[1:])
     sys.argv = [sys.argv[0], *rest]  # lerobot's parser must not see our flags
+    confirm_placement_plan(meta)  # before config recording / robot connect, so Ctrl+C leaves nothing behind
 
     try:
         from lerobot_robot_config_record.recorder import record_from_argv

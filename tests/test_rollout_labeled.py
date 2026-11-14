@@ -86,6 +86,17 @@ def test_template_too_short_is_an_error(tmp_path):
         rl.MetaSheet(tmp_path / "out.csv", 0, 5, {}, None, template=rl.load_template(str(_template(tmp_path))))
 
 
+def test_placement_plan_lists_template_ids_or_warns(tmp_path):
+    meta, _ = rl.parse_meta_args(["--meta-template", str(_template(tmp_path))])
+    assert rl.placement_plan(meta).endswith("p0 p1 p2")
+    no_tpl, _ = rl.parse_meta_args([])
+    assert "沒帶 --meta-template" in rl.placement_plan(no_tpl) and "c1, c2" in rl.placement_plan(no_tpl)
+    forced, _ = rl.parse_meta_args(["--meta-template", str(_template(tmp_path)), "--placement-prefix", "c"])
+    assert "--placement-prefix c" in rl.placement_plan(forced)
+    v3, _ = rl.parse_meta_args(["--meta-template", "plastic_bottle_A1_v3"])
+    assert rl.placement_plan(v3).split()[-4:] == ["c36", "c37", "c38", "c39"]
+
+
 def test_template_name_resolves_to_templates_dir():
     assert rl.template_path("paper_cup_A1") == rl.TEMPLATE_DIR / "paper_cup_A1.csv"
     assert rl.load_template("paper_cup_A1")[0][35]["placement_id"] == "c36"

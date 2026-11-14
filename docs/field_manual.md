@@ -757,6 +757,9 @@ uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_b1_uv
 
 - **4. 用 `scripts/rollout_labeled.py`（2026-10-08 起）取代 `lerobot-rollout`**：參數相同，另外開場就把範本 `episode_meta/templates/<名稱>.csv` 複製成 `episode_meta/<rollout_…時戳>.csv`（同 episode_index 的那列）。
   範本一集一列，用 Excel 改；列數比集數多沒關係，少了會在第一集開始前報錯。燈光/背景今天不一樣就加 `--env-light` / `--env-bg` 蓋過範本（另有 `--object-name`、`--object-orientation`、`--placement-prefix`）。
+  🔴 **範本要對上這次的擺放清單**（2026-11-15 起）：沒帶 `--meta-template` 或加了 `--placement-prefix c`，placement_id 會一律填 c1, c2, …，**清單不連號時不會報錯、只會記錯**。
+  寶特瓶從 11/13 清單起（`configs/placements/bottle_eval-close_20261113.csv`：去掉 c6/c12/c26、加 c37–c39）用 **`--meta-template plastic_bottle_A1_v3`**；舊指令裡的 `plastic_bottle_A1` 是 c1–c36 原版。
+  開跑前腳本會印出這次的 placement_id 順序並等 Enter，**對照 placement_viewer 的清單**（選對應的 mat，例如 `bottle_20261113`）再按，不對就 Ctrl+C。
   按鍵：**→ 成功**（outcome=success）、**↑ 失敗**（outcome 留空 = 失敗，之後再補 no_grasp 等）、**← 重錄**、**Esc 結束（當集丟掉）**。
   **每集只按一次 →/↑**（2026-10-14 起）：按下就念 success/fail → 手臂回起始姿勢 → 立刻存檔（**擺杯子就趁存檔這段**）→ 存完自動開始下一集。策略執行中按 = 提早結束；時間到才按也一樣。
   **要重錄就按 ← 取代 →/↑**。**存檔一開始，這集和它的判定就定了**：存檔中按 ←/→/↑ 都無效（終端機印 `… ignored`），只有 Esc 有效（存完後結束）。按 ← 後沒有存檔時間，擺好後要再按一下（或等 `reset_time_s`）。
