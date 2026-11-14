@@ -60,7 +60,7 @@ metric that tells you what to change next.**
 
 | Value | Meaning |
 |---|---|
-| `pushed_away` | Contact displaced the (light) object instead of grasping it — **specific to empty containers** |
+| `pushed_away` | Contact displaced the (light) object instead of grasping it — **specific to empty containers**. Includes the gripper knocking the object over while closing on it (decided 2026-11-14, 柏宇); that is not `collision` |
 | `collision` | Hit the object / desk / bin |
 | `drift` | Single-direction drift out of the workspace (observed in the workshop GR00T deployment) |
 | `stalled` | Never started, or stopped in place |

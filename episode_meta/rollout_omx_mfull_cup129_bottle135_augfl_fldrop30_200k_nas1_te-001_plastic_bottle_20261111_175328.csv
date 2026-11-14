@@ -21,7 +21,7 @@
 19,plastic_bottle,stand,c20,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 20,plastic_bottle,stand,c21,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 21,plastic_bottle,stand,c22,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
-22,plastic_bottle,stand,c23,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,伸不夠遠；[AI補，看截圖不是影片] 18.4 s 瓶子已倒；11/14：第一次閉爪前已經在推寶特瓶 [柏宇說 11/14]（front-left k244 瓶子已斜、k259 閉爪、k265 倒 [AI看幀序列]）；原 note「伸不夠遠」跟影片對不上，是誰寫、指哪一次未確認
+22,plastic_bottle,stand,c23,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,1,,,,伸不夠遠；[AI補，看截圖不是影片] 18.4 s 瓶子已倒；11/14：第一次閉爪前已經在推寶特瓶 [柏宇說 11/14]（front-left k244 瓶子已斜、k259 閉爪、k265 倒 [AI看幀序列]）；柏宇 11/14 釐清：一直推到寶特瓶，所以最後閉爪時夾爪離瓶面還有一段距離，原 note「伸不夠遠」指的是這個（結果），推瓶是原因，兩者一致 [柏宇說 11/14]（AI 11/14 先前說「跟影片對不上」是誤讀，已收回）
 23,plastic_bottle,stand,c24,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 24,plastic_bottle,stand,c25,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,,,
 25,plastic_bottle,stand,c26,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away;timeout,,1,,,,伸不夠遠；[AI補，看截圖不是影片] 669 幀＝跑滿 45 s；多次接近，瓶子到最後仍站著、位置沒明顯變 → 拿掉 pushed_away；[柏宇說 11/12] 物體有移位 → 上面 AI 拿掉的 pushed_away 加回；物體有移位，不算 repetition_loop
