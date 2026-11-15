@@ -18,6 +18,13 @@ Cut rule (gripper = action[:, 5], smaller = more closed):
   cut         = walk back from it while the gripper is more than --open_tol below its value at frame 0
 Episodes without a close event, or listed in --keep_whole, are copied whole.
 
+--cuts <csv>: take each episode's cut from a hand-checked table (episode_index, cut_frame) instead of the rule
+above - used for "offset then correct" demos (aimfix, 2026-11-15), where the cut is at the offset, picked by eye:
+    uv run python scripts/trim_recovery_prefix.py \
+        --src .cache/lerobot/omx_pick_place_pilot_plastic_bottle_aimfix_A1 \
+        --dst .cache/lerobot/omx_pick_place_pilot_plastic_bottle_aimfix_A1_cut \
+        --cuts episode_meta/omx_pick_place_pilot_plastic_bottle_aimfix_A1_cut.csv
+
     ./scripts/run_container.sh python scripts/trim_recovery_prefix.py \
         --src data/huggingface/lerobot/ericc430/omx_pick_place_pilot_paper_cup_recovery_A1_tight \
         --dst data/huggingface/lerobot/ericc430/omx_pick_place_pilot_paper_cup_recovery_A1_tight_cut
@@ -93,7 +100,14 @@ def main():
     ap.add_argument("--keep_whole", type=int, nargs="*", default=[], help="episodes to copy uncut")
     ap.add_argument("--close_below", type=float, default=None,
                     help="fixed gripper threshold for a close (default: midpoint of the 2nd..98th percentile)")
+    ap.add_argument("--cuts", default=None,
+                    help="CSV with episode_index,cut_frame (e.g. episode_meta/<dataset>_cut.csv from "
+                         "scripts/aimfix_cut_candidates.py, checked by eye): cut there instead of the close rule")
     args = ap.parse_args()
+    given = None
+    if args.cuts:
+        cdf = pd.read_csv(args.cuts, encoding="utf-8-sig")
+        given = {int(e): int(f) for e, f in zip(cdf.episode_index, cdf.cut_frame)}
     src, dst = Path(args.src), Path(args.dst)
     if dst.exists():
         raise SystemExit(f"{dst} exists; refusing to overwrite")
@@ -112,7 +126,16 @@ def main():
         for ep in sorted(df.episode_index.unique()):
             x = df[df.episode_index == ep].sort_values("frame_index")
             g = np.stack(x["action"].values)[:, GRIPPER]
-            c, first = (None, None) if ep in args.keep_whole else cut_frame(g, fps, args.open_tol, args.close_below)
+            if ep in args.keep_whole:
+                c, first = None, None
+            elif given is not None:
+                if int(ep) not in given:
+                    raise SystemExit(f"episode {ep} missing from {args.cuts}")
+                c, first = given[int(ep)], None
+                if not 0 <= c < len(x):
+                    raise SystemExit(f"episode {ep}: cut_frame {c} outside 0..{len(x) - 1}")
+            else:
+                c, first = cut_frame(g, fps, args.open_tol, args.close_below)
             cuts[int(ep)] = dict(cut=int(c or 0), first_close=None if first is None else int(first),
                                  orig_len=len(x), new_len=len(x) - int(c or 0))
     next_index = 0
@@ -173,8 +196,8 @@ def main():
     (dst / "meta/info.json").write_text(json.dumps(info, indent=4))
     write_stats(aggregate_stats(all_stats), dst)
     (dst / "meta/trim_recovery_prefix.json").write_text(json.dumps(
-        dict(src=str(src), open_tol=args.open_tol, close_below=args.close_below, keep_whole=args.keep_whole, fps=fps,
-             episodes=cuts), indent=1))
+        dict(src=str(src), cuts_csv=args.cuts, open_tol=args.open_tol, close_below=args.close_below,
+             keep_whole=args.keep_whole, fps=fps, episodes=cuts), indent=1))
     for ep, c in cuts.items():
         print(f"ep{ep:3d} cut@{c['cut']:4d} ({c['cut'] / fps:5.1f}s)  first_close@{c['first_close']}  "
               f"{c['orig_len']} -> {c['new_len']}")
