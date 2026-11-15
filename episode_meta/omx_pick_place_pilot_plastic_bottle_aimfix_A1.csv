@@ -1,0 +1,27 @@
+﻿episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
+0,plastic_bottle,stand,t17,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：短（徑向不夠，停在瓶子靠手臂側），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+1,plastic_bottle,stand,t17,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：左（偏 θ 正），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+2,plastic_bottle,stand,t26,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：左（偏 θ 正），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+3,plastic_bottle,stand,t26,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：右（偏 θ 負），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+4,plastic_bottle,stand,t45,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：右（偏 θ 負），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+5,plastic_bottle,stand,t45,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：短（徑向不夠，停在瓶子靠手臂側），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+6,plastic_bottle,stand,t31,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：短（徑向不夠，停在瓶子靠手臂側），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+7,plastic_bottle,stand,t31,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：左（偏 θ 正），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+8,plastic_bottle,stand,t12,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：左（偏 θ 正），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+9,plastic_bottle,stand,t12,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：右（偏 θ 負），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+10,plastic_bottle,stand,t5,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：右（偏 θ 負），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+11,plastic_bottle,stand,t5,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：短（徑向不夠，停在瓶子靠手臂側），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+12,plastic_bottle,stand,t21,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：短（徑向不夠，停在瓶子靠手臂側），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+13,plastic_bottle,stand,t21,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：左（偏 θ 正），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+14,plastic_bottle,stand,t19,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：左（偏 θ 正），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+15,plastic_bottle,stand,t19,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：右（偏 θ 負），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+16,plastic_bottle,stand,t25,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：右（偏 θ 負），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+17,plastic_bottle,stand,t25,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：短（徑向不夠，停在瓶子靠手臂側），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+18,plastic_bottle,stand,t41,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：短（徑向不夠，停在瓶子靠手臂側），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+19,plastic_bottle,stand,t41,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：左（偏 θ 正），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+20,plastic_bottle,stand,t46,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：左（偏 θ 正），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+21,plastic_bottle,stand,t46,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：右（偏 θ 負），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+22,plastic_bottle,stand,t24,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：右（偏 θ 負），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+23,plastic_bottle,stand,t24,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：短（徑向不夠，停在瓶子靠手臂側），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+24,plastic_bottle,stand,t34,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：短（徑向不夠，停在瓶子靠手臂側），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
+25,plastic_bottle,stand,t34,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,1,,Boyu,2026/11/15,先偏再修：左（偏 θ 正），停約 1–2 cm、停頓後看手腕畫面修正再閉合（偏的方向照 config 表，未逐集複查）
