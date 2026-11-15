@@ -1,0 +1,75 @@
+# 2026-11-15 M-full + aimfix_A1_cut (26) + twoobj_A1 (10): 300 eps, one model for paper cup + plastic bottle.
+# Why: M-full bottle failures are mostly bad_aim / reach short and the model does not correct before closing
+# (docs/worklog/2026-11-11_mfull_closed_loop.md); aimfix = "offset then correct" demos, twoobj = which object first
+# when both are on the table (docs/worklog/2026-11-15_aimfix_twoobj_recording.md). [柏宇決定 2026-11-15] both go in.
+#
+# 🔴 RATIO / WEIGHTS NOT DECIDED [柏宇 2026-11-15]. This file is the plain concatenation (every episode once, no
+# oversampling) - the natural share is aimfix 26/300 eps = 5.6 % of frames, twoobj 10/300 eps = 6.0 % of frames.
+# Change this (or add a weighted copy) when the ratio is decided; everything else is M-full unchanged, so a
+# closed-loop difference vs M-full 200k can be put on the added data only at this ratio.
+#
+# Same as configs/train_omx_cup129_bottle135_augfl_fldrop.yaml except dataset, output_dir, job_name.
+# The two new datasets are appended AFTER the 9 M-full sources, so merged ep 0-272 and exclude_episodes are unchanged:
+#   merged ep 273-298 <- aimfix_A1_cut ep 0-25 (cut by Boyu's hand-checked table, 13181 -> 6080 frames)
+#   merged ep 299-308 <- twoobj_A1 ep 0-9
+# Features / fps / robot_type / task string of both new datasets equal precise_A1's (checked 2026-11-15 on the laptop).
+#
+# Steps on the 4090 (bash, repo root). The 9 M-full sources are already local; the two new ones are private on the Hub
+# (uploaded 2026-11-15, file sizes checked against the laptop):
+#   R=/workspace/data/huggingface/lerobot/ericc430
+#   ./scripts/run_container.sh hf download ericc430/omx_pick_place_pilot_plastic_bottle_aimfix_A1_cut --repo-type dataset --local-dir $R/omx_pick_place_pilot_plastic_bottle_aimfix_A1_cut
+#   ./scripts/run_container.sh hf download ericc430/omx_pick_place_pilot_twoobj_A1 --repo-type dataset --local-dir $R/omx_pick_place_pilot_twoobj_A1
+#   ./scripts/run_container.sh lerobot-edit-dataset \
+#       --new_repo_id ericc430/omx_pick_place_pilot_cup129_bottle135_aimfix26_twoobj10 --new_root $R/omx_pick_place_pilot_cup129_bottle135_aimfix26_twoobj10 \
+#       --operation.type merge \
+#       --operation.repo_ids "['ericc430/omx_pick_place_pilot_uvc_60', 'ericc430/omx_pick_place_pilot_paper_cup_normal_A1', 'ericc430/omx_pick_place_pilot_paper_cup_recovery_A1_tight_cut', 'ericc430/omx_pick_place_pilot_paper_cup_far_wrist_A1', 'ericc430/omx_pick_place_pilot_60_plastic_bottle', 'ericc430/omx_pick_place_pilot_plastic_bottle_normal_A1', 'ericc430/omx_pick_place_pilot_plastic_bottle_recovery_A1_tight_cut', 'ericc430/omx_pick_place_pilot_plastic_bottle_precise_A1', 'ericc430/omx_pick_place_pilot_plastic_bottle_tipped_A1', 'ericc430/omx_pick_place_pilot_plastic_bottle_aimfix_A1_cut', 'ericc430/omx_pick_place_pilot_twoobj_A1']" \
+#       --operation.roots "['$R/omx_pick_place_pilot_uvc_60', '$R/omx_pick_place_pilot_paper_cup_normal_A1', '$R/omx_pick_place_pilot_paper_cup_recovery_A1_tight_cut', '$R/omx_pick_place_pilot_paper_cup_far_wrist_A1', '$R/omx_pick_place_pilot_60_plastic_bottle', '$R/omx_pick_place_pilot_plastic_bottle_normal_A1', '$R/omx_pick_place_pilot_plastic_bottle_recovery_A1_tight_cut', '$R/omx_pick_place_pilot_plastic_bottle_precise_A1', '$R/omx_pick_place_pilot_plastic_bottle_tipped_A1', '$R/omx_pick_place_pilot_plastic_bottle_aimfix_A1_cut', '$R/omx_pick_place_pilot_twoobj_A1']"
+#   ./scripts/run_container.sh python scripts/train_fl_dropout.py --fl-p 0.3 --fl-window 30 --transforms-fl-only \
+#       --config_path configs/train_omx_cup129_bottle135_aimfix26_twoobj10_augfl_fldrop.yaml
+#
+# Check after the merge: 309 eps / 111565 frames (98959 + 6080 + 6526); ep 0-272 length and frame-0 action equal to
+# omx_pick_place_pilot_cup129_bottle135. Stop if not.
+# Expected fl_dropout.json (close_below 54, laptop numbers 2026-11-15): episodes 300, episodes_without_close [],
+# frames 108415, frames_in_window 8362 (M-full 7372 + aimfix 780 + twoobj 210), expected_masked_fraction ~0.0231.
+#   aimfix: every first close < 54 is the real grasp (60-146 frames in); the 短 episodes start at 55.6-60.9 after
+#   the trial close, so the leftover trial close is not counted.
+#   ⚠️ twoobj ep 1, 4, 7 (merged 300, 303, 306) start with the gripper already below 54 (47.5-51 at frame 0) ->
+#   first close = 0, NO dropout window for them. 3 of 10 eps; left as is (changing first_close would change M-full's
+#   numbers too).
+#
+# steps 200000 = M-full, constant lr (no scheduler). 200k ~ 59 epochs here (M-full ~67).
+#
+dataset:
+  repo_id: ericc430/omx_pick_place_pilot_cup129_bottle135_aimfix26_twoobj10   # local only
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_cup129_bottle135_aimfix26_twoobj10
+  exclude_episodes: [73, 74, 75, 85, 86, 87, 98, 135, 271]   # same as M-full -> 300 of 309 remain
+  eval_split: 0.0
+  image_transforms:          # copied from M-full; with --transforms-fl-only they run on front-left only
+    enable: true
+    max_num_transforms: 1
+    random_order: false
+    tfs:
+      brightness: {weight: 0.0, type: ColorJitter, kwargs: {brightness: [0.8, 1.2]}}
+      contrast: {weight: 0.0, type: ColorJitter, kwargs: {contrast: [0.8, 1.2]}}
+      saturation: {weight: 0.0, type: ColorJitter, kwargs: {saturation: [0.5, 1.5]}}
+      hue: {weight: 0.0, type: ColorJitter, kwargs: {hue: [-0.05, 0.05]}}
+      sharpness: {weight: 0.0, type: SharpnessJitter, kwargs: {sharpness: [0.5, 1.5]}}
+      affine: {weight: 1.0, type: RandomAffine, kwargs: {degrees: [-2.0, 2.0], translate: [0.05, 0.05]}}
+policy:
+  type: act
+  chunk_size: 100
+  n_action_steps: 100
+  push_to_hub: false
+output_dir: /workspace/data/train/cup129_bottle135_aimfix26_twoobj10_augfl_fldrop_p30_w30
+job_name: act_omx_cup129_bottle135_aimfix26_twoobj10_augfl_fldrop_p30_w30
+steps: 200000
+batch_size: 32
+save_freq: 20000
+eval_steps: 0
+log_freq: 50
+seed: 1000
+num_workers: 12
+wandb:
+  disable_artifact: true
+  enable: true
+  project: teleoperation_pick_place
