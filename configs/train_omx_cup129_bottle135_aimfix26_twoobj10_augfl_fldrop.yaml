@@ -1,17 +1,21 @@
-# 2026-11-15 M-full + aimfix_A1_cut (26) + twoobj_A1 (10): 300 eps, one model for paper cup + plastic bottle.
+# 2026-11-15 M-full + aimfix_A1_cut (26 recorded -> 28) + twoobj_A1 (10): 311 eps, 302 after exclude_episodes,
+# one model for paper cup + plastic bottle.
+# 2026-11-16: aimfix_A1_cut rebuilt with ep4 / ep16 (overshoot then correct back) split in two -> 28 eps, 6045 frames
+# (docs/worklog/2026-11-16_aimfix_split.md). The file name keeps "aimfix26" = recorded episodes. Counts below updated.
 # Why: M-full bottle failures are mostly bad_aim / reach short and the model does not correct before closing
 # (docs/worklog/2026-11-11_mfull_closed_loop.md); aimfix = "offset then correct" demos, twoobj = which object first
 # when both are on the table (docs/worklog/2026-11-15_aimfix_twoobj_recording.md). [柏宇決定 2026-11-15] both go in.
 #
 # 🔴 RATIO / WEIGHTS NOT DECIDED [柏宇 2026-11-15]. This file is the plain concatenation (every episode once, no
-# oversampling) - the natural share is aimfix 26/300 eps = 5.6 % of frames, twoobj 10/300 eps = 6.0 % of frames.
+# oversampling) - the natural share is aimfix 28/302 eps = 5.6 % of frames, twoobj 10/302 eps = 6.0 % of frames.
 # Change this (or add a weighted copy) when the ratio is decided; everything else is M-full unchanged, so a
 # closed-loop difference vs M-full 200k can be put on the added data only at this ratio.
 #
 # Same as configs/train_omx_cup129_bottle135_augfl_fldrop.yaml except dataset, output_dir, job_name.
 # The two new datasets are appended AFTER the 9 M-full sources, so merged ep 0-272 and exclude_episodes are unchanged:
-#   merged ep 273-298 <- aimfix_A1_cut ep 0-25 (cut by Boyu's hand-checked table, 13181 -> 6080 frames)
-#   merged ep 299-308 <- twoobj_A1 ep 0-9
+#   merged ep 273-300 <- aimfix_A1_cut ep 0-27 (cut by Boyu's hand-checked table, 13181 -> 6045 frames;
+#                        ep 26 / 27 = 2nd halves of ep 4 / 16, split 2026-11-16)
+#   merged ep 301-310 <- twoobj_A1 ep 0-9
 # Features / fps / robot_type / task string of both new datasets equal precise_A1's (checked 2026-11-15 on the laptop).
 #
 # Steps on the 4090 (bash, repo root). The 9 M-full sources are already local; the two new ones are private on the Hub
@@ -27,13 +31,14 @@
 #   ./scripts/run_container.sh python scripts/train_fl_dropout.py --fl-p 0.3 --fl-window 30 --transforms-fl-only \
 #       --config_path configs/train_omx_cup129_bottle135_aimfix26_twoobj10_augfl_fldrop.yaml
 #
-# Check after the merge: 309 eps / 111565 frames (98959 + 6080 + 6526); ep 0-272 length and frame-0 action equal to
+# Check after the merge: 311 eps / 111530 frames (98959 + 6045 + 6526); ep 0-272 length and frame-0 action equal to
 # omx_pick_place_pilot_cup129_bottle135. Stop if not.
-# Expected fl_dropout.json (close_below 54, laptop numbers 2026-11-15): episodes 300, episodes_without_close [],
-# frames 108415, frames_in_window 8362 (M-full 7372 + aimfix 780 + twoobj 210), expected_masked_fraction ~0.0231.
+# Expected fl_dropout.json (close_below 54, laptop numbers 2026-11-15, aimfix part recomputed 2026-11-16):
+# episodes 302, episodes_without_close [277, 289] (= aimfix ep 4 / 16 1st halves, 11 / 8 frames, no close - expected),
+# frames 108380, frames_in_window 8362 (M-full 7372 + aimfix 780 + twoobj 210), expected_masked_fraction ~0.0231.
 #   aimfix: every first close < 54 is the real grasp (60-146 frames in); the 短 episodes start at 55.6-60.9 after
 #   the trial close, so the leftover trial close is not counted.
-#   ⚠️ twoobj ep 1, 4, 7 (merged 300, 303, 306) start with the gripper already below 54 (47.5-51 at frame 0) ->
+#   ⚠️ twoobj ep 1, 4, 7 (merged 302, 305, 308) start with the gripper already below 54 (47.5-51 at frame 0) ->
 #   first close = 0, NO dropout window for them. 3 of 10 eps; left as is (changing first_close would change M-full's
 #   numbers too).
 #
@@ -42,7 +47,7 @@
 dataset:
   repo_id: ericc430/omx_pick_place_pilot_cup129_bottle135_aimfix26_twoobj10   # local only
   root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_cup129_bottle135_aimfix26_twoobj10
-  exclude_episodes: [73, 74, 75, 85, 86, 87, 98, 135, 271]   # same as M-full -> 300 of 309 remain
+  exclude_episodes: [73, 74, 75, 85, 86, 87, 98, 135, 271]   # same as M-full -> 302 of 311 remain
   eval_split: 0.0
   image_transforms:          # copied from M-full; with --transforms-fl-only they run on front-left only
     enable: true

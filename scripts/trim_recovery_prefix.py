@@ -29,7 +29,13 @@ above - used for "offset then correct" demos (aimfix, 2026-11-15), where the cut
         --src data/huggingface/lerobot/ericc430/omx_pick_place_pilot_paper_cup_recovery_A1_tight \
         --dst data/huggingface/lerobot/ericc430/omx_pick_place_pilot_paper_cup_recovery_A1_tight_cut
 
-The cut table is written to <dst>/meta/trim_recovery_prefix.json.
+The cut table may also carry `end_frame` (inclusive; blank = to the end of the episode), and the same episode_index
+may appear on more than one row: the first row keeps that episode's index, each further row becomes a NEW episode
+appended after the last source episode (numbered in CSV order), sharing the same video bytes. Used to split an
+"overshoot then correct back" demo into two (aimfix ep4 / ep16, 2026-11-16): [cut .. first correction reached] and
+[end of overshoot .. end].
+
+The cut table is written to <dst>/meta/trim_recovery_prefix.json (keyed by OUTPUT episode, with src_episode).
 """
 
 import argparse
@@ -104,10 +110,13 @@ def main():
                     help="CSV with episode_index,cut_frame (e.g. episode_meta/<dataset>_cut.csv from "
                          "scripts/aimfix_cut_candidates.py, checked by eye): cut there instead of the close rule")
     args = ap.parse_args()
-    given = None
+    given = None  # src episode -> [(cut, end_inclusive or None), ...] in CSV order
     if args.cuts:
         cdf = pd.read_csv(args.cuts, encoding="utf-8-sig")
-        given = {int(e): int(f) for e, f in zip(cdf.episode_index, cdf.cut_frame)}
+        given = {}
+        for _, r in cdf.iterrows():
+            end = None if "end_frame" not in cdf.columns or pd.isna(r.end_frame) else int(r.end_frame)
+            given.setdefault(int(r.episode_index), []).append((int(r.cut_frame), end))
     src, dst = Path(args.src), Path(args.dst)
     if dst.exists():
         raise SystemExit(f"{dst} exists; refusing to overwrite")
@@ -117,59 +126,88 @@ def main():
     fps, features = info["fps"], info["features"]
     video_keys = [k for k, v in features.items() if v["dtype"] == "video"]
 
-    # --- data: drop rows before the cut, renumber ---
+    def chunk_file(p):  # .../chunk-000/file-001.parquet -> (0, 1)
+        return int(p.parent.name.split("-")[1]), int(p.stem.split("-")[1])
+
+    # --- plan the output episodes: (cut, end) per row; extra rows of one episode become new episodes ---
     data_files = sorted((dst / "data").glob("*/*.parquet"))
     tables = {p: pq.read_table(p) for p in data_files}
-    cuts, kept = {}, {}
+    src_rows, src_file = {}, {}
     for p, t in tables.items():
         df = t.to_pandas()
         for ep in sorted(df.episode_index.unique()):
-            x = df[df.episode_index == ep].sort_values("frame_index")
-            g = np.stack(x["action"].values)[:, GRIPPER]
-            if ep in args.keep_whole:
-                c, first = None, None
-            elif given is not None:
-                if int(ep) not in given:
-                    raise SystemExit(f"episode {ep} missing from {args.cuts}")
-                c, first = given[int(ep)], None
-                if not 0 <= c < len(x):
-                    raise SystemExit(f"episode {ep}: cut_frame {c} outside 0..{len(x) - 1}")
-            else:
-                c, first = cut_frame(g, fps, args.open_tol, args.close_below)
-            cuts[int(ep)] = dict(cut=int(c or 0), first_close=None if first is None else int(first),
-                                 orig_len=len(x), new_len=len(x) - int(c or 0))
-    next_index = 0
+            src_rows[int(ep)] = df[df.episode_index == ep].sort_values("frame_index")
+            src_file[int(ep)] = p
+    n_src = len(src_rows)
+    if given is not None and set(given) - set(src_rows):
+        raise SystemExit(f"{args.cuts} has episodes not in the source: {sorted(set(given) - set(src_rows))}")
+    cuts, extras = {}, []  # extras: output episode numbers appended after the source ones
+    for ep, x in src_rows.items():
+        g = np.stack(x["action"].values)[:, GRIPPER]
+        if ep in args.keep_whole:
+            segs, first = [(0, None)], None
+        elif given is not None:
+            if ep not in given:
+                raise SystemExit(f"episode {ep} missing from {args.cuts}")
+            segs, first = given[ep], None
+        else:
+            c, first = cut_frame(g, fps, args.open_tol, args.close_below)
+            segs = [(int(c or 0), None)]
+        for k, (c, e) in enumerate(segs):
+            e = len(x) if e is None else e + 1  # exclusive
+            if not 0 <= c < e <= len(x):
+                raise SystemExit(f"episode {ep}: segment {c}..{e - 1} outside 0..{len(x) - 1} or empty")
+            out = ep if k == 0 else n_src + len(extras)
+            if k:
+                extras.append(out)
+            cuts[out] = dict(src_episode=ep, cut=int(c), end=int(e), first_close=None if first is None else int(first),
+                             orig_len=len(x), new_len=int(e - c))
+
+    # --- data: keep [cut, end) of each output episode, renumber; extras go at the end of the last data file ---
+    next_index, kept = 0, {}
     for p in data_files:
-        df = tables[p].to_pandas()
+        outs = [ep for ep in sorted(src_rows) if src_file[ep] == p] + (extras if p == data_files[-1] else [])
         parts = []
-        for ep in sorted(df.episode_index.unique()):
-            x = df[df.episode_index == ep].sort_values("frame_index")
-            x = x[x.frame_index >= cuts[int(ep)]["cut"]].copy()
+        for out in outs:
+            c = cuts[out]
+            x = src_rows[c["src_episode"]]
+            x = x[(x.frame_index >= c["cut"]) & (x.frame_index < c["end"])].copy()
+            x["episode_index"] = np.int64(out)
             x["frame_index"] = np.arange(len(x), dtype=np.int64)
             x["timestamp"] = (x["frame_index"] / fps).astype(np.float32)
             x["index"] = np.arange(next_index, next_index + len(x), dtype=np.int64)
-            cuts[int(ep)]["from_index"], next_index = next_index, next_index + len(x)
-            kept[int(ep)] = x
+            c["from_index"], next_index = next_index, next_index + len(x)
+            c["data_file"] = chunk_file(p)
+            kept[out] = x
             parts.append(x)
         new = pd.concat(parts)
         for col in ("action", "observation.state"):
             new[col] = [list(map(float, v)) for v in new[col]]
         pq.write_table(pa.Table.from_pandas(new, schema=tables[p].schema, preserve_index=False), p)
 
-    # --- episode meta: lengths, indices, video offsets, per-episode stats ---
+    # --- episode meta: lengths, indices, video offsets, per-episode stats; extras appended to the last meta file ---
+    meta_files = sorted((dst / "meta/episodes").glob("*/*.parquet"))
+    metas = {p: (pq.read_table(p), pq.read_table(p).to_pandas()) for p in meta_files}
+    src_meta = {int(r.episode_index): (m, i) for _, m in metas.values() for i, r in m.iterrows()}
     all_stats = []
-    for p in sorted((dst / "meta/episodes").glob("*/*.parquet")):
-        t = pq.read_table(p)
-        m = t.to_pandas()
+    for p in meta_files:
+        t, m = metas[p]
+        if p == meta_files[-1] and extras:
+            m = pd.concat([m] + [src_meta[cuts[out]["src_episode"]][0].loc[[src_meta[cuts[out]["src_episode"]][1]]]
+                                 for out in extras], ignore_index=True)
+            m.loc[len(m) - len(extras):, "episode_index"] = extras
         for i, row in m.iterrows():
             ep = int(row.episode_index)
             c, x = cuts[ep], kept[ep]
+            src_row = src_meta[c["src_episode"]][0].loc[src_meta[c["src_episode"]][1]]
             m.at[i, "length"] = c["new_len"]
             m.at[i, "dataset_from_index"] = c["from_index"]
             m.at[i, "dataset_to_index"] = c["from_index"] + c["new_len"]
-            shift = c["cut"] / fps
+            m.at[i, "data/chunk_index"], m.at[i, "data/file_index"] = c["data_file"]
+            m.at[i, "meta/episodes/chunk_index"], m.at[i, "meta/episodes/file_index"] = chunk_file(p)
             for vk in video_keys:
-                m.at[i, f"videos/{vk}/from_timestamp"] = row[f"videos/{vk}/from_timestamp"] + shift
+                m.at[i, f"videos/{vk}/from_timestamp"] = src_row[f"videos/{vk}/from_timestamp"] + c["cut"] / fps
+                m.at[i, f"videos/{vk}/to_timestamp"] = src_row[f"videos/{vk}/from_timestamp"] + c["end"] / fps
             ep_stats = {}
             for key in ("action", "observation.state", "timestamp", "frame_index", "episode_index", "index", "task_index"):
                 arr = np.stack(x[key].values) if key in ("action", "observation.state") else x[key].to_numpy()
@@ -193,15 +231,18 @@ def main():
         pq.write_table(pa.Table.from_pandas(m, schema=t.schema, preserve_index=False), p)
 
     info["total_frames"] = next_index
+    info["total_episodes"] = len(cuts)
+    info["splits"] = {"train": f"0:{len(cuts)}"}
     (dst / "meta/info.json").write_text(json.dumps(info, indent=4))
     write_stats(aggregate_stats(all_stats), dst)
     (dst / "meta/trim_recovery_prefix.json").write_text(json.dumps(
         dict(src=str(src), cuts_csv=args.cuts, open_tol=args.open_tol, close_below=args.close_below,
              keep_whole=args.keep_whole, fps=fps, episodes=cuts), indent=1))
-    for ep, c in cuts.items():
-        print(f"ep{ep:3d} cut@{c['cut']:4d} ({c['cut'] / fps:5.1f}s)  first_close@{c['first_close']}  "
+    for ep in sorted(cuts):
+        c = cuts[ep]
+        print(f"ep{ep:3d} <- src ep{c['src_episode']:3d} [{c['cut']:4d}, {c['end']:4d})  first_close@{c['first_close']}  "
               f"{c['orig_len']} -> {c['new_len']}")
-    print(f"total frames {sum(c['orig_len'] for c in cuts.values())} -> {next_index}")
+    print(f"total frames {sum(len(x) for x in src_rows.values())} -> {next_index}, episodes {n_src} -> {len(cuts)}")
 
 
 if __name__ == "__main__":
