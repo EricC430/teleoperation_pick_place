@@ -397,6 +397,19 @@ failures — which is exactly what D005 does. **The absence of the data is an ar
   remains the fallback.
 - **See:** `docs/environment.md`, `README.md` § Container image
 
+### 🔄 2026-11-16 `[柏宇決定]` — 驅動已升級到 615；容器維持 CUDA 12.8
+
+- **事實** `[已查證]`：4090 的驅動從 `550.54.14` 升到 `615.71.09`（open），驅動能支援的 CUDA 上限是 13.4。2026-11-16 15:53 安裝，時間來源是 dpkg log。驅動是使用者自己升級的，沒有經過實驗室管理員。
+  細節看 `docs/environment.md` 的 driver 一節。
+- **上面 Accepted costs 第一點不再成立**：「驅動上限 12.4、靠 workaround、可能在跑到一半時失敗」的前提是驅動 < 570，現在驅動已經 ≥ 570。
+  Reverse if 裡「等驅動升級」那個條件也已經達成了。
+- **決定：容器維持 cu128，也就是 CUDA 12.8，不換成 cu13x 的 image。**
+  image 繼續用 `huggingface/lerobot-gpu@sha256:62df079f…`，跟 M-full 和之前所有 run 是同一個環境。
+  - 理由：換 image 會讓新模型和 M-full 不在同一個環境，比較的時候多一個變數。
+  - 理由：升級沒有帶來速度好處。615 上的 `updt_s` 是 0.301 s，跟 550 時期的 M-full 一樣，GPU 使用率已經是 100%。
+- **還沒做**：`scripts/run_container.sh` 的兩個 workaround 旗標還留著，在 615 上照常可以訓練。拿掉之後能不能跑**沒有驗證**。
+- **什麼情況下會推翻這個決定**：遇到需要 CUDA 13 的模型或 kernel；或者 LeRobot 換版本，新版 image 不再提供 cu128。
+
 ---
 
 ## D013 — LeRobot CLI for both arms; skip the ROBOTIS ROS 2 toolchain
