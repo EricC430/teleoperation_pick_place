@@ -8,9 +8,9 @@
 # A second person can attach to the SAME running container from another terminal:
 #   docker exec -it lerobot-dev bash
 #
-# The CUDA flags below are NOT optional on this machine and NOT cosmetic.
-# docs/environment.md explains why (driver caps at CUDA 12.4, image wants 12.8,
-# and the image's bundled forward-compat libs don't work on GeForce cards).
+# 2026-11-16: host drivers are now >=570 (615 / 610), so the old CUDA workaround
+# flags (NVIDIA_DISABLE_REQUIRE, --tmpfs /usr/local/cuda/compat) were removed.
+# If you ever run this on a driver <570 box, see docs/environment.md (driver ceiling).
 
 set -euo pipefail
 
@@ -32,8 +32,6 @@ exec docker run --rm "${TTY_FLAGS[@]}" \
   --name "$NAME" \
   --gpus all \
   --shm-size 16gb \
-  -e NVIDIA_DISABLE_REQUIRE=1 \
-  --tmpfs /usr/local/cuda/compat \
   --user "$(id -u):$(id -g)" \
   -v /etc/passwd:/etc/passwd:ro \
   -v /etc/group:/etc/group:ro \

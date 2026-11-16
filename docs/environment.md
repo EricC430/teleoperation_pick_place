@@ -71,6 +71,9 @@ drift onto different library versions.
 
 ## ⚠️ GPU box: the driver ceiling and the forward-compat trap
 
+> **2026-11-16：** 4090 Linux 筆電驅動已升到 615.71.09（≥570），不加下面兩個旗標也能用 GPU（見文末版本紀錄）。
+> 550 是這台更新前的驅動；另一台機器是 610，同樣不需要。以下為歷史紀錄，目前兩台都不適用。
+
 Read this before debugging any `--gpus all` failure on the lab machine.
 
 > **🔄 2026-11-16 換了驅動：`550.54.14` → `615.71.09`（`nvidia-driver-615-open`，`nvidia-smi` 顯示 CUDA UMD 13.4）。**
@@ -403,6 +406,7 @@ An entry without a date is not a record.
 | 2026-08-12 | GPU | `huggingface/lerobot-gpu@sha256:62df079f02b7fa26963d35466c12fa230be9f51a3b0ea2327297a84f70041c6c` (image built 2026-08-12) | 0.6.2 | 2.11.0+cu128 | 550.54.14 / 12.4 | | Requires the compat workaround above. Python 3.12.3, numpy 2.2.6. |
 | 2026-08-13 | Laptop (Windows 11) | n/a — uv venv, not a container | 0.6.2 | 2.11.0+cu126 | RTX 3050 4GB / driver TBD | | `scripts/setup_laptop.ps1` run successfully. torchvision 0.26.0+cu126, Python 3.12.13. Verified via `docs/field_manual.md` §2. **LeRobot version matches the GPU box exactly** — the hard requirement in the table above is met. |
 | 2026-09-07 | Laptop (Windows 11) | n/a — uv venv, not a container | 0.6.2 @ **`a16f34c0`** | 2.11.0+**cu128** | RTX 3050 4GB / **610.62, CUDA UMD 13.3** | Boyu | Rebuild of the laptop env in-repo (`./lerobot` + `./.venv`). torchvision 0.26.0+cu128, Python 3.12.13, numpy 2.2.6 (matches GPU box). Verified: `torch.cuda.is_available()` True, 2000×2000 GPU matmul on the 3050, `lerobot-teleoperate --help` lists `omx_leader`/`omx_follower`, repo suite 193 passed. **cu128 not cu126** — the wheels were already in the local uv cache and `docs/environment.md` states the CUDA build variant need not match across machines; only the torch version must, and 2.11.0 holds. `placo` still NOT installed (D026 pending). |
+| 2026-11-16 | 4090 Linux 筆電 | `huggingface/lerobot-gpu@sha256:62df079f02b7fa26963d35466c12fa230be9f51a3b0ea2327297a84f70041c6c`（OS＋驅動更新後 docker image 全清空，依釘選 digest 重新 pull，digest 與 2026-08-12 相同） | 0.6.2 | 2.11.0+cu128 | **615.71.09**（nvidia-container-toolkit 1.20.2、docker 29.9.3） | | 驗證：`torch.cuda.is_available()` True、4000×4000 GPU matmul 通過，**有舊旗標、完全無旗標、只加 `NVIDIA_DISABLE_REQUIRE` 三種都成功**。驅動 ≥570 後上方「driver ceiling」的 workaround 在這台不再需要；`scripts/run_container.sh` 已移除這兩個旗標。pull 後已手動 `docker tag` 成 `:latest`（指向同一 digest）。 |
 
 ### 🔴 `0.6.2` is not a tag — always pin the commit
 
