@@ -89,7 +89,7 @@
 | `a21624dd7255` | `cup129_bottle135_augfl_fldrop_p30_w30` / 40k | `act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_40k` | 紙杯＋寶特瓶 | 同上 | — |
 | `decdc7fa02a7` | `cup129_bottle135_augfl_fldrop_p30_w30` / 100k | `act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_100k` | 紙杯＋寶特瓶 | 同上 | — |
 | `8c42b7e0652e` | `cup129_bottle135_augfl_fldrop_p30_w30` / 200k | `act_omx_paper-cup129-plastic-bottle135-augfl-fldrop30_200k` | 紙杯＋寶特瓶 | 同上 | 11/11 紙杯 `__bc3e6dcc`（TE −0.01、30 s，`2026-11-11_mfull_closed_loop.md`：29/36）；同日寶特瓶 `__23810125` 新開＋續錄 `__70aa3514`／`__12a55ac5`／`__73a8b56f`（TE −0.01、45 s：25/36）；試跑 `__137171a6`（5 集設定，c1–c3 成功後中斷） |
-| `ca92727ebcff` | `cup129_bottle135_aimfix26_twoobj10_augfl_fldrop_p30_w30` / 200k | `act_omx_cup129-bottle135-aimfix26-twoobj10-augfl-fldrop30_200k` | 紙杯＋寶特瓶 | M-full 273 集的資料集＋後補 aimfix_A1_cut（寶特瓶）28 集（名稱裡的 26 是 11/16 切分前的舊數字；ep 26、27 為 ep 4、16 後半段）＋twoobj_A1 10 集，共 311 集（merged ep 0–310）；增強與 dropout 同 M-full，300k 步、每 100k 存（`configs/train_omx_cup129_bottle135_aimfix26_twoobj10_augfl_fldrop.yaml`；200k 步數與 M-full 200k 相同）。2026-11-17 上傳 Hub（private）；300k 訓練中 | — |
+| `ca92727ebcff` | `cup129_bottle135_aimfix26_twoobj10_augfl_fldrop_p30_w30` / 200k | `act_omx_cup129-bottle135-aimfix28-twoobj10-augfl-fldrop30_200k` | 紙杯＋寶特瓶 | M-full 273 集的資料集＋後補 aimfix_A1_cut（寶特瓶）28 集（本機 run、config、資料集名稱裡的 26 是 11/16 切分前的舊數字，Hub 名稱已改 28；ep 26、27 為 ep 4、16 後半段）＋twoobj_A1 10 集，共 311 集（merged ep 0–310）；增強與 dropout 同 M-full，300k 步、每 100k 存（`configs/train_omx_cup129_bottle135_aimfix26_twoobj10_augfl_fldrop.yaml`；200k 步數與 M-full 200k 相同）。2026-11-17 上傳 Hub（private）；300k 訓練中 | — |
 
 未列：60k／80k checkpoint（沒上 Hub、沒閉環過）、`my-002`／`smoke-001`／`perf-*`／`openloop-eval`（煙霧測試與效能測試）。
 
