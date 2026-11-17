@@ -6,7 +6,7 @@
 
 | Machine | Role | Environment | Constraint |
 |---|---|---|---|
-| 🔴 **Lab laptop (RTX 4090, Linux)** | **Training ＋ 模擬蒐集**（Isaac Sim + leader 直插，D029） | Docker：訓練用 `huggingface/lerobot-gpu`、模擬用 `isaac-lab` / `nvcr.io/nvidia/isaac-sim`；**lerobot 也在 docker 裡**（見下方「這台機器上什麼裝在哪」） | **leader 走 `/dev/ttyUSB*`，不是 `COM6`** — 需 udev／by-id 綁定（`experiment_spec.md` §7）。Host driver caps the usable CUDA version — see the gotcha below |
+| 🔴 **Lab laptop (RTX 4090, Linux)** | **Training ＋ 模擬蒐集**（Isaac Sim + leader 直插，D029） | Docker：訓練用 `huggingface/lerobot-gpu`、模擬用 `isaac-lab` / `nvcr.io/nvidia/isaac-sim`；**lerobot 也在 docker 裡**（見下方「這台機器上什麼裝在哪」） | **leader 走 `/dev/ttyUSB*`，不是 `COM6`** — 需 udev／by-id 綁定（`experiment_spec.md` §7）。Host driver：2026-11-16 起是 615.71.09（之前 550.54.14 → CUDA 12.4 上限），見下方 driver 一節 |
 | Laptop (RTX 3050 4GB, **Windows**) | **實機蒐集 + 推論部署** | **uv** (decided 2026-08-13, D014) | ⚠️ Issue #4093 — see below |
 
 > 🔴 **2026-09-21 更正：沒有 5090。** `[柏宇說 2026-09-21]` 只有一台 4090，文件從頭就寫錯。
@@ -73,7 +73,16 @@ drift onto different library versions.
 
 Read this before debugging any `--gpus all` failure on the lab machine.
 
-**Verified 2026-08-12:**
+> **🔄 2026-11-16 換了驅動：`550.54.14` → `615.71.09`（`nvidia-driver-615-open`，`nvidia-smi` 顯示 CUDA UMD 13.4）。**
+> - 時間 `[已查證：/var/log/dpkg.log、apt history.log，本機時區 Asia/Taipei]`：2026-11-16 **15:53** 安裝 615，同時移除 535；**15:55** 重開機（`uptime -s`）。
+>   同日 07:31 先裝過一次 `nvidia-driver-535`（535.288.01），15:53 被 615 取代，所以 535 只是中間版本。
+> - 同一天 OS 也從 Ubuntu 20.04 升到 24.04（kernel 6.17），細節見 `docs/worklog/2026-11-16_isaaclab3_migration.md` §1。
+> - 615 ≥ 570，**下面「CUDA 12.4 上限」和 forward-compat 那一整節講的都是 550 時期的狀況**，留著當歷史紀錄。
+> - `scripts/run_container.sh` 的兩個旗標**還在、沒拿掉**。拿掉後能不能跑**未驗證**。
+>   用這兩個旗標在 615 上已經跑通訓練：2026-11-16 的 aimfix26_twoobj10 run，`'device': 'cuda'`，image digest `62df079f…`（就是本檔釘選的版本）。
+>   速度跟 550 時期的 M-full 一樣：`updt_s` 0.301 vs 0.301 s，GPU 使用率 100%。驅動升級沒有讓訓練變快。
+
+**Verified 2026-08-12（driver 550 時期）:**
 
 - Host driver `550.54.14` → **CUDA 12.4 is the hard ceiling**
 - `huggingface/lerobot-gpu:latest` ships torch `2.11.0+cu128` → wants **CUDA 12.8**
@@ -148,7 +157,7 @@ Two clean fixes, in order of preference:
 
 | Fix | Blocker |
 |---|---|
-| Update the host driver to ≥570 | **No `sudo` on the GPU box** — needs the lab admin |
+| Update the host driver to ≥570 | ~~No `sudo` on the GPU box — needs the lab admin~~ **已完成 2026-11-16（615.71.09，見本節開頭）** |
 | Derive our own image from theirs, purging `cuda-compat` | `Dockerfile` isn't written yet (see [Container TODO](#container-todo)) |
 
 <a id="container-todo"></a>

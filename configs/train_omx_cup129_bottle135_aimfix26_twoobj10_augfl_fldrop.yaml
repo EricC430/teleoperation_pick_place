@@ -42,7 +42,8 @@
 #   first close = 0, NO dropout window for them. 3 of 10 eps; left as is (changing first_close would change M-full's
 #   numbers too).
 #
-# steps 200000 = M-full, constant lr (no scheduler). 200k ~ 59 epochs here (M-full ~67).
+# steps 300000, save_freq 100000 [柏宇決定 2026-11-16] -> checkpoints 100k / 200k / 300k. M-full = 200k; constant lr (no scheduler),
+# so the 200k checkpoint here is the one comparable to M-full 200k (same steps). 200k ~ 59 epochs here (M-full ~67), 300k ~ 89.
 #
 dataset:
   repo_id: ericc430/omx_pick_place_pilot_cup129_bottle135_aimfix26_twoobj10   # local only
@@ -67,9 +68,9 @@ policy:
   push_to_hub: false
 output_dir: /workspace/data/train/cup129_bottle135_aimfix26_twoobj10_augfl_fldrop_p30_w30
 job_name: act_omx_cup129_bottle135_aimfix26_twoobj10_augfl_fldrop_p30_w30
-steps: 200000
+steps: 300000
 batch_size: 32
-save_freq: 20000
+save_freq: 100000
 eval_steps: 0
 log_freq: 50
 seed: 1000
