@@ -1,11 +1,11 @@
 """Cheap, physics-free check of an object USD's authored size (no simulation stepping)."""
 import argparse, sys, os
-from isaaclab.app import AppLauncher
+import isaac_boot  # noqa: E402  (Isaac Lab 3.0 launcher, see isaac_boot.py)
 p = argparse.ArgumentParser()
 p.add_argument("--usd", required=True)
-AppLauncher.add_app_launcher_args(p)
+isaac_boot.add_args(p)
 args = p.parse_args()
-app = AppLauncher(args).app
+app = isaac_boot.start(args)
 from pxr import Usd, UsdGeom
 stage = Usd.Stage.Open(args.usd)
 print("metersPerUnit:", UsdGeom.GetStageMetersPerUnit(stage))

@@ -21,7 +21,7 @@ import argparse
 import os
 import sys
 
-from isaaclab.app import AppLauncher
+import isaac_boot  # noqa: E402  (Isaac Lab 3.0 launcher, see isaac_boot.py)
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--placements", default=None, help="placement_label_map CSV; object goes on one of its points")
@@ -30,17 +30,18 @@ parser.add_argument("--object", default=None, help="override the object USD")
 parser.add_argument("--object-scale", type=float, default=1.0)
 parser.add_argument("--steps", type=int, default=120, help="physics steps before the picture is taken")
 parser.add_argument("--out", default="/workspace/test_isaaclab/omx_sim/out")
-AppLauncher.add_app_launcher_args(parser)
+isaac_boot.add_args(parser)
 args = parser.parse_args()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-app_launcher = AppLauncher(args)
-simulation_app = app_launcher.app
+simulation_app = isaac_boot.start(args)
 
 import torch  # noqa: E402
 
 import isaaclab.sim as sim_utils  # noqa: E402
+from isaaclab.sim.schemas import UsdPhysicsRigidBodyCfg  # noqa: E402
+from isaaclab_physx.sim.schemas import PhysxRigidBodyCfg  # noqa: E402
 from isaaclab.scene import InteractiveScene  # noqa: E402
 
 import omx_constants as K  # noqa: E402
@@ -88,7 +89,7 @@ if args.object:
     scene_cfg.object.spawn = sim_utils.UsdFileCfg(
         usd_path=args.object,
         scale=S.TRASH_OBJ_SCALE if "trash_obj" in args.object else (1.0, 1.0, 1.0),
-        rigid_props=sim_utils.RigidBodyPropertiesCfg(disable_gravity=False, max_depenetration_velocity=3.0),
+        rigid_props=[UsdPhysicsRigidBodyCfg(), PhysxRigidBodyCfg(disable_gravity=False, max_depenetration_velocity=3.0)],  # 3.0 fragments
     )
 if args.object_scale != 1.0 and hasattr(scene_cfg.object.spawn, "scale"):
     scene_cfg.object.spawn.scale = (args.object_scale,) * 3
@@ -110,8 +111,8 @@ robot = scene["robot"]
 print("\narticulation loaded:")
 print(f"  bodies : {robot.num_bodies}")
 print(f"  joints : {robot.num_joints}  {robot.joint_names}")
-lower = robot.data.joint_pos_limits[0, :, 0].cpu().tolist()
-upper = robot.data.joint_pos_limits[0, :, 1].cpu().tolist()
+lower = robot.data.joint_pos_limits.torch[0, :, 0].cpu().tolist()
+upper = robot.data.joint_pos_limits.torch[0, :, 1].cpu().tolist()
 print(f"{'joint':<18}{'limits from the USD (deg)':<32}{'expected (deg)'}")
 for name, lo, hi in zip(robot.joint_names, lower, upper):
     j = next((x for x in K.JOINTS if x.urdf_name == name), None)
@@ -124,20 +125,20 @@ for name, lo, hi in zip(robot.joint_names, lower, upper):
           f"{f'{elo*57.2958:.1f} .. {ehi*57.2958:.1f}'}{'' if ok else '   🔴 MISMATCH'}")
 
 # hold the home pose and let everything settle
-target = robot.data.default_joint_pos.clone()
+target = robot.data.default_joint_pos.torch.clone()
 for i in range(args.steps):
-    robot.set_joint_position_target(target)
+    robot.actuators.target_command.set_position_index(value=target)
     scene.write_data_to_sim()
     sim.step()
     scene.update(sim.get_physics_dt())
 
 # ---------------------------------------------------------------- what settled where
 obj = scene["object"]
-obj_p = obj.data.root_pos_w[0].cpu().tolist()
+obj_p = obj.data.root_pos_w.torch[0].cpu().tolist()
 print(f"\nobject settled at x={obj_p[0]*100:.1f}cm y={obj_p[1]*100:.1f}cm z={obj_p[2]*100:.1f}cm")
 print(f"  (table top is {S.TABLE_TOP_Z*100:.1f}cm; if z is far below, the object USD needs a scale)")
 
-drift = (robot.data.joint_pos[0] - target[0]).abs().max().item()
+drift = (robot.data.joint_pos.torch[0] - target[0]).abs().max().item()
 print(f"max joint drift from the commanded home pose after {args.steps} steps: {drift*57.2958:.2f} deg")
 print("  (a large drift means the drive gains cannot hold the arm against gravity — see D029)")
 
@@ -145,10 +146,10 @@ print("  (a large drift means the drive gains cannot hold the arm against gravit
 print("\nrendered, in the dataset's declared camera order:")
 for idx, key in enumerate(("cam_wrist", "cam_front_left"), start=1):
     cam = scene[key]
-    rgb = cam.data.output["rgb"][0]
+    rgb = cam.data.output["rgb"].torch[0]
     name = {"cam_wrist": "observation.images.wrist", "cam_front_left": "observation.images.front-left"}[key]
     path = save_rgb(rgb, os.path.join(args.out, f"{idx}_{key}.png"))
-    intr = cam.data.intrinsic_matrices[0].cpu().tolist()
+    intr = cam.data.intrinsic_matrices.torch[0].cpu().tolist()
     print(f"  {idx}. {name:<34}{tuple(rgb.shape)}  -> {path}")
     print(f"     fx={intr[0][0]:.2f} fy={intr[1][1]:.2f} cx={intr[0][2]:.2f} cy={intr[1][2]:.2f}   [PROVISIONAL intrinsics]")
 

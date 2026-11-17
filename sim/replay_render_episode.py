@@ -86,7 +86,7 @@ import os
 import random
 import sys
 
-from isaaclab.app import AppLauncher
+import isaac_boot  # noqa: E402  (Isaac Lab 3.0 launcher, see isaac_boot.py)
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--dataset-root", required=True, help="dir containing data/chunk-*/file-*.parquet")
@@ -131,17 +131,18 @@ parser.add_argument("--wrist-intrinsics", default=None,
                          "Its POSE stays scene_constants' CAD offset -- the wrist hand-eye is not calibrated")
 parser.add_argument("--save-ideal", action="store_true",
                     help="also save Isaac's raw render (square pixels, centred axis, no distortion) per camera")
-AppLauncher.add_app_launcher_args(parser)
+isaac_boot.add_args(parser)
 args = parser.parse_args()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-app_launcher = AppLauncher(args)
-simulation_app = app_launcher.app
+simulation_app = isaac_boot.start(args)
 
 import torch  # noqa: E402
 
 import isaaclab.sim as sim_utils  # noqa: E402
+from isaaclab.sim.schemas import UsdPhysicsRigidBodyCfg  # noqa: E402
+from isaaclab_physx.sim.schemas import PhysxRigidBodyCfg  # noqa: E402
 from isaaclab.scene import InteractiveScene  # noqa: E402
 
 import camera_distortion as CD  # noqa: E402
@@ -315,7 +316,7 @@ if args.object:
     scene_cfg.object.spawn = sim_utils.UsdFileCfg(
         usd_path=args.object,
         scale=S.TRASH_OBJ_SCALE if "trash_obj" in args.object else (1.0, 1.0, 1.0),
-        rigid_props=sim_utils.RigidBodyPropertiesCfg(disable_gravity=False, max_depenetration_velocity=3.0),
+        rigid_props=[UsdPhysicsRigidBodyCfg(), PhysxRigidBodyCfg(disable_gravity=False, max_depenetration_velocity=3.0)],  # 3.0 fragments
     )
 # wrist camera is parented to link5, so its DR jitter is a local offset tweak, pre-build
 scene_cfg.cam_wrist.offset.pos = tuple(p + d for p, d in zip(S.CAM_WRIST_OFFSET_POS, cam_dpos))
@@ -398,7 +399,7 @@ import numpy as np  # noqa: E402
 for key, spec in lens.items():
     K_isaac = torch.tensor(CD.isaac_K(spec["render_w"], spec["render_h"], spec["f"]), dtype=torch.float32, device=sim.device)
     scene[key].set_intrinsic_matrices(K_isaac.unsqueeze(0))
-    got = scene[key].data.intrinsic_matrices[0].cpu().numpy()
+    got = scene[key].data.intrinsic_matrices.torch[0].cpu().numpy()
     # build the remap from what Isaac SAYS it renders, not from what was asked for
     spec["f_isaac"] = float(got[0, 0])
     if abs(spec["f_isaac"] - spec["f"]) > 1e-3 * spec["f"] or abs(got[1, 1] - got[0, 0]) > 1e-6:
@@ -425,8 +426,9 @@ if args.front_left_extrinsics:
     pos = [p + d for p, d in zip(fl_pos, cam_dpos)]
     R = np.asarray(fl_R) @ small_rotation(*cam_drot)
     quat = R_to_quat_wxyz(R)
-    scene["cam_front_left"].set_world_poses(torch.tensor([pos], device=sim.device), torch.tensor([quat], device=sim.device),
-                                            convention="ros")
+    # Isaac Lab 3.0 takes (x, y, z, w); `quat` (and fl_pose / the manifest) stays (w, x, y, z), like the JSONs
+    scene["cam_front_left"].set_world_poses(torch.tensor([pos], device=sim.device),
+                                            torch.tensor([S.wxyz_to_xyzw(quat)], device=sim.device), convention="ros")
     fl_pose = {"pos": pos, "quat_wxyz_ros": quat, "source": args.front_left_extrinsics}
     print(f"cam_front_left: measured pose from {args.front_left_extrinsics} -> pos {[round(v, 4) for v in pos]} quat {[round(v, 4) for v in quat]}")
 else:
@@ -470,8 +472,9 @@ def write_pose(t: int) -> torch.Tensor:
     if _write_mimic:
         rad.append(_mimic_mult * rad[joint_names.index(_mimic_src)])
     pos = torch.tensor([rad], device=sim.device, dtype=torch.float32)
-    robot.write_joint_state_to_sim(pos, zeros, joint_ids=joint_idx)
-    robot.set_joint_position_target(robot.data.joint_pos.clone())
+    robot.write_joint_position_to_sim_index(position=pos, joint_ids=joint_idx)
+    robot.write_joint_velocity_to_sim_index(velocity=zeros, joint_ids=joint_idx)
+    robot.actuators.target_command.set_position_index(value=robot.data.joint_pos.torch.clone())
     scene.write_data_to_sim()
     return pos
 
@@ -485,8 +488,9 @@ for _ in range(args.warmup_steps):
 if fl_pose is not None:
     # read the pose back in the SAME (ros) convention it was written in -- a convention mix-up shows
     # up here as a large angle, instead of as a plausible-looking but rotated image
-    got_p = scene["cam_front_left"].data.pos_w[0].cpu().numpy()
-    got_R = np.asarray(quat_wxyz_to_R(scene["cam_front_left"].data.quat_w_ros[0].cpu().numpy().tolist()))
+    got_p = scene["cam_front_left"].data.pos_w.torch[0].cpu().numpy()
+    _qx, _qy, _qz, _qw = scene["cam_front_left"].data.quat_w_ros.torch[0].cpu().numpy().tolist()   # 3.0: (x, y, z, w)
+    got_R = np.asarray(quat_wxyz_to_R([_qw, _qx, _qy, _qz]))
     dp = float(np.linalg.norm(got_p - np.asarray(fl_pose["pos"])))
     dang = math.degrees(math.acos(max(-1.0, min(1.0, (np.trace(got_R.T @ np.asarray(quat_wxyz_to_R(fl_pose["quat_wxyz_ros"]))) - 1) / 2))))
     print(f"cam_front_left pose read back: |dpos| {dp*1000:.3f} mm, rotation {dang:.4f} deg")
@@ -499,7 +503,7 @@ if fl_pose is not None:
 # the cup was "picked up" out of the bin. A regrasp at the pick site (a real behaviour in some
 # episodes) is still allowed: attaching stops only once the object was released away from its start.
 REGRASP_MAX_M = 0.10
-obj_start = obj.data.root_pos_w[0].clone()
+obj_start = obj.data.root_pos_w.torch[0].clone()
 grasp_done = False
 
 records = []
@@ -512,16 +516,16 @@ for n, t in enumerate(frames):
     tcp_obj_dist = None
     if grasp is not None:
         tcp, tcp_q = tcp_pose_w(robot)   # measured fingertip, not the link6/link7 pivots
-        obj_p = obj.data.root_pos_w[0]
+        obj_p = obj.data.root_pos_w.torch[0]
         # 🔴 recorded every frame on purpose. When a grasp does not fire, the ONLY question that
         # matters is "how close did the TCP actually get to the object", and guessing at it (too
         # tight a radius? object rolled? wrong TCP frame?) wasted a cycle on 2026-09-21.
         tcp_obj_dist = float(torch.norm(obj_p - tcp).item())
         if not grasp_done:
-            want_p, want_q = grasp.step(t, states_deg[t][5], tcp, tcp_q, obj_p, obj.data.root_quat_w[0])
+            want_p, want_q = grasp.step(t, states_deg[t][5], tcp, tcp_q, obj_p, obj.data.root_quat_w.torch[0])
             if grasp.attached:
-                obj.write_root_pose_to_sim(torch.cat([want_p, want_q]).unsqueeze(0))
-                obj.write_root_velocity_to_sim(torch.zeros(1, 6, device=want_p.device))
+                obj.write_root_pose_to_sim_index(root_pose=torch.cat([want_p, want_q]).unsqueeze(0))
+                obj.write_root_velocity_to_sim_index(root_velocity=torch.zeros(1, 6, device=want_p.device))
                 attached = True
             elif (grasp.events and grasp.events[-1].kind == "detach"
                   and float(torch.norm(obj_p[:2] - obj_start[:2])) > REGRASP_MAX_M):
@@ -538,7 +542,7 @@ for n, t in enumerate(frames):
            "observation_state": states_deg[t], "grasp_attached": attached,
            "tcp_object_dist_m": tcp_obj_dist}
     for key, name in (("cam_wrist", "wrist"), ("cam_front_left", "front-left")):
-        rgb = scene[key].data.output["rgb"][0][..., :3].detach().cpu().numpy()
+        rgb = scene[key].data.output["rgb"].torch[0][..., :3].detach().cpu().numpy()
         fn = f"f{t:05d}_{name}.png"
         if key in lens:
             if args.save_ideal:

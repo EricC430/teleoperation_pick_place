@@ -29,7 +29,7 @@ import argparse
 import os
 import sys
 
-from isaaclab.app import AppLauncher
+import isaac_boot  # noqa: E402  (Isaac Lab 3.0 launcher, see isaac_boot.py)
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--urdf", required=True, help="path to omx_f.urdf")
@@ -53,7 +53,7 @@ parser.add_argument(
         "(S4 §5-1), not by reading either spec."
     ),
 )
-AppLauncher.add_app_launcher_args(parser)
+isaac_boot.add_args(parser)
 args = parser.parse_args()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -105,8 +105,7 @@ if args.dry_run:
     print("\n--dry-run: nothing was converted.")
     raise SystemExit(0)
 
-app_launcher = AppLauncher(args)
-simulation_app = app_launcher.app
+simulation_app = isaac_boot.start(args)
 
 from isaaclab.sim.converters import UrdfConverter, UrdfConverterCfg  # noqa: E402
 from pxr import Usd  # noqa: E402

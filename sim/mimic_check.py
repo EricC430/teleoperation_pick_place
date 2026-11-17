@@ -29,7 +29,7 @@ import argparse
 import os
 import sys
 
-from isaaclab.app import AppLauncher
+import isaac_boot  # noqa: E402  (Isaac Lab 3.0 launcher, see isaac_boot.py)
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--usd", default="/workspace/test_isaaclab/assets/omx_f_generated/omx_f.usd")
@@ -40,13 +40,12 @@ parser.add_argument("--hold-steps", type=int, default=120, help="physics steps p
 parser.add_argument("--tip-offset-m", type=float, default=0.03,
                     help="probe point along each finger link's +x (only needs to be off the joint axis)")
 parser.add_argument("--out", default="/workspace/test_isaaclab/omx_sim/out/mimic_check")
-AppLauncher.add_app_launcher_args(parser)
+isaac_boot.add_args(parser)
 args = parser.parse_args()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-app_launcher = AppLauncher(args)
-simulation_app = app_launcher.app
+simulation_app = isaac_boot.start(args)
 
 import torch  # noqa: E402
 from pxr import PhysxSchema, Usd  # noqa: E402
@@ -95,7 +94,7 @@ robot = scene["robot"]
 m_id = robot.find_joints(MASTER)[0][0]
 f_id = robot.find_joints(FOLLOWER)[0][0]
 b5, b6, b7 = (robot.find_bodies(n)[0][0] for n in ("link5", "link6", "link7"))
-lo, hi = robot.data.joint_pos_limits[0, m_id].tolist()
+lo, hi = robot.data.joint_pos_limits.torch[0, m_id].tolist()
 print(f"\n{MASTER} limits in the USD: {lo*57.2958:.1f} .. {hi*57.2958:.1f} deg")
 print(f"{FOLLOWER} mimic gearing under test: {gearing}   (URDF multiplier: {URDF_MULT})")
 
@@ -103,23 +102,23 @@ offset = torch.tensor([[args.tip_offset_m, 0.0, 0.0]], device=sim.device)
 
 
 def tip_in_link5(body: int) -> torch.Tensor:
-    p5, q5 = robot.data.body_pos_w[:, b5], robot.data.body_quat_w[:, b5]
-    p, q = robot.data.body_pos_w[:, body], robot.data.body_quat_w[:, body]
+    p5, q5 = robot.data.body_pos_w.torch[:, b5], robot.data.body_quat_w.torch[:, b5]
+    p, q = robot.data.body_pos_w.torch[:, body], robot.data.body_quat_w.torch[:, body]
     tip_w = p + quat_apply(q, offset)
     return quat_apply(quat_inv(q5), tip_w - p5)[0]
 
 
 rows = []
 for deg in [float(a) for a in args.angles_deg.split(",")]:
-    target = robot.data.default_joint_pos.clone()
+    target = robot.data.default_joint_pos.torch.clone()
     target[:, m_id] = deg / 57.2958
     for _ in range(args.hold_steps):
-        robot.set_joint_position_target(target)
+        robot.actuators.target_command.set_position_index(value=target)
         scene.write_data_to_sim()
         sim.step()
         scene.update(sim.get_physics_dt())
-    j1 = robot.data.joint_pos[0, m_id].item()
-    j2 = robot.data.joint_pos[0, f_id].item()
+    j1 = robot.data.joint_pos.torch[0, m_id].item()
+    j2 = robot.data.joint_pos.torch[0, f_id].item()
     t6, t7 = tip_in_link5(b6), tip_in_link5(b7)
     rows.append((deg, j1 * 57.2958, j2 * 57.2958, t6[1].item(), t7[1].item()))
 

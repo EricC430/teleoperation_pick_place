@@ -77,8 +77,8 @@ def tcp_pose_w(robot):
     import omx_constants as K
 
     b5 = robot.body_names.index("link5")
-    pos_w = robot.data.body_pos_w[0, b5]
-    quat_w = robot.data.body_quat_w[0, b5]
+    pos_w = robot.data.body_pos_w.torch[0, b5]
+    quat_w = robot.data.body_quat_w.torch[0, b5]
     rel = torch.tensor(K.TCP_IN_LINK5_M, device=pos_w.device, dtype=pos_w.dtype)
     pos, _ = combine_frame_transforms(pos_w.unsqueeze(0), quat_w.unsqueeze(0), rel.unsqueeze(0))
     return pos.squeeze(0), quat_w
@@ -110,8 +110,8 @@ class ScriptedGraspAttach:
         want_pos, want_quat = grasp.step(frame_idx, gripper_reading_deg,
                                           tcp_pos_w, tcp_quat_w, object_pos_w, object_quat_w)
         if grasp.attached:
-            object.write_root_pose_to_sim(torch.cat([want_pos, want_quat]).unsqueeze(0))
-            object.write_root_velocity_to_sim(torch.zeros(1, 6, device=want_pos.device))
+            object.write_root_pose_to_sim_index(root_pose=torch.cat([want_pos, want_quat]).unsqueeze(0))
+            object.write_root_velocity_to_sim_index(root_velocity=torch.zeros(1, 6, device=want_pos.device))
         # else: do nothing -- physics already owns the object this step
     """
 

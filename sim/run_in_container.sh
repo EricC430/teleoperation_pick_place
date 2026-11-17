@@ -40,4 +40,17 @@ INTERACTIVE_FLAG=""
 if [ -t 0 ]; then
   INTERACTIVE_FLAG="-i"
 fi
-exec docker exec $INTERACTIVE_FLAG -e PYTHONUNBUFFERED=1 -e OMX_REPO="$GUEST_VOLUME/omx_repo" "$CONTAINER" /isaac-sim/python.sh "$GUEST_VOLUME/omx_sim/$SCRIPT" "$@"
+# Isaac Lab 3.0 container (isaac-lab-base image, Isaac Sim 6.2.0): two ways to start Python.
+#   * scripts that import isaaclab (they all `import isaac_boot`) -> `isaaclab.sh -p`, which sources the Isaac Sim env and
+#     uses the uv venv (/opt/isaaclab-venv, Python 3.12). Calling the venv python directly fails: "Isaac Sim is not installed".
+#   * plain Isaac Sim scripts (SimulationApp, no Isaac Lab: physics_replay.py, dr_render.py, ...) -> Isaac Sim's python.sh.
+# Override with RUNNER=isaaclab|isaacsim.
+if [ -z "${RUNNER:-}" ]; then
+  if grep -qE '^\s*(import isaac_boot|from isaaclab)' "$HERE/$SCRIPT" 2>/dev/null; then RUNNER=isaaclab; else RUNNER=isaacsim; fi
+fi
+case "$RUNNER" in
+  isaaclab) PY=/workspace/isaaclab/isaaclab.sh; PYARGS="-p" ;;
+  isaacsim) PY=/isaac-sim/python.sh; PYARGS="" ;;
+  *) echo "RUNNER must be isaaclab or isaacsim" >&2; exit 2 ;;
+esac
+exec docker exec $INTERACTIVE_FLAG -e PYTHONUNBUFFERED=1 -e OMX_REPO="$GUEST_VOLUME/omx_repo" "$CONTAINER" $PY $PYARGS "$GUEST_VOLUME/omx_sim/$SCRIPT" "$@"

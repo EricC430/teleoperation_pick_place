@@ -34,7 +34,7 @@ import json
 import os
 import sys
 
-from isaaclab.app import AppLauncher
+import isaac_boot  # noqa: E402  (Isaac Lab 3.0 launcher, see isaac_boot.py)
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--dataset-root", required=True, help="dir containing data/chunk-*/file-*.parquet")
@@ -42,17 +42,18 @@ parser.add_argument("--episode", type=int, required=True)
 parser.add_argument("--attach-radius", type=float, default=0.05)
 parser.add_argument("--close-frac", type=float, default=0.6)
 parser.add_argument("--out", required=True)
-AppLauncher.add_app_launcher_args(parser)
+isaac_boot.add_args(parser)
 args = parser.parse_args()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-app_launcher = AppLauncher(args)
-simulation_app = app_launcher.app
+simulation_app = isaac_boot.start(args)
 
 import torch  # noqa: E402
 
 import isaaclab.sim as sim_utils  # noqa: E402
+from isaaclab.sim.schemas import UsdPhysicsRigidBodyCfg  # noqa: E402
+from isaaclab_physx.sim.schemas import PhysxRigidBodyCfg  # noqa: E402
 from isaaclab.assets import ArticulationCfg, AssetBaseCfg, RigidObjectCfg  # noqa: E402
 from isaaclab.scene import InteractiveScene, InteractiveSceneCfg  # noqa: E402
 from isaaclab.utils import configclass  # noqa: E402
@@ -123,7 +124,7 @@ class GraspDemoSceneCfg(InteractiveSceneCfg):
         spawn=sim_utils.UsdFileCfg(
             usd_path=SC.DEFAULT_OBJECT_USD,
             scale=(0.01, 0.01, 0.01),  # trash_obj/*.usd metersPerUnit=0.01, see scene_constants.py
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(disable_gravity=False, max_depenetration_velocity=3.0),
+            rigid_props=[UsdPhysicsRigidBodyCfg(), PhysxRigidBodyCfg(disable_gravity=False, max_depenetration_velocity=3.0)],  # 3.0 fragments
         ),
         # parked well clear of the arm's reach until the scripted teleport, see module docstring
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.8, 0.8, 0.5)),
@@ -148,13 +149,13 @@ grasp = ScriptedGraspAttach(GraspAttachConfig(attach_radius_m=args.attach_radius
 grasp.calibrate(gripper_trace_deg)
 
 substeps = round(120.0 / DATASET_FPS)
-target = robot.data.default_joint_pos.clone()
+target = robot.data.default_joint_pos.torch.clone()
 
 for t in range(n_frames):
     for k, i in enumerate(joint_idx):
         target[:, i] = actions_rad[t][k]
     for _ in range(substeps):
-        robot.set_joint_position_target(target)
+        robot.actuators.target_command.set_position_index(value=target)
         scene.write_data_to_sim()
         sim.step()
         scene.update(sim.get_physics_dt())
@@ -164,16 +165,16 @@ for t in range(n_frames):
     if t == predicted_attach_frame - 1:
         # manufacture proximity: teleport the object onto the TCP one frame early, see docstring
         pose = torch.cat([tcp_pos, tcp_quat]).unsqueeze(0)
-        obj.write_root_pose_to_sim(pose)
-        obj.write_root_velocity_to_sim(torch.zeros(1, 6, device=tcp_pos.device))
+        obj.write_root_pose_to_sim_index(root_pose=pose)
+        obj.write_root_velocity_to_sim_index(root_velocity=torch.zeros(1, 6, device=tcp_pos.device))
         print(f"  frame {t}: teleported object to TCP {tcp_pos.cpu().tolist()} ahead of predicted attach")
 
-    obj_pos = obj.data.root_pos_w[0]
-    obj_quat = obj.data.root_quat_w[0]
+    obj_pos = obj.data.root_pos_w.torch[0]
+    obj_quat = obj.data.root_quat_w.torch[0]
     want_pos, want_quat = grasp.step(t, gripper_trace_deg[t], tcp_pos, tcp_quat, obj_pos, obj_quat)
     if grasp.attached:
-        obj.write_root_pose_to_sim(torch.cat([want_pos, want_quat]).unsqueeze(0))
-        obj.write_root_velocity_to_sim(torch.zeros(1, 6, device=want_pos.device))
+        obj.write_root_pose_to_sim_index(root_pose=torch.cat([want_pos, want_quat]).unsqueeze(0))
+        obj.write_root_velocity_to_sim_index(root_velocity=torch.zeros(1, 6, device=want_pos.device))
 
 print(f"\n{len(grasp.events)} event(s):")
 for e in grasp.events:

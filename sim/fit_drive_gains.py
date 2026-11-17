@@ -76,7 +76,7 @@ import json
 import os
 import sys
 
-from isaaclab.app import AppLauncher
+import isaac_boot  # noqa: E402  (Isaac Lab 3.0 launcher, see isaac_boot.py)
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--dataset-root", required=True, help="dir containing data/chunk-*/file-*.parquet")
@@ -100,14 +100,19 @@ parser.add_argument(
     "for the named joint(s) for this run only, to test a candidate sign without waiting for the "
     "five-pose test (S4 §5-1). See joint_mapping.py's docstring for why SIGN defaults to +1.",
 )
+parser.add_argument("--physics", choices=("physx", "newton_mjwarp"), default="physx",
+                    help="physics backend (Isaac Lab 3.0). physx = what every S5/S9 number was measured with; "
+                    "newton_mjwarp = Newton + MuJoCo-Warp, 2026-11-16 first try (see docs/worklog/2026-11-16_newton_try.md)")
+parser.add_argument("--num-envs", type=int, default=1,
+                    help="parallel copies of the arm, all driven by the same targets; env 0 is the one scored. "
+                    "1 reproduces the original behaviour; >1 is for throughput measurements")
 parser.add_argument("--out", required=True, help="where to write the JSON report")
-AppLauncher.add_app_launcher_args(parser)
+isaac_boot.add_args(parser)
 args = parser.parse_args()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-app_launcher = AppLauncher(args)
-simulation_app = app_launcher.app
+simulation_app = isaac_boot.start(args)
 
 import torch  # noqa: E402
 
@@ -115,6 +120,10 @@ import isaaclab.sim as sim_utils  # noqa: E402
 from isaaclab.assets import ArticulationCfg, AssetBaseCfg  # noqa: E402
 from isaaclab.scene import InteractiveScene, InteractiveSceneCfg  # noqa: E402
 from isaaclab.utils import configclass  # noqa: E402
+
+if args.physics != "physx":
+    # Newton refuses the original asset (one dangling reference, see newton_asset_fix.py); use the fixed copy unless told otherwise
+    os.environ.setdefault("OMX_USD", "/workspace/test_isaaclab/assets/omx_f_generated_newton/omx_f.usd")
 
 import joint_mapping as JM  # noqa: E402
 import omx_constants as K  # noqa: E402
@@ -182,7 +191,7 @@ class GainFitSceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = SC.omx_articulation_cfg("{ENV_REGEX_NS}/Robot")
 
 
-scene_cfg = GainFitSceneCfg(num_envs=1, env_spacing=2.0, replicate_physics=False)
+scene_cfg = GainFitSceneCfg(num_envs=args.num_envs, env_spacing=2.0, replicate_physics=(args.num_envs > 1 or args.physics != "physx"))   # Newton's cloner needs it even for 1 env
 
 # scale every joint's gains uniformly -- see the module docstring for why this is a global,
 # not per-joint, scale for the first pass.
@@ -190,7 +199,8 @@ for j in K.JOINTS:
     act = scene_cfg.robot.actuators[j.urdf_name]
     act.stiffness = K.stiffness(j) * args.stiffness_scale
     act.damping = K.damping(j) * args.damping_scale
-    act.effort_limit = j.motor.stall_torque_nm * args.effort_scale
+    act.actuator_effort_limit = j.motor.stall_torque_nm * args.effort_scale   # 3.0: split rated / solver limit,
+    act.joint_effort_limit = j.motor.stall_torque_nm * args.effort_scale      # both were `effort_limit` in 2.x
 
 # start at the recorded first frame's pose, not the zero pose -- avoids an irrelevant transient
 # from "sim starts folded, real starts mid-reach" dominating the error metric. Real hardware
@@ -198,10 +208,28 @@ for j in K.JOINTS:
 # not a replay of a problem this script isn't trying to measure.
 joint_names = [j.urdf_name for j in K.JOINTS]
 first_pose = {name: val for name, val in zip(joint_names, actions_rad[0])}
+# Isaac Lab 3.0 refuses an initial pose outside the joint limits (articulation _validate_cfg raises ValueError; 2.x did not
+# stop here). The recorded first state can sit just outside the site limits (ep0: joint3 1.642 rad vs +1.571), so clamp it
+# into the limits -- the same transient the real arm resolves by its own end-stop. Printed, never silent.
+for _j in K.JOINTS:
+    _lo, _hi = K.effective_limits_rad(_j, apply_site_limits=True)
+    _v = first_pose[_j.urdf_name]
+    if not (_lo <= _v <= _hi):
+        print(f"  init pose clamped: {_j.urdf_name} {_v:.3f} rad -> [{_lo:.3f}, {_hi:.3f}]")
+        first_pose[_j.urdf_name] = min(max(_v, _lo), _hi)
 first_pose[K.MIMIC_JOINT[0]] = 0.0
 scene_cfg.robot.init_state.joint_pos = first_pose
 
-sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=1.0 / 120.0, device=args.device))
+if args.physics == "newton_mjwarp":
+    # Newton + MuJoCo-Warp. Starting profile from docs/source/how-to/solver_tuning_mjwarp.rst ("explicit baseline"),
+    # NOT a translation of the PhysX numbers (the official asset guide says not to). debug_mode on: this is a first try.
+    from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg  # noqa: E402
+
+    physics_cfg = NewtonCfg(solver_cfg=MJWarpSolverCfg(solver="newton", integrator="implicitfast"),
+                            num_substeps=1, debug_mode=True)
+else:
+    physics_cfg = None   # SimulationCfg default = Isaac Sim PhysX, exactly as before
+sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=1.0 / 120.0, device=args.device, physics=physics_cfg))
 scene = InteractiveScene(scene_cfg)
 sim.reset()
 
@@ -210,24 +238,36 @@ joint_idx = [robot.joint_names.index(n) for n in joint_names]
 
 errors_deg = [[] for _ in range(6)]  # per dataset joint, degrees
 
-target = robot.data.default_joint_pos.clone()
+target = robot.data.default_joint_pos.torch.clone()
+import time  # noqa: E402
+torch.cuda.synchronize()
+_t_loop = time.time()
+_n_sim_steps = 0
 for t in range(n_frames - 1):
     for k, i in enumerate(joint_idx):
         target[:, i] = actions_rad[t][k]
     for _ in range(substeps):
-        robot.set_joint_position_target(target)
+        robot.actuators.target_command.set_position_index(value=target)
         scene.write_data_to_sim()
         sim.step()
         scene.update(sim.get_physics_dt())
+        _n_sim_steps += 1
 
     real_next_rad = states_rad[t + 1]
     for k, i in enumerate(joint_idx):
-        sim_rad = robot.data.joint_pos[0, i].item()
+        sim_rad = robot.data.joint_pos.torch[0, i].item()
         err_deg = abs(sim_rad - real_next_rad[k]) * RAD2DEG
         errors_deg[k].append(err_deg)
 
     if t % max(1, (n_frames // 10)) == 0:
         print(f"  frame {t}/{n_frames}")
+
+
+torch.cuda.synchronize()
+_loop_s = time.time() - _t_loop
+print(f"\n[{args.physics}] {_n_sim_steps} sim steps x {args.num_envs} env(s) in {_loop_s:.2f} s -> "
+      f"{_n_sim_steps / _loop_s:.0f} steps/s, {_n_sim_steps * args.num_envs / _loop_s:.0f} env-steps/s "
+      f"(includes the per-step .item() readback the scoring does)")
 
 
 def pctl(vals, p):
@@ -261,6 +301,12 @@ with open(args.out, "w") as fh:
             "sign_unverified": True,
             "per_joint": report_joints,
             "agg_p50_deg": agg_p50,
+            "physics": args.physics,
+            "num_envs": args.num_envs,
+            "sim_steps": _n_sim_steps,
+            "loop_seconds": _loop_s,
+            "steps_per_s": _n_sim_steps / _loop_s,
+            "env_steps_per_s": _n_sim_steps * args.num_envs / _loop_s,
         },
         fh,
         indent=2,

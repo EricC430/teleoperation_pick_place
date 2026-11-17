@@ -38,7 +38,7 @@ import math
 import os
 import sys
 
-from isaaclab.app import AppLauncher
+import isaac_boot  # noqa: E402  (Isaac Lab 3.0 launcher, see isaac_boot.py)
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--traj", required=True, help="traj.npz from scripts/s5_prepare_replay.py")
@@ -49,7 +49,7 @@ parser.add_argument("--dt", type=float, default=1.0 / 120.0, help="physics dt (s
 parser.add_argument("--max-frames", type=int, default=None, help="truncate each episode (for a quick run)")
 parser.add_argument("--out", default="/workspace/test_isaaclab/omx_sim/out/fit_drive_gains_grid")
 parser.add_argument("--dry-run", action="store_true", help="print the grid and the data summary, do not start Isaac Sim")
-AppLauncher.add_app_launcher_args(parser)
+isaac_boot.add_args(parser)
 args = parser.parse_args()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -83,8 +83,7 @@ if args.dry_run:
         print(f"  env {i:>2}: tracking_error {te:5.2f} deg  damping_fraction {df:.3f}")
     raise SystemExit(0)
 
-app_launcher = AppLauncher(args)
-simulation_app = app_launcher.app
+simulation_app = isaac_boot.start(args)
 
 import torch  # noqa: E402
 
@@ -111,8 +110,8 @@ for e, (te_deg, dfrac) in enumerate(grid):
     for j, joint in enumerate(K.JOINTS):
         stiff[e, j] = joint.motor.stall_torque_nm / math.radians(te_deg)
         damp[e, j] = dfrac * stiff[e, j]
-robot.write_joint_stiffness_to_sim(stiff, joint_ids=ids, env_ids=all_env)
-robot.write_joint_damping_to_sim(damp, joint_ids=ids, env_ids=all_env)
+robot.write_joint_stiffness_to_sim_index(stiffness=stiff, joint_ids=ids, env_ids=all_env)
+robot.write_joint_damping_to_sim_index(damping=damp, joint_ids=ids, env_ids=all_env)
 
 errors = [[] for _ in range(n_env)]  # per env: list of (frames, 5) abs errors in deg
 limit_hits = 0
@@ -124,28 +123,29 @@ for ep in episodes:
         act, st = act[: args.max_frames + 1], st[: args.max_frames + 1]
 
     # start every env exactly at the real first state
-    q0 = robot.data.default_joint_pos.clone()
+    q0 = robot.data.default_joint_pos.torch.clone()
     q0[:, ids] = st[0]
     q0[:, mimic_id] = K.MIMIC_JOINT[2] * st[0, 5]
-    lim = robot.data.joint_pos_limits[0, ids]
+    lim = robot.data.joint_pos_limits.torch[0, ids]
     outside = ((st < lim[:, 0]) | (st > lim[:, 1])).any(dim=0)
     if outside.any():
         limit_hits += 1
         names = [JM.URDF_NAMES[j] for j in torch.nonzero(outside).flatten().tolist()]
         print(f"  ⚠️ ep {ep}: real state leaves the USD joint limits on {names} — clamped in sim (mapping 未確認?)")
     scene.reset()
-    robot.write_joint_state_to_sim(q0, torch.zeros_like(q0))
+    robot.write_joint_position_to_sim_index(position=q0)
+    robot.write_joint_velocity_to_sim_index(velocity=torch.zeros_like(q0))
 
     target = q0.clone()
     ep_err = torch.zeros(n_env, len(act) - 1, BODY, device=dev)
     for t in range(len(act) - 1):
         target[:, ids] = act[t]
         for _ in range(substeps):
-            robot.set_joint_position_target(target)
+            robot.actuators.target_command.set_position_index(value=target)
             scene.write_data_to_sim()
             sim.step()
             scene.update(args.dt)
-        ep_err[:, t] = (robot.data.joint_pos[:, ids[:BODY]] - st[t + 1, :BODY]).abs()
+        ep_err[:, t] = (robot.data.joint_pos.torch[:, ids[:BODY]] - st[t + 1, :BODY]).abs()
     for e in range(n_env):
         errors[e].append(torch.rad2deg(ep_err[e]).cpu().numpy())
     print(f"  ep {ep}: {len(act) - 1} frames replayed")

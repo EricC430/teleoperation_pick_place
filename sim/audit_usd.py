@@ -16,20 +16,19 @@ import argparse
 import os
 import sys
 
-from isaaclab.app import AppLauncher
+import isaac_boot  # noqa: E402  (Isaac Lab 3.0 launcher, see isaac_boot.py)
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--usd", required=True, help="USD file to audit")
 parser.add_argument("--no-site-limits", action="store_true", help="compare against factory travel only")
 parser.add_argument("--tol", type=float, default=0.5, help="degrees of slack when comparing limits")
-AppLauncher.add_app_launcher_args(parser)
+isaac_boot.add_args(parser)
 args = parser.parse_args()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import omx_constants as K  # noqa: E402
 
-app_launcher = AppLauncher(args)
-simulation_app = app_launcher.app
+simulation_app = isaac_boot.start(args)
 
 from pxr import PhysxSchema, Usd, UsdPhysics  # noqa: E402
 

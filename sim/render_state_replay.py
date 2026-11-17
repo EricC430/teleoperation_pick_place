@@ -52,7 +52,7 @@ import json
 import os
 import sys
 
-from isaaclab.app import AppLauncher
+import isaac_boot  # noqa: E402  (Isaac Lab 3.0 launcher, see isaac_boot.py)
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--dataset-root", required=True, help="dir containing data/chunk-*/file-*.parquet")
@@ -74,13 +74,12 @@ parser.add_argument(
 )
 parser.add_argument("--settle-steps", type=int, default=8, help="physics steps after writing each pose, before rendering")
 parser.add_argument("--out", required=True)
-AppLauncher.add_app_launcher_args(parser)
+isaac_boot.add_args(parser)
 args = parser.parse_args()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-app_launcher = AppLauncher(args)
-simulation_app = app_launcher.app
+simulation_app = isaac_boot.start(args)
 
 import torch  # noqa: E402
 
@@ -220,30 +219,31 @@ for t in frames:
     # pose exact instead of letting gravity pull it during those extra steps. The real pipeline
     # writes every frame anyway, so this is the same code path, not a special case.
     for _ in range(max(1, args.settle_steps)):
-        robot.write_joint_state_to_sim(pos, zeros, joint_ids=joint_idx)
+        robot.write_joint_position_to_sim_index(position=pos, joint_ids=joint_idx)
+        robot.write_joint_velocity_to_sim_index(velocity=zeros, joint_ids=joint_idx)
         # hold the PD target at the same pose too, or the actuator drags the arm toward its init
         # pose in between writes and the contact/settling behaves like neither
-        robot.set_joint_position_target(robot.data.joint_pos.clone())
+        robot.actuators.target_command.set_position_index(value=robot.data.joint_pos.torch.clone())
         scene.write_data_to_sim()
         sim.step()
         scene.update(sim.get_physics_dt())
 
     # frame the diagnostic camera on the arm itself, from a fixed offset, so its view is
     # comparable across frames (it moves with the arm's base, not with the arm's pose)
-    base = robot.data.body_pos_w[0, 0]
+    base = robot.data.body_pos_w.torch[0, 0]
     diag_eye = base + torch.tensor([0.55, 0.45, 0.30], device=base.device)
     diag_tgt = base + torch.tensor([0.05, 0.0, 0.10], device=base.device)
     scene["cam_diag"].set_world_poses_from_view(diag_eye.unsqueeze(0), diag_tgt.unsqueeze(0))
     sim.step()
     scene.update(sim.get_physics_dt())
 
-    actual_deg = [robot.data.joint_pos[0, i].item() * 57.2958 for i in joint_idx]
+    actual_deg = [robot.data.joint_pos.torch[0, i].item() * 57.2958 for i in joint_idx]
     print(f"{t:>6}  " + "  ".join(f"{d:>9.2f}" for d in actual_deg))
 
     entry = {"frame": t, "timestamp_s": t / DATASET_FPS, "joint_deg_written": states_deg[t],
              "joint_deg_in_sim": actual_deg}
     for key, cam_name in (("cam_front_left", "front-left"), ("cam_wrist", "wrist"), ("cam_diag", "diag")):
-        rgb = scene[key].data.output["rgb"][0]
+        rgb = scene[key].data.output["rgb"].torch[0]
         path = os.path.join(args.out, f"f{t:05d}_{cam_name}.png")
         from PIL import Image  # noqa: PLC0415
 

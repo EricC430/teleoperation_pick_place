@@ -29,7 +29,7 @@ import argparse
 import os
 import sys
 
-from isaaclab.app import AppLauncher
+import isaac_boot  # noqa: E402  (Isaac Lab 3.0 launcher, see isaac_boot.py)
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--usd", required=True, help="a USD already converted with a specific --mimic-gearing")
@@ -47,13 +47,12 @@ parser.add_argument(
         "the numbers already look right."
     ),
 )
-AppLauncher.add_app_launcher_args(parser)
+isaac_boot.add_args(parser)
 args = parser.parse_args()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-app_launcher = AppLauncher(args)
-simulation_app = app_launcher.app
+simulation_app = isaac_boot.start(args)
 
 import torch  # noqa: E402
 
@@ -116,10 +115,10 @@ b7 = robot.body_names.index(name7)
 
 
 def settle(target_val: float) -> None:
-    target = robot.data.default_joint_pos.clone()
+    target = robot.data.default_joint_pos.torch.clone()
     target[:, i1] = target_val
     for _ in range(args.settle_steps):
-        robot.set_joint_position_target(target)
+        robot.actuators.target_command.set_position_index(value=target)
         scene.write_data_to_sim()
         sim.step()
         scene.update(sim.get_physics_dt())
@@ -131,22 +130,22 @@ def render(tag: str):
         # frame the camera on the midpoint of the two finger bodies' pivots, from a fixed
         # front-above offset. This is a diagnostic view, not a calibrated camera -- if the
         # gripper isn't well-framed in the first render, the offset below needs adjusting.
-        p6 = robot.data.body_pos_w[0, b6]
-        p7 = robot.data.body_pos_w[0, b7]
+        p6 = robot.data.body_pos_w.torch[0, b6]
+        p7 = robot.data.body_pos_w.torch[0, b7]
         mid = (p6 + p7) / 2.0
         eye = mid + torch.tensor([-0.15, 0.0, 0.10], device=mid.device)
         scene["cam"].set_world_poses_from_view(eye.unsqueeze(0), mid.unsqueeze(0))
         sim.step()
         scene.update(sim.get_physics_dt())
 
-        rgb = scene["cam"].data.output["rgb"][0]
+        rgb = scene["cam"].data.output["rgb"].torch[0]
         from PIL import Image  # noqa: PLC0415
 
         path = os.path.join(args.out, f"{tag}.png")
         Image.fromarray(rgb[..., :3].detach().cpu().numpy()).save(path)
 
-    j1 = robot.data.joint_pos[0, i1].item()
-    j2 = robot.data.joint_pos[0, i2].item()
+    j1 = robot.data.joint_pos.torch[0, i1].item()
+    j2 = robot.data.joint_pos.torch[0, i2].item()
     ratio = j2 / j1 if abs(j1) > 1e-6 else float("nan")
     print(f"{tag:<10}{j1*57.2958:>12.2f}{j2*57.2958:>12.2f}{ratio:>10.3f}    {path}")
     return j1, j2

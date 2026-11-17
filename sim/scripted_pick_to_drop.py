@@ -36,7 +36,7 @@ import argparse
 import csv
 import math
 
-from isaaclab.app import AppLauncher
+import isaac_boot  # noqa: E402  (Isaac Lab 3.0 launcher, see isaac_boot.py)
 
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 parser.add_argument("--placement", default="c1", help="short id in the campA_136sym label map")
@@ -45,9 +45,9 @@ parser.add_argument("--drop-cm", type=float, nargs=3, default=(0.0, -25.0, 45.0)
 parser.add_argument("--num-envs", type=int, default=16)
 parser.add_argument("--seed", type=int, default=42)
 parser.add_argument("--out", default="/workspace/test_isaaclab/omx_sim/scripted_traj.csv")
-AppLauncher.add_app_launcher_args(parser)
+isaac_boot.add_args(parser)
 args = parser.parse_args()
-app = AppLauncher(args).app
+app = isaac_boot.start(args)
 
 import gymnasium as gym  # noqa: E402
 import torch  # noqa: E402
@@ -83,7 +83,7 @@ def tcp():
 
 
 def obj():
-    return env.object.data.root_com_pose_w[:, :3] - env.scene.env_origins
+    return env.object.data.root_com_pose_w.torch[:, :3] - env.scene.env_origins
 
 
 log = []
@@ -97,7 +97,7 @@ def go(phase, target, grip, steps):
         a = torch.clamp((target - tcp()) / 0.005, -5, 5)
         env.step(torch.cat([a, torch.full((N, 1), grip, device=dev)], dim=1))
         reset_seen |= env.episode_length_buf < prev
-        q = env.robot.data.joint_pos[:, env._arm_joint_indices + list(env._gripper_joint_idx)]
+        q = env.robot.data.joint_pos.torch[:, env._arm_joint_indices + list(env._gripper_joint_idx)]
         log.append((phase, q.clone(), (tcp() - pan).clone(), (obj() - pan).clone()))
 
 

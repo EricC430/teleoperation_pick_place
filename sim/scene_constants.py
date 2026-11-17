@@ -275,6 +275,18 @@ CAM_FRONT_LEFT_LOOKAT = (
     CAM_FRONT_LEFT_POS[2] + _CAM_LOOK_DIST * math.sin(_cam_pitch),
 )
 
+def wxyz_to_xyzw(q):
+    """Reorder a (w, x, y, z) quaternion to Isaac Lab 3.0's (x, y, z, w).
+
+    Every quaternion CONSTANT in this file and every `quat_wxyz` field in the calibration JSONs is (w, x, y, z)
+    -- they are measurement records, written by calib_extrinsics_aruco.py, and re-writing them would orphan
+    the dated calibration files. Isaac Lab 3.0 flipped its own convention (migrating.rst, "Quaternion Format"),
+    so convert HERE, at the boundary where a constant becomes an Isaac Lab cfg / call argument, and nowhere else.
+    """
+    w, x, y, z = q
+    return (x, y, z, w)
+
+
 CAM_WRIST_PARENT_LINK = "link5"
 # Measured from CAD assembly (OMX-AI(Follower).stp: CAMERA_INNOMAKER_720P mounted on PR33_C02_F9):
 # Pitch ~38.7° downward facing the fingertips and cup

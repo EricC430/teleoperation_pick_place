@@ -9,17 +9,23 @@ collector (S4 §4) and any later task env both build on it.
 
 from __future__ import annotations
 
+import os
+
 import isaaclab.sim as sim_utils
 from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.assets import ArticulationCfg, AssetBaseCfg, RigidObjectCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import CameraCfg
+from isaaclab.sim.schemas import UsdPhysicsCollisionCfg, UsdPhysicsRigidBodyCfg
 from isaaclab.utils import configclass
+from isaaclab_physx.sim.schemas import PhysxArticulationCfg, PhysxRigidBodyCfg
 
 import omx_constants as K
 import scene_constants as S
 
-OMX_USD = "/workspace/test_isaaclab/assets/omx_f_generated/omx_f.usd"
+# OMX_USD env var: the Newton backend needs a copy with one dangling reference removed (sim/newton_asset_fix.py ->
+# assets/omx_f_generated_newton/); the default stays the original asset that every PhysX / S9 number was measured on.
+OMX_USD = os.environ.get("OMX_USD", "/workspace/test_isaaclab/assets/omx_f_generated/omx_f.usd")
 DEFAULT_OBJECT_USD = "/workspace/test_isaaclab/assets/trash_obj/trash_cans_1.usd"
 
 # 🔴 The arm does NOT sit on the table -- it is on a ~15 cm riser ([Eric說 2026-09-21], see
@@ -40,11 +46,14 @@ def omx_articulation_cfg(prim_path: str, usd_path: str = OMX_USD) -> Articulatio
         spawn=sim_utils.UsdFileCfg(
             usd_path=usd_path,
             activate_contact_sensors=True,
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(
-                disable_gravity=False,
-                max_depenetration_velocity=5.0,
-            ),
-            articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+            # Isaac Lab 3.0 schema fragments: one cfg per USD namespace, composed in a list (the 2.x
+            # RigidBodyPropertiesCfg / ArticulationRootPropertiesCfg are deprecated aliases, removed in 3.2).
+            # Same values as before; PhysX owns disable_gravity / max_depenetration_velocity / solver iterations.
+            rigid_props=[
+                UsdPhysicsRigidBodyCfg(),
+                PhysxRigidBodyCfg(disable_gravity=False, max_depenetration_velocity=5.0),
+            ],
+            articulation_props=PhysxArticulationCfg(
                 enabled_self_collisions=False,  # see the audit's item 7; turn on only if needed
                 solver_position_iteration_count=16,
                 solver_velocity_iteration_count=1,
@@ -57,8 +66,12 @@ def omx_articulation_cfg(prim_path: str, usd_path: str = OMX_USD) -> Articulatio
         actuators={
             j.urdf_name: ImplicitActuatorCfg(
                 joint_names_expr=[j.urdf_name],
-                effort_limit=j.motor.stall_torque_nm,
-                velocity_limit=j.motor.velocity_limit_rad_s,
+                # 3.0 names (effort_limit / velocity_limit are deprecated aliases, removed in 3.1). For an implicit
+                # group the 2.x `effort_limit` meant BOTH the rated limit and the PhysX solver clamp; 3.0 splits them,
+                # so author both explicitly. `velocity_limit` was only ever the rated/soft limit, not a solver clamp.
+                actuator_effort_limit=j.motor.stall_torque_nm,
+                joint_effort_limit=j.motor.stall_torque_nm,
+                actuator_velocity_limit=j.motor.velocity_limit_rad_s,
                 stiffness=K.stiffness(j),   # per RADIAN here — Isaac Lab's convention, unlike USD
                 damping=K.damping(j),
             )
@@ -98,7 +111,7 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Table",
         spawn=sim_utils.CuboidCfg(
             size=S.TABLE_SIZE,
-            collision_props=sim_utils.CollisionPropertiesCfg(),
+            collision_props=UsdPhysicsCollisionCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.82, 0.80, 0.76)),
         ),
         # the slab's centre sits half a thickness below the top surface
@@ -113,7 +126,7 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/ArmRiser",
         spawn=sim_utils.CuboidCfg(
             size=S.ARM_RISER_SIZE,
-            collision_props=sim_utils.CollisionPropertiesCfg(),
+            collision_props=UsdPhysicsCollisionCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.20, 0.55, 0.70)),
         ),
         init_state=AssetBaseCfg.InitialStateCfg(
@@ -133,7 +146,7 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
         spawn=sim_utils.CylinderCfg(
             radius=S.BIN_OPENING_DIA / 2.0,
             height=S.BIN_HEIGHT,
-            collision_props=sim_utils.CollisionPropertiesCfg(),
+            collision_props=UsdPhysicsCollisionCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.15, 0.35, 0.65)),
         ),
         init_state=AssetBaseCfg.InitialStateCfg(
@@ -152,12 +165,15 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
         #    placeholder appearance. Eric plans to rebuild or author the real asset.
         spawn=sim_utils.UsdFileCfg(
             usd_path="/workspace/test_isaaclab/assets/paper_cup/paper_cup.usd",
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(
-                solver_position_iteration_count=16,
-                solver_velocity_iteration_count=1,
-                max_depenetration_velocity=3.0,
-                disable_gravity=False,
-            ),
+            rigid_props=[
+                UsdPhysicsRigidBodyCfg(),
+                PhysxRigidBodyCfg(
+                    solver_position_iteration_count=16,
+                    solver_velocity_iteration_count=1,
+                    max_depenetration_velocity=3.0,
+                    disable_gravity=False,
+                ),
+            ],
         ),
         # standing on table: origin of paper_cup.usd is at the base
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.30, 0.0, S.TABLE_TOP_Z)),
@@ -172,7 +188,7 @@ class OmxCellSceneCfg(InteractiveSceneCfg):
         data_types=["rgb"],
         spawn=_pinhole(S.HFOV_WRIST_DEG, S.CLIP_WRIST),
         offset=CameraCfg.OffsetCfg(
-            pos=S.CAM_WRIST_OFFSET_POS, rot=S.CAM_WRIST_OFFSET_ROT, convention="ros"
+            pos=S.CAM_WRIST_OFFSET_POS, rot=S.wxyz_to_xyzw(S.CAM_WRIST_OFFSET_ROT), convention="ros"
         ),
     )
 

@@ -25,9 +25,10 @@ import os
 import sys
 
 try:
-    from isaaclab.app import AppLauncher
+    import isaaclab.app  # noqa: F401
+    import isaac_boot    # Isaac Lab 3.0 launcher, see isaac_boot.py
 except ImportError:      # Isaac Sim standalone python: pxr loads once a SimulationApp is running
-    AppLauncher = None
+    isaac_boot = None
 
 parser = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -41,13 +42,12 @@ parser.add_argument("--rings", type=int, default=8, help="vertical segments")
 parser.add_argument("--mass", type=float, default=0.012, help="mass (kg)")
 parser.add_argument("--mu-s", type=float, default=1.2, help="static friction")
 parser.add_argument("--mu-d", type=float, default=0.9, help="dynamic friction")
-if AppLauncher is not None:
-    AppLauncher.add_app_launcher_args(parser)
+if isaac_boot is not None:
+    isaac_boot.add_args(parser)
 args = parser.parse_args()
 
-if AppLauncher is not None:
-    app_launcher = AppLauncher(args)
-    simulation_app = app_launcher.app
+if isaac_boot is not None:
+    simulation_app = isaac_boot.start(args)
 else:
     from isaacsim import SimulationApp
     simulation_app = SimulationApp({"headless": True})
