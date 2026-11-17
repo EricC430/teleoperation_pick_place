@@ -12,7 +12,7 @@
 | 推論 | TE：`n_action_steps=1`、coeff −0.01；45 s／集 `[已查證：config record __d39a1ec1 的 cli overrides]` |
 | config | `configs/rollout_omx_mfull_200k_te-001_plastic_bottle_eval.yaml`，YAML＋參數跟 11/11 試跑完全相同，所以沒有產生新 record（digest 相同，沿用 11/11 17:38 的 `__d39a1ec1`）。跟 11/11 正式場的差別：今天沒加 `--display_data=false` |
 | 清單 | v4：`configs/placements/bottle_eval-close_20261115.csv`，範本 `plastic_bottle_A1_v4`（去 c6／c12／c22／c26，加 c37–c40） |
-| 資料 | `D:\hf\lerobot\ericc430\rollout_omx_mfull_cup129_bottle135_augfl_fldrop30_200k_nas1_te-001_plastic_bottle_20261115_183543`（36 集、14257 幀），CSV 同名在 `episode_meta/` |
+| 資料 | `D:\hf\lerobot\ericc430\rollout_omx_mfull_cup129_bottle135_augfl_fldrop30_200k_nas1_te-001_plastic_bottle_20261115_183543`（36 集、14257 幀），CSV 同名在 `episode_meta/`。Hub（private，11/18 上傳）：`ericc430/rollout_omx_mfull_augfl_fldrop30_200k_nas1_te-001_plastic_bottle_20261115_183543`，commit `79103629`、tag `v3.0`；原名 97 字元超過 Hub 上限 96，拿掉 `cup129_bottle135_`，本機名不變 `[柏宇決定 11/18]` |
 | 環境 | 宿舍大燈＋檯燈＋窗簾拉上、木質桌面 |
 
 ## 結果：23/36，階段 0（≥ 29/36）沒過

@@ -13,7 +13,7 @@
 | 推論 | TE：`n_action_steps=1`、coeff −0.01；45 s／集 `[已查證：config record cli overrides]` |
 | config | `configs/rollout_omx_aimfix_200k_te-001_plastic_bottle_eval.yaml`；record `__66e919d4`（第一段）＋`__79eb36bf`（`--resume`，19 集） |
 | 清單 | v4（c1–c36 去 c6／c12／c22／c26，加 c37–c40），`configs/placements/bottle_eval-close_20261115.csv` `[已查證：CSV 的 placement_id]` |
-| 資料 | `D:\hf\lerobot\ericc430\rollout_omx_aimfix_cup129_bottle135_aimfix28_twoobj10_200k_nas1_te-001_plastic_bottle_20261117_184157`（36 集、14968 幀），CSV 同名在 `episode_meta/` |
+| 資料 | `D:\hf\lerobot\ericc430\rollout_omx_aimfix_cup129_bottle135_aimfix28_twoobj10_200k_nas1_te-001_plastic_bottle_20261117_184157`（36 集、14968 幀），CSV 同名在 `episode_meta/`。Hub（private，11/18 上傳）：`ericc430/rollout_omx_aimfix28_twoobj10_200k_nas1_te-001_plastic_bottle_20261117_184157`，commit `edbdc777`、tag `v3.0`；原名 101 字元超過 Hub 上限 96，拿掉 `aimfix_cup129_bottle135_` 的重複部分，本機名不變 `[柏宇決定 11/18]` |
 | 環境 | 宿舍大燈＋檯燈＋窗簾拉上、木質桌面 |
 
 ## 結果：26/36，階段 0（≥ 29/36）沒過
