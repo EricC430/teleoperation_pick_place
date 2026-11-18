@@ -106,6 +106,11 @@ parser.add_argument("--physics", choices=("physx", "newton_mjwarp"), default="ph
 parser.add_argument("--num-envs", type=int, default=1,
                     help="parallel copies of the arm, all driven by the same targets; env 0 is the one scored. "
                     "1 reproduces the original behaviour; >1 is for throughput measurements")
+parser.add_argument("--no-cuda-graph", action="store_true", help="NewtonCfg(use_cuda_graph=False): how much of Newton's throughput is the captured CUDA graph")
+parser.add_argument("--no-fabric", action="store_true", help="SimulationCfg(use_fabric=False): the Isaac Sim handbook lists it for headless GPU-tensor workloads")
+parser.add_argument("--solver-iters", type=int, default=0,
+                    help="PhysX articulation solver_position_iteration_count (0 = keep omx_scene_cfg's 16). A fairness check for the "
+                    "PhysX-vs-Newton throughput comparison: 16 is far above Isaac Lab's usual 4, and costs time.")
 parser.add_argument("--out", required=True, help="where to write the JSON report")
 isaac_boot.add_args(parser)
 args = parser.parse_args()
@@ -191,7 +196,12 @@ class GainFitSceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = SC.omx_articulation_cfg("{ENV_REGEX_NS}/Robot")
 
 
+scene_cfg0 = None
 scene_cfg = GainFitSceneCfg(num_envs=args.num_envs, env_spacing=2.0, replicate_physics=(args.num_envs > 1 or args.physics != "physx"))   # Newton's cloner needs it even for 1 env
+
+if args.solver_iters:
+    scene_cfg.robot.spawn.articulation_props.solver_position_iteration_count = args.solver_iters
+    print(f"PhysX articulation solver_position_iteration_count -> {args.solver_iters}")
 
 # scale every joint's gains uniformly -- see the module docstring for why this is a global,
 # not per-joint, scale for the first pass.
@@ -226,10 +236,10 @@ if args.physics == "newton_mjwarp":
     from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg  # noqa: E402
 
     physics_cfg = NewtonCfg(solver_cfg=MJWarpSolverCfg(solver="newton", integrator="implicitfast"),
-                            num_substeps=1, debug_mode=True)
+                            num_substeps=1, debug_mode=True, use_cuda_graph=not args.no_cuda_graph)
 else:
     physics_cfg = None   # SimulationCfg default = Isaac Sim PhysX, exactly as before
-sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=1.0 / 120.0, device=args.device, physics=physics_cfg))
+sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=1.0 / 120.0, device=args.device, physics=physics_cfg, use_fabric=not args.no_fabric))
 scene = InteractiveScene(scene_cfg)
 sim.reset()
 
