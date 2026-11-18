@@ -12,7 +12,7 @@
 | Isaac Lab／Sim／Python | 2.3.0／5.1.0／3.11 | 3.0.0／6.2.0／3.12.14 |
 | Docker／Toolkit | 28.1.1／1.17.8 | 29.9.3／1.20.2 |
 
-- 驅動是實驗室升級的 `[柏宇說 2026-11-17，更正原本「使用者自己升」]`，OS 是誰升級的未確認；升級後 Docker 的舊 image／容器全部不在（`isaac-lab`、`lerobot-gpu`、`isaac-sim`）。lerobot 訓練 image：寫這份時還沒重建；**11/16 21:08（台北時間）已拉回**，digest `62df079f…`，跟 `docs/environment.md` 釘選的值相同 `[已查證 2026-11-17：docker image inspect 的 RepoDigests／LastTagTime]`。11/16 23:52 起的 aimfix26_twoobj10 訓練用的就是這個 image。
+- 驅動是實驗室升級的 `[柏宇說 2026-11-17，更正原本「使用者自己升」]`，OS 是誰升級的未確認；升級後 Docker 的舊 image／容器全部不在（`isaac-lab`、`lerobot-gpu`、`isaac-sim`）。lerobot 訓練 image：寫這份時還沒重建；**11/16 21:08（台北時間）已拉回**，digest `62df079f…`，跟 `docs/environment.md` 釘選的值相同 `[已查證 2026-11-17：docker image inspect 的 RepoDigests／LastTagTime]`。11/16 23:52 起的 aimfix28_twoobj10 訓練用的就是這個 image。
 - 新容器：`~/IsaacLab_v3`（clone v3.0.0，`GIT_LFS_SKIP_SMUDGE=1`，主機沒有 git-lfs）→ `python3 docker/container.py build base` → image `isaac-lab-base`（51.4 GB）。常駐容器 `isaac-lab` 以 **root** 執行（舊輸出就是 root 擁有）、掛 `~/isaaclab_volume`。
 - 啟動 Python：Isaac Lab 腳本要用 `/workspace/isaaclab/isaaclab.sh -p`（直接呼叫 venv python 會報 "Isaac Sim is not installed"）；純 Isaac Sim 腳本用 `/isaac-sim/python.sh`。`sim/run_in_container.sh` 依腳本是否 `import isaac_boot`／`from isaaclab` 自動選。
 - 3.0 的 `add_launcher_args` 不再有 `--headless`／`--enable_cameras`；啟動器仍讀它們。`isaac_boot.add_args` 補回這兩個旗標，所以既有指令列不用改。3.0 預設就是 headless。
