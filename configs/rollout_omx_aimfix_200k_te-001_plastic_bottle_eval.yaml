@@ -5,7 +5,7 @@
 # NEGATIVE coeff: the sign is not visible in 'te001'-style names, so the repo says te-001; the config record is the truth.
 # lerobot rejects temporal ensembling with n_action_steps > 1. Check: a full 45 s episode should have ~675 frames.
 # Model: ACT 200k of 300k steps (run saves every 100k), sha256 ca92727ebcff = docs/models.md. Hub upload 2026-11-17, private.
-# Training: configs/train_omx_cup129_bottle135_aimfix26_twoobj10_augfl_fldrop.yaml - 311 eps (M-full 273 incl. 9 excluded + aimfix_A1_cut 28 + twoobj_A1 10), plain concat;
+# Training: configs/train_omx_cup129_bottle135_aimfix28_twoobj10_augfl_fldrop.yaml - 311 eps (M-full 273 incl. 9 excluded + aimfix_A1_cut 28 + twoobj_A1 10), plain concat;
 # augmentation and fl dropout same as M-full (p 0.3, window 30). Check fl_dropout.json on the Hub against the training config header.
 # Gate (docs/phase_plan.md stage 0): BOTH objects >= 29/36 (80%) [Boyu].
 # Comparison: M-full 200k, same inference: cup 29/36 (11/11), bottle 25/36 (25/35 without c12). Only the data differs (aimfix 28 + twoobj 10 added).

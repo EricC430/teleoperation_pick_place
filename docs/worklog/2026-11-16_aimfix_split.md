@@ -32,7 +32,7 @@ ep4、ep16 在 11/15 標註時就記了「先太右再太左（調了兩次）�
   - 4 段的頭尾幀，action 和兩個鏡頭的像素都等於原始集的對應幀，差 0。
   - 其他 24 集在第 0 幀、中間幀、最後一幀都等於舊 `_cut`，差 0。
   - ep4 第 0 幀的 chunk 有 11／100 步沒被遮掉，最後一步就是該集最後的 action，不會跨到別集。
-- 訓練 config `configs/train_omx_cup129_bottle135_aimfix26_twoobj10_augfl_fldrop.yaml` 的集數和預期值已更新：
+- 訓練 config `configs/train_omx_cup129_bottle135_aimfix28_twoobj10_augfl_fldrop.yaml` 的集數和預期值已更新：
   - merged 311 集（排除後 302）、111530 幀，twoobj 移到 301–310。
   - fl_dropout 的 `episodes_without_close` 會是 `[277, 289]`，就是這兩個第一集，屬於預期。aimfix 的 `frames_in_window` 仍是 780（本機重算，舊版同法得 780，跟 config 原值相同）。
   - 順便改了原 config 第 1、7 行的「300 eps」：merge 後其實是 309 集，排除後才是 300，舊寫法沒講清楚。
