@@ -79,7 +79,7 @@ Read this before debugging any `--gpus all` failure on the lab machine.
 > - 同一天 OS 也從 Ubuntu 20.04 升到 24.04（kernel 6.17），細節見 `docs/worklog/2026-11-16_isaaclab3_migration.md` §1。
 > - 615 ≥ 570，**下面「CUDA 12.4 上限」和 forward-compat 那一整節講的都是 550 時期的狀況**，留著當歷史紀錄。
 > - `scripts/run_container.sh` 的兩個旗標**還在、沒拿掉**。拿掉後能不能跑**未驗證**。
->   用這兩個旗標在 615 上已經跑通訓練：2026-11-16 的 aimfix26_twoobj10 run，`'device': 'cuda'`，image digest `62df079f…`（就是本檔釘選的版本）。
+>   用這兩個旗標在 615 上已經跑通訓練：2026-11-16 的 aimfix28_twoobj10 run，`'device': 'cuda'`，image digest `62df079f…`（就是本檔釘選的版本）。
 >   速度跟 550 時期的 M-full 一樣：`updt_s` 0.301 vs 0.301 s，GPU 使用率 100%。驅動升級沒有讓訓練變快。
 
 **Verified 2026-08-12（driver 550 時期）:**

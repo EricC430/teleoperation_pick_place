@@ -1,7 +1,8 @@
 # 2026-11-15 M-full + aimfix_A1_cut (26 recorded -> 28) + twoobj_A1 (10): 311 eps, 302 after exclude_episodes,
 # one model for paper cup + plastic bottle.
 # 2026-11-16: aimfix_A1_cut rebuilt with ep4 / ep16 (overshoot then correct back) split in two -> 28 eps, 6045 frames
-# (docs/worklog/2026-11-16_aimfix_split.md). The file name keeps "aimfix26" = recorded episodes. Counts below updated.
+# (docs/worklog/2026-11-16_aimfix_split.md). Counts below updated. Renamed aimfix26 -> aimfix28 on 2026-11-18 (28 = episodes
+# after the split; run dir, dataset dir and this file; the Hub repo was renamed 11/17).
 # Why: M-full bottle failures are mostly bad_aim / reach short and the model does not correct before closing
 # (docs/worklog/2026-11-11_mfull_closed_loop.md); aimfix = "offset then correct" demos, twoobj = which object first
 # when both are on the table (docs/worklog/2026-11-15_aimfix_twoobj_recording.md). [柏宇決定 2026-11-15] both go in.
@@ -24,12 +25,12 @@
 #   ./scripts/run_container.sh hf download ericc430/omx_pick_place_pilot_plastic_bottle_aimfix_A1_cut --repo-type dataset --local-dir $R/omx_pick_place_pilot_plastic_bottle_aimfix_A1_cut
 #   ./scripts/run_container.sh hf download ericc430/omx_pick_place_pilot_twoobj_A1 --repo-type dataset --local-dir $R/omx_pick_place_pilot_twoobj_A1
 #   ./scripts/run_container.sh lerobot-edit-dataset \
-#       --new_repo_id ericc430/omx_pick_place_pilot_cup129_bottle135_aimfix26_twoobj10 --new_root $R/omx_pick_place_pilot_cup129_bottle135_aimfix26_twoobj10 \
+#       --new_repo_id ericc430/omx_pick_place_pilot_cup129_bottle135_aimfix28_twoobj10 --new_root $R/omx_pick_place_pilot_cup129_bottle135_aimfix28_twoobj10 \
 #       --operation.type merge \
 #       --operation.repo_ids "['ericc430/omx_pick_place_pilot_uvc_60', 'ericc430/omx_pick_place_pilot_paper_cup_normal_A1', 'ericc430/omx_pick_place_pilot_paper_cup_recovery_A1_tight_cut', 'ericc430/omx_pick_place_pilot_paper_cup_far_wrist_A1', 'ericc430/omx_pick_place_pilot_60_plastic_bottle', 'ericc430/omx_pick_place_pilot_plastic_bottle_normal_A1', 'ericc430/omx_pick_place_pilot_plastic_bottle_recovery_A1_tight_cut', 'ericc430/omx_pick_place_pilot_plastic_bottle_precise_A1', 'ericc430/omx_pick_place_pilot_plastic_bottle_tipped_A1', 'ericc430/omx_pick_place_pilot_plastic_bottle_aimfix_A1_cut', 'ericc430/omx_pick_place_pilot_twoobj_A1']" \
 #       --operation.roots "['$R/omx_pick_place_pilot_uvc_60', '$R/omx_pick_place_pilot_paper_cup_normal_A1', '$R/omx_pick_place_pilot_paper_cup_recovery_A1_tight_cut', '$R/omx_pick_place_pilot_paper_cup_far_wrist_A1', '$R/omx_pick_place_pilot_60_plastic_bottle', '$R/omx_pick_place_pilot_plastic_bottle_normal_A1', '$R/omx_pick_place_pilot_plastic_bottle_recovery_A1_tight_cut', '$R/omx_pick_place_pilot_plastic_bottle_precise_A1', '$R/omx_pick_place_pilot_plastic_bottle_tipped_A1', '$R/omx_pick_place_pilot_plastic_bottle_aimfix_A1_cut', '$R/omx_pick_place_pilot_twoobj_A1']"
 #   ./scripts/run_container.sh python scripts/train_fl_dropout.py --fl-p 0.3 --fl-window 30 --transforms-fl-only \
-#       --config_path configs/train_omx_cup129_bottle135_aimfix26_twoobj10_augfl_fldrop.yaml
+#       --config_path configs/train_omx_cup129_bottle135_aimfix28_twoobj10_augfl_fldrop.yaml
 #
 # Check after the merge: 311 eps / 111530 frames (98959 + 6045 + 6526); ep 0-272 length and frame-0 action equal to
 # omx_pick_place_pilot_cup129_bottle135. Stop if not.
@@ -46,8 +47,8 @@
 # so the 200k checkpoint here is the one comparable to M-full 200k (same steps). 200k ~ 59 epochs here (M-full ~67), 300k ~ 89.
 #
 dataset:
-  repo_id: ericc430/omx_pick_place_pilot_cup129_bottle135_aimfix26_twoobj10   # local only
-  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_cup129_bottle135_aimfix26_twoobj10
+  repo_id: ericc430/omx_pick_place_pilot_cup129_bottle135_aimfix28_twoobj10   # local only
+  root: /workspace/data/huggingface/lerobot/ericc430/omx_pick_place_pilot_cup129_bottle135_aimfix28_twoobj10
   exclude_episodes: [73, 74, 75, 85, 86, 87, 98, 135, 271]   # same as M-full -> 302 of 311 remain
   eval_split: 0.0
   image_transforms:          # copied from M-full; with --transforms-fl-only they run on front-left only
@@ -66,8 +67,8 @@ policy:
   chunk_size: 100
   n_action_steps: 100
   push_to_hub: false
-output_dir: /workspace/data/train/cup129_bottle135_aimfix26_twoobj10_augfl_fldrop_p30_w30
-job_name: act_omx_cup129_bottle135_aimfix26_twoobj10_augfl_fldrop_p30_w30
+output_dir: /workspace/data/train/cup129_bottle135_aimfix28_twoobj10_augfl_fldrop_p30_w30
+job_name: act_omx_cup129_bottle135_aimfix28_twoobj10_augfl_fldrop_p30_w30
 steps: 300000
 batch_size: 32
 save_freq: 100000

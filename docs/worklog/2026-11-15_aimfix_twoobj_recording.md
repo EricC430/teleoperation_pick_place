@@ -46,7 +46,7 @@
 - aimfix_A1_cut（剪過的，不是原始的）和 twoobj_A1 **都進訓練** `[柏宇決定]`。
 - ep2 **留** `[柏宇決定]`。
 - 11/15 上傳 Hub（private）：`ericc430/omx_pick_place_pilot_plastic_bottle_aimfix_A1`、`…_aimfix_A1_cut`、`ericc430/omx_pick_place_pilot_twoobj_A1`。每個本機檔案都在 Hub 上、大小相同 `[已查證：Hub API]`。
-- 訓練 config：`configs/train_omx_cup129_bottle135_aimfix26_twoobj10_augfl_fldrop.yaml`（M-full ＋ 兩組，直接串接、不加權；比例未定）。
+- 訓練 config：`configs/train_omx_cup129_bottle135_aimfix28_twoobj10_augfl_fldrop.yaml`（M-full ＋ 兩組，直接串接、不加權；比例未定）。
 
 ## 未決
 
