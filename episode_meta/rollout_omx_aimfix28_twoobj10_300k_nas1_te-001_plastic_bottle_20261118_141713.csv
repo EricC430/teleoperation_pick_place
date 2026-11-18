@@ -29,7 +29,7 @@
 27,plastic_bottle,stand,c32,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,,,Boyu,,推到瓶子
 28,plastic_bottle,stand,c33,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,,,Boyu,,推倒瓶子
 29,plastic_bottle,stand,c34,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,,,Boyu,,
-30,plastic_bottle,stand,c35,宿舍大燈+檯燈+窗簾拉上,木質桌面,dropped,,,,,Boyu,,夾瓶蓋抬起時掉落
+30,plastic_bottle,stand,c35,宿舍大燈+檯燈+窗簾拉上,木質桌面,dropped,other,,,,Boyu,,夾瓶蓋抬起時掉落；[柏宇補 11/18] 有夾到，可能是搬運時手臂伸得太斜才掉
 31,plastic_bottle,stand,c36,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,,,Boyu,,推倒瓶子
 32,plastic_bottle,stand,c37,宿舍大燈+檯燈+窗簾拉上,木質桌面,success,,,,,Boyu,,
 33,plastic_bottle,stand,c38,宿舍大燈+檯燈+窗簾拉上,木質桌面,no_grasp,bad_aim;pushed_away,,,,Boyu,,手臂伸不夠遠
