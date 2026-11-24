@@ -1,0 +1,79 @@
+# RECORDED closed-loop TWO-OBJECT test of ericc430/act_omx_cup129-bottle135-aimfix28-twoobj10-augfl-fldrop30_300k
+# (sha256 b431d2172af2, docs/models.md). Paper cup AND plastic bottle on the table at once; the model should pick only the
+# one the rule selects and put it in the box (the other stays on the table). One pick per episode, same as training.
+# Rule (configs/record_omx_twoobj_pilot_A1.yaml header, Boyu 2026-11-15): pick the one on the ARM's left (larger theta) first;
+# about the same theta -> the nearer one (smaller r). Only clear cases: dtheta >= 20 deg, or dtheta <= 5 deg and dr >= 8 cm.
+# Placements: the SAME 10 pairs as the twoobj_A1 training episodes (template episode_meta/templates/twoobj_A1.csv:
+# placement_id = target t-point, notes = the other object). These pairs are IN the training data -> in-distribution check only.
+# Episode 75 s [Boyu 2026-11-18], same as twoobj_A1 recording (45 -> 75 on 2026-11-15). Check: a full 75 s episode ~1125 frames.
+# TEMPORAL ENSEMBLING (n_action_steps=1, coeff -0.01), same inference as the 300k bottle/cup runs (2026-11-18: 29/36, 30/36).
+# NEGATIVE coeff: the sign is not visible in 'te001'-style names, so the repo says te-001; the config record is the truth.
+# Labels: picked the wrong object -> write it in notes (outcome vocabulary has no 'wrong object' value; decide per session).
+#
+#   uv run python scripts/rollout_labeled.py --config_path configs/rollout_omx_aimfix_300k_te-001_twoobj_eval.yaml --policy.path=ericc430/act_omx_cup129-bottle135-aimfix28-twoobj10-augfl-fldrop30_300k --policy.n_action_steps=1 --policy.temporal_ensemble_coeff=-0.01 --meta-template twoobj_A1
+#
+# KEEP THIS FILE ASCII-ONLY (lerobot opens it as cp950 when policy.path is set).
+# policy.n_action_steps and temporal_ensemble_coeff must be given on the command line with --policy.path (2026-10-05 note).
+# Copied from configs/rollout_omx_aimfix_300k_te-001_plastic_bottle_eval.yaml; only dataset.repo_id, num_episodes, episode_time_s and comments differ.
+# Before running, in this order: read_joint_pose.py --goto-home --home-episode 10, lerobot-find-cameras opencv (wrist index),
+# align_camera.py --dataset-root .cache/lerobot/omx_pick_place_pilot_paper_cup_far_wrist_A1 --episodes 1 4 8
+robot:
+  type: omx_follower
+  port: COM8
+  id: 2026-10-08_omx_follower
+  calibration_dir: ./calibration
+  cameras:
+    wrist:
+      type: opencv_uvc
+      index_or_path: 2
+      backend: DSHOW
+      width: 640
+      height: 480
+      fps: 15
+      fourcc: YUY2
+      exposure: -5
+      gain: 0
+      white_balance: null
+    front-left:
+      type: intelrealsense_pinned
+      serial_number_or_name: "262822305610"
+      width: 848
+      height: 480
+      fps: 15
+      use_depth: false
+      exposure: 400
+      gain: 70
+      white_balance: null
+
+policy:
+  path: ericc430/act_omx_cup129-bottle135-aimfix28-twoobj10-augfl-fldrop30_300k  # private; cached in D:/hf/hub (sha256 b431d2172af2 checked 2026-11-18)
+
+strategy:
+  type: episodic
+  reset_to_initial_position: true   # no teleop: arm goes back to its startup pose between trials
+
+inference:
+  type: sync
+
+dataset:
+  repo_id: ericc430/rollout_omx_aimfix28_twoobj10_300k_nas1_te-001_75s_twoobj   # must start with rollout_; timestamp appended; nas1 + coeff -0.01 (keep in sync with the CLI)
+  single_task: "Pick up the object and place it into the box"   # same string as training
+  fps: 15                  # must match camera fps
+  num_episodes: 10         # the 10 twoobj_A1 training pairs (template twoobj_A1)
+  episode_time_s: 75       # Boyu 2026-11-18; = twoobj_A1 recording
+  reset_time_s: 120        # time to re-place the object; Right/Up ends it early
+  video: true
+  push_to_hub: false       # upload later by hand once the session looks right
+  private: true
+  streaming_encoding: false
+  encoder_threads: 2
+  rgb_encoder:
+    vcodec: h264
+    preset: veryfast
+    crf: 23
+    pix_fmt: yuv420p
+
+fps: 15
+task: "Pick up the object and place it into the box"
+display_data: true
+return_to_initial_position: true

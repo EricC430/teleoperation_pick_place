@@ -1,0 +1,11 @@
+﻿episode_index,object_name,object_orientation,placement_id,env_light,env_bg,outcome,mechanism,quality,valid,void_reason,operator,record_ts,notes
+0,plastic_bottle,stand,t23,宿舍大燈+檯燈+窗簾拉上,木質桌面,,,,,,,,雙物體（規則：先左）：目標 寶特瓶@t23，紙杯@t11 也在桌上
+1,paper_cup,stand,t30,宿舍大燈+檯燈+窗簾拉上,木質桌面,,,,,,,,雙物體（規則：先左）：目標 紙杯@t30，寶特瓶@t51 也在桌上
+2,plastic_bottle,stand,t2,宿舍大燈+檯燈+窗簾拉上,木質桌面,,,,,,,,雙物體（規則：先左）：目標 寶特瓶@t2，紙杯@t38 也在桌上
+3,paper_cup,stand,t15,宿舍大燈+檯燈+窗簾拉上,木質桌面,,,,,,,,雙物體（規則：先左）：目標 紙杯@t15，寶特瓶@t10 也在桌上
+4,plastic_bottle,stand,t21,宿舍大燈+檯燈+窗簾拉上,木質桌面,,,,,,,,雙物體（規則：先左）：目標 寶特瓶@t21，紙杯@t34 也在桌上
+5,paper_cup,stand,t32,宿舍大燈+檯燈+窗簾拉上,木質桌面,,,,,,,,雙物體（規則：先左）：目標 紙杯@t32，寶特瓶@t35 也在桌上
+6,plastic_bottle,stand,t29,宿舍大燈+檯燈+窗簾拉上,木質桌面,,,,,,,,雙物體（規則：同θ先近）：目標 寶特瓶@t29，紙杯@t2 也在桌上
+7,paper_cup,stand,t21,宿舍大燈+檯燈+窗簾拉上,木質桌面,,,,,,,,雙物體（規則：同θ先近）：目標 紙杯@t21，寶特瓶@t19 也在桌上
+8,plastic_bottle,stand,t5,宿舍大燈+檯燈+窗簾拉上,木質桌面,,,,,,,,雙物體（規則：同θ先近）：目標 寶特瓶@t5，紙杯@t15 也在桌上
+9,paper_cup,stand,t50,宿舍大燈+檯燈+窗簾拉上,木質桌面,,,,,,,,雙物體（規則：同θ先近）：目標 紙杯@t50，寶特瓶@t31 也在桌上
